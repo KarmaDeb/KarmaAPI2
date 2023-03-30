@@ -1,0 +1,50 @@
+{
+  "logger": {
+    "console": {
+      "prefix": [
+        {
+          "type": "DEBUG",
+          "display": "&7{DEBUG} {0} &8->&f {1}"
+        },
+        {
+          "type": "DEBUG_SEVERE",
+          "display": "&c{&4(SEVERE)&c DEBUG} {0} &8->&f {1}"
+        },
+        {
+          "type": "SUCCESS",
+          "display": "&a{SUCCESS} {0} &8->&f {1}"
+        },
+        {
+          "type": "INFO",
+          "display": "&7{INFO} {0} &8->&f {1}"
+        },
+        {
+          "type": "WARNING",
+          "display": "&e{WARNING} {0} &8->&f {1}"
+        },
+        {
+          "type": "SEVERE",
+          "display": "&c{SEVERE} {0} &8->&f {1}"
+        },
+        {
+          "type": "ERROR",
+          "display": "&4{ERROR} {0} &8->&f {1}"
+        }
+      ],
+      "print": [
+        "SUCCESS",
+        "INFO",
+        "WARNING",
+        "SEVERE",
+        "ERROR"
+      ],
+      "async": true
+    },
+    "file": {
+      "format": "markdown",
+      "schema": "/logs/{year}/{month}/{day}",
+      "async": true
+    }
+  },
+  "experimental": false
+}
