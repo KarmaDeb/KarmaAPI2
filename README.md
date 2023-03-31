@@ -5,4 +5,6 @@ This version has for now:
 ```diff
 + Better yaml comment support
 + Source runtime implementation
+- Removed file utilities
+- Removed string utilities
 ```
