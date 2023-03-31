@@ -22,3 +22,28 @@ KarmaAPI2 is the new version of the KarmaAPI
 - [ ] Console logger
 - [ ] File logger
 - [X] [Logger manager](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/logger/LogManager.java)
+
+### Web API
+- [ ] URL utilities
+- [ ] HTTP helper
+- [ ] Version utilities
+
+## Minecraft TODO
+
+- [ ] KarmaPlugin
+
+### Bukkit API
+- [ ] Spigot version checker
+- [ ] Bukkit server utilities
+- [ ] Title API
+- [ ] Actionbar API
+- [ ] BossBar API
+- [ ] Legacy support
+- [ ] ArmorStand trackers
+- [ ] Inventory API
+
+### BungeeCord API
+- [ ] Spigot version checker (BungeeCord support)
+- [ ] Title API (MakeItEasy)
+- [ ] Actionbar API (MakeItEasy)
+- [ ] BossBar API (MakeItEasy)
