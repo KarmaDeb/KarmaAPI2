@@ -7,7 +7,7 @@ KarmaAPI2 is the new version of the KarmaAPI
 - [X] [Source](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/core/source/KarmaSource.java)
 - [X] [Source runtime enviroment](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/core/source/runtime/SourceRuntime.java)
 - [X] [Source loader](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/core/source/SourceLoader.java)
-- [ ] Source configuration
+- [X] [Source configuration](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/core/config/APIConfiguration.java)
 - [ ] String utilities
 - [X] [JavaVM utilities](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/JavaVirtualMachine.java)
 
