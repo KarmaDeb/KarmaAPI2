@@ -1,10 +1,11 @@
 package es.karmadev.api.file.yaml.handler;
 
-import es.karmadev.api.file.StreamUtils;
+import es.karmadev.api.file.util.StreamUtils;
 import es.karmadev.api.file.yaml.YamlFileHandler;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.comments.CommentLine;
+import org.yaml.snakeyaml.comments.CommentType;
 import org.yaml.snakeyaml.nodes.*;
 
 import java.io.*;
@@ -16,6 +17,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static org.yaml.snakeyaml.DumperOptions.FlowStyle;
 
 /**
  * Karma YAML reader, using snakeyaml
@@ -340,29 +343,25 @@ public class YamlReader {
         }
 
         StringBuilder sequenceBuilder = new StringBuilder();
-        switch (sequence.getFlowStyle()) {
-            case FlowStyle.FLOW:
-                sequenceBuilder.append("[");
-                for (String value : nodes) {
-                    sequenceBuilder.append(value).append(", ");
-                }
+        if (sequence.getFlowStyle().equals(FlowStyle.FLOW)) {
+            sequenceBuilder.append("[");
+            for (String value : nodes) {
+                sequenceBuilder.append(value).append(", ");
+            }
 
-                builder.append(tabs)
-                        .append(key.getValue()).append(": ")
-                        .append(sequenceBuilder.substring(0, Math.max(0, sequenceBuilder.length() - 2)))
-                        .append("]").append(getInlineComments(sequence));
-                break;
-            case FlowStyle.BLOCK:
-            default:
-                sequenceBuilder.append("\n");
-                for (String value : nodes) {
-                    sequenceBuilder.append(tabs).append(" - ").append(value).append("\n");
-                }
+            builder.append(tabs)
+                    .append(key.getValue()).append(": ")
+                    .append(sequenceBuilder.substring(0, Math.max(0, sequenceBuilder.length() - 2)))
+                    .append("]").append(getInlineComments(sequence));
+        } else {
+            sequenceBuilder.append("\n");
+            for (String value : nodes) {
+                sequenceBuilder.append(tabs).append(" - ").append(value).append("\n");
+            }
 
-                builder.append(tabs)
-                        .append(key.getValue()).append(": ")
-                        .append(sequenceBuilder.substring(0, Math.max(0, sequenceBuilder.length() - 1)));
-                break;
+            builder.append(tabs)
+                    .append(key.getValue()).append(": ")
+                    .append(sequenceBuilder.substring(0, Math.max(0, sequenceBuilder.length() - 1)));
         }
 
         return builder;
@@ -375,14 +374,10 @@ public class YamlReader {
         if (comments != null) {
             for (CommentLine comment : comments) {
                 String value = comment.getValue();
-                switch (comment.getCommentType()) {
-                    case CommentType.BLANK_LINE:
-                        commentBuilder.append("\n");
-                        break;
-                    case CommentType.BLOCK:
-                    case CommentType.IN_LINE:
-                        commentBuilder.append(indent).append("#").append(value).append("\n");
-                        break;
+                if (comment.getCommentType().equals(CommentType.BLANK_LINE)) {
+                    commentBuilder.append("\n");
+                } else {
+                    commentBuilder.append(indent).append("#").append(value).append("\n");
                 }
             }
         }

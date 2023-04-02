@@ -3,32 +3,36 @@
     "console": {
       "prefix": [
         {
+          "type": "NONE",
+          "display": "&b[&7&o{0}&r&b]&8: &f{1}"
+        },
+        {
           "type": "DEBUG",
-          "display": "&7{DEBUG} {0} &8->&f {1}"
+          "display": "&b{&8DEBUG&b}&3 {0}&7:&f {1}"
         },
         {
           "type": "DEBUG_SEVERE",
-          "display": "&c{&4(SEVERE)&c DEBUG} {0} &8->&f {1}"
+          "display": "&b{&6DEBUG SEVERE&b}&3 {0}&7:&f {1}"
         },
         {
           "type": "SUCCESS",
-          "display": "&a{SUCCESS} {0} &8->&f {1}"
+          "display": "&b{&aSUCCESS&b}&3 {0}&7:&f {1}"
         },
         {
           "type": "INFO",
-          "display": "&7{INFO} {0} &8->&f {1}"
+          "display": "&b{&7INFO&b}&3 {0}&7:&f {1}"
         },
         {
           "type": "WARNING",
-          "display": "&e{WARNING} {0} &8->&f {1}"
+          "display": "&b{&eWARNING&b}&3 {0}&7:&f {1}"
         },
         {
           "type": "SEVERE",
-          "display": "&c{SEVERE} {0} &8->&f {1}"
+          "display": "&b{&cSEVERE&b}&3 {0}&7:&f {1}"
         },
         {
           "type": "ERROR",
-          "display": "&4{ERROR} {0} &8->&f {1}"
+          "display": "&b{&4ERROR&b}&3 {0}&7:&f {1}"
         }
       ],
       "print": [
@@ -41,8 +45,6 @@
       "async": true
     },
     "file": {
-      "format": "markdown",
-      "schema": "/logs/{year}/{month}/{day}",
       "async": true
     }
   },

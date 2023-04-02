@@ -1,6 +1,6 @@
 package es.karmadev.api.file.yaml.handler;
 
-import es.karmadev.api.file.StreamUtils;
+import es.karmadev.api.file.util.StreamUtils;
 import es.karmadev.api.file.yaml.YamlFileHandler;
 import org.yaml.snakeyaml.Yaml;
 

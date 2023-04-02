@@ -1,4 +1,4 @@
-package es.karmadev.api.file;
+package es.karmadev.api.file.util;
 
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.file.yaml.handler.ResourceLoader;
@@ -28,23 +28,33 @@ public class PathUtilities {
     public static boolean createPath(final Path path) {
         if (Files.exists(path)) return true;
 
-        if (Files.isDirectory(path)) {
+        Path parent = path.getParent();
+        if (buildPath(parent)) {
             try {
-                Files.createDirectories(path);
+                Files.createFile(path);
                 return true;
             } catch (IOException ex) {
                 ExceptionCollector.catchException(PathUtilities.class, ex);
             }
-        } else {
-            Path parent = path.getParent();
-            if (createPath(parent)) {
-                try {
-                    Files.createFile(path);
-                    return true;
-                } catch (IOException ex) {
-                    ExceptionCollector.catchException(PathUtilities.class, ex);
-                }
-            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Build a path as a directory
+     *
+     * @param path the path
+     * @return if the path was able to be created
+     */
+    public static boolean buildPath(final Path path) {
+        if (Files.exists(path)) return true;
+
+        try {
+            Files.createDirectories(path);
+            return true;
+        } catch (IOException ex) {
+            ExceptionCollector.catchException(PathUtilities.class, ex);
         }
 
         return false;
@@ -112,6 +122,7 @@ public class PathUtilities {
                 }
 
                 Files.copy(stream, path, StandardCopyOption.REPLACE_EXISTING);
+                return true;
             }
         } catch (IOException ex) {
             ExceptionCollector.catchException(PathUtilities.class, ex);

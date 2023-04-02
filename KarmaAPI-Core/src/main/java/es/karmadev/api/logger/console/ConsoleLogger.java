@@ -20,12 +20,11 @@ public interface ConsoleLogger {
     /**
      * Send a message to the console
      *
-     * @param level the message level
      * @param error the error
      * @param message the message
      * @param replaces the message replaces
      */
-    void send(final LogLevel level, final Throwable error, final String message, final Object... replaces);
+    void send(final Throwable error, final String message, final Object... replaces);
 
     /**
      * Send a message to the console
@@ -47,12 +46,19 @@ public interface ConsoleLogger {
     /**
      * Log a message into the console
      *
-     * @param level the message level
      * @param error the error
      * @param message the message
      * @param replaces the message replaces
      */
-    void log(final LogLevel level, final Throwable error, final String message, final Object... replaces);
+    void log(final Throwable error, final String message, final Object... replaces);
+
+    /**
+     * Log a message into the console
+     *
+     * @param message the message
+     * @param replaces the message replaces
+     */
+    void log(final String message, final Object... replaces);
 
     /**
      * Get the source owning this console

@@ -2,7 +2,7 @@ package es.karmadev.api.logger;
 
 import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.logger.console.ConsoleLogger;
-import es.karmadev.api.logger.console.DefaultConsole;
+import es.karmadev.api.logger.console.SourceConsole;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,6 +21,6 @@ public class LogManager {
      * @return the source console logger
      */
     public static ConsoleLogger getLogger(final KarmaSource source) {
-        return consoleLoggers.computeIfAbsent(source, (logger) -> new DefaultConsole(source));
+        return consoleLoggers.computeIfAbsent(source, (logger) -> new SourceConsole(source));
     }
 }

@@ -1,9 +1,9 @@
 package es.karmadev.api.core;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static java.util.Map.Entry;
 
 /**
  * KarmaAPI exception collector
@@ -39,5 +39,26 @@ public class ExceptionCollector {
         }
 
         return errors.toArray(new Throwable[0]);
+    }
+
+    /**
+     * Get the exception collector
+     *
+     * @return the exception collector
+     */
+    public static Collection<Entry<Class<?>, Throwable[]>> getCollector() {
+        List<Entry<Class<?>, Throwable[]>> entries = new ArrayList<>();
+
+        for (String key : caught.keySet()) {
+            try {
+                Class<?> clazz = Class.forName(key);
+                List<Throwable> errors = caught.getOrDefault(key, new ArrayList<>());
+
+                Entry<Class<?>, Throwable[]> entry = new AbstractMap.SimpleEntry<>(clazz, errors.toArray(new Throwable[0]));
+                entries.add(entry);
+            } catch (ClassNotFoundException ignored) {}
+        }
+
+        return entries;
     }
 }

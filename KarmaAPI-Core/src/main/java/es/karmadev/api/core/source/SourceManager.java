@@ -34,6 +34,7 @@ public final class SourceManager {
     public static void register(final KarmaSource source) throws AlreadyRegisteredException {
         if (sources.stream().noneMatch(compare(source))) {
             sources.add(source);
+            return;
         }
 
         throw new AlreadyRegisteredException(source);

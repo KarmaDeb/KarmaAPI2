@@ -1,4 +1,4 @@
-package es.karmadev.api.file;
+package es.karmadev.api.file.util;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;

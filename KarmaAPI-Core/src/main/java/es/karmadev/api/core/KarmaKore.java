@@ -34,6 +34,23 @@ public final class KarmaKore extends KarmaSource {
     }
 
     /**
+     * Start the source
+     */
+    @Override
+    public void start() {
+        if (directory == null) directory = runtime.getFile().getParent().resolve(name);
+        if (console == null) console = LogManager.getLogger(this);
+    }
+
+    /**
+     * Kill the source
+     */
+    @Override
+    public void kill() {
+
+    }
+
+    /**
      * Initialize the main KarmaSource
      *
      * @return if the source was able to be initialized
@@ -42,9 +59,15 @@ public final class KarmaKore extends KarmaSource {
         try {
             return SourceManager.getProvider(KarmaKore.class);
         } catch (UnknownProviderException ex) {
+            ExceptionCollector.catchException(KarmaSource.class, ex);
             try {
-                return new KarmaKore();
-            } catch (AlreadyRegisteredException ignored) {}
+                KarmaKore kore = new KarmaKore();
+                kore.start();
+
+                return kore;
+            } catch (AlreadyRegisteredException ex2) {
+                ExceptionCollector.catchException(KarmaSource.class, ex2);
+            }
         }
 
         return null;

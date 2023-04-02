@@ -25,6 +25,14 @@ public enum RawType {
      */
     SERIALIZABLE,
     /**
+     * List
+     */
+    LIST,
+    /**
+     * Section
+     */
+    SECTION,
+    /**
      * Object
      */
     OBJECT,

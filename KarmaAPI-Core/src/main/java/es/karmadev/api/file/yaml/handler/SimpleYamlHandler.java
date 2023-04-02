@@ -217,6 +217,8 @@ class SimpleYamlHandler implements YamlFileHandler {
             case NULL:
             case OBJECT:
             case SERIALIZABLE:
+            case LIST:
+            case SECTION:
             default:
                 return false;
         }
@@ -244,6 +246,9 @@ class SimpleYamlHandler implements YamlFileHandler {
         }
 
         if (current instanceof Boolean) return RawType.BOOLEAN;
+        if (current instanceof List) return RawType.LIST;
+        if (current instanceof Map) return RawType.SECTION;
+
         try {
             getSerialized(path);
             return RawType.SERIALIZABLE;

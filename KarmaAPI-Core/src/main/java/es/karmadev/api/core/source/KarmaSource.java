@@ -19,8 +19,8 @@ public abstract class KarmaSource {
     protected final String[] authors;
     protected final SourceRuntime runtime = new DefaultRuntime(this);
 
-    protected final Path directory;
-    protected final ConsoleLogger console;
+    protected Path directory;
+    protected ConsoleLogger console;
 
     /**
      * Initialize the source
@@ -49,9 +49,21 @@ public abstract class KarmaSource {
         this.version = version;
         this.description = description;
         this.authors = authors;
-        directory = (dir != null ? dir : runtime.getFile().getParent().resolve(name));
-        console = (logger != null ? logger : LogManager.getLogger(this));
+        /*directory = (dir != null ? dir : runtime.getFile().getParent().resolve(name));
+        console = (logger != null ? logger : LogManager.getLogger(this));*/
+        directory = dir;
+        console = logger;
     }
+
+    /**
+     * Start the source
+     */
+    public abstract void start();
+
+    /**
+     * Kill the source
+     */
+    public abstract void kill();
 
     /**
      * Get the source name

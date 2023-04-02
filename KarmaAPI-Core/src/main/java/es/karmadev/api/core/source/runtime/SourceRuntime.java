@@ -21,7 +21,32 @@ public interface SourceRuntime {
     Path getFile();
 
     /**
-     * Get the class that is calling the current method
+     * Get the class that is calling the current
+     * method
+     *
+     * @return the class caller
+     * @throws ClassNotFoundException if the class couldn't be found
+     */
+    default Class<?> getCallerClass() throws ClassNotFoundException {
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+        Class<?> caller = null;
+
+        String source = stackTrace[1].getClassName();
+        for (StackTraceElement element : stackTrace) {
+            String name = element.getClassName();
+            if (name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("sun.") || name.startsWith("com.sun.")) continue;
+
+            if (!name.equalsIgnoreCase(source)) {
+                caller = Class.forName(name);
+            }
+        }
+
+        return caller;
+    }
+
+    /**
+     * Get the path hierarchy tha called the
+     * current method.
      *
      * @return the method caller
      */
@@ -31,6 +56,8 @@ public interface SourceRuntime {
 
         for (StackTraceElement element : stackTrace) {
             String name = element.getClassName();
+            if (name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("sun.") || name.startsWith("com.sun.")) continue;
+
             try {
                 Class<?> clazz = Class.forName(name);
                 URL url = clazz.getResource('/' + name.replace('.', '/') + ".class");
