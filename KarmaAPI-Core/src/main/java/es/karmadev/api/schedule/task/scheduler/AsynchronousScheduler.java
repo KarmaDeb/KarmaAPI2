@@ -11,7 +11,7 @@ import es.karmadev.api.schedule.task.ScheduledTask;
 import es.karmadev.api.schedule.task.TaskScheduler;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -23,8 +23,8 @@ public class AsynchronousScheduler implements TaskScheduler {
 
     private final ConcurrentLinkedQueue<Task> taskQue = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<Task> overloadQueue = new ConcurrentLinkedQueue<>();
-    private final AtomicBoolean schedulerPaused = new AtomicBoolean();
-    private final AtomicBoolean schedulerOverload = new AtomicBoolean();
+    private final AtomicBoolean schedulerOverloaded = new AtomicBoolean();
+    private final AtomicBoolean systemOverloaded = new AtomicBoolean();
     private final AtomicInteger completedTasks = new AtomicInteger(0);
     private final AtomicInteger cancelledTasks = new AtomicInteger(0);
     private final Semaphore globalSemaphore;
@@ -94,10 +94,12 @@ public class AsynchronousScheduler implements TaskScheduler {
         ConsoleLogger logger = source.getConsole();
         logger.send(LogLevel.INFO, "Using a period of {0} for the asynchronous scheduler", period);
 
+        Set<Future<?>> queued = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
         ScheduledThreadPoolExecutor scheduler = new ScheduledThreadPoolExecutor(Math.max(1, threads / 2));
         scheduler.scheduleAtFixedRate(() -> {
-            if (globalSemaphore.tryAcquire() && !schedulerOverload.get()) {
-                scheduler.execute(() -> {
+            if (globalSemaphore.tryAcquire() && !systemOverloaded.get()) {
+                Future<?> task = scheduler.submit(() -> {
                     Task next = taskQue.peek();
                     if (next != null) {
                         Semaphore subSemaphore = clazzSemaphores.computeIfAbsent(next.owner(), (p) -> new Semaphore(perClass));
@@ -118,6 +120,7 @@ public class AsynchronousScheduler implements TaskScheduler {
                         }
                     }
                 });
+                queued.add(task);
             }
         }, 0, period, TimeUnit.MILLISECONDS);
 
@@ -127,30 +130,31 @@ public class AsynchronousScheduler implements TaskScheduler {
 
             String percent = String.format("%d%%", (int) load * 100);
             if (load >= 0.75 || tasks > QUEUE_CAPACITY) {
-                schedulerOverload.set(load >= 0.75);
-                if (schedulerPaused.compareAndSet(false, true)) {
+                if (load >= 0.75) {
+                    systemOverloaded.set(true);
+                    queued.forEach((task) -> task.cancel(false));
+                }
+
+                if (schedulerOverloaded.compareAndSet(false, true)) {
                     logger.send(LogLevel.SEVERE,
                             "Paused asynchronous scheduler because high system load has been detected. System usage: {0} | Queue capacity: {1}/{2}",
                             percent, tasks, capacity);
                 }
             } else {
-                schedulerOverload.set(false);
-                if (schedulerPaused.get()) {
+                systemOverloaded.set(false);
+                if (schedulerOverloaded.get()) {
                     if (tasks <= Math.max(0, capacity - 10)) {
-                        schedulerPaused.set(false);
+                        schedulerOverloaded.set(false);
                         logger.send(LogLevel.SUCCESS, "Resumed asynchronous scheduler. System usage: {0} | Queue capacity: {1}/{2}", percent, tasks, capacity);
                     }
                 }
             }
 
-
-            if (!overloadQueue.isEmpty() && !schedulerPaused.get()) {
+            if (!overloadQueue.isEmpty() && !schedulerOverloaded.get()) {
                 int sub = overloadQueue.size();
                 if (sub >= 90) {
                     int max = 90;
-                    CountDownLatch latch = new CountDownLatch(max);
-                    while (latch.getCount() != 0) {
-                        latch.countDown();
+                    for (int i = 0; i < max && !overloadQueue.isEmpty(); i++) {
                         Task task = overloadQueue.poll();
                         if (task != null) taskQue.add(task);
                     }
@@ -174,7 +178,7 @@ public class AsynchronousScheduler implements TaskScheduler {
         } catch (ClassNotFoundException ignored) {}
 
         Task scheduledTask = new Task(task, clazz);
-        if (schedulerPaused.get()) {
+        if (schedulerOverloaded.get()) {
             overloadQueue.add(scheduledTask);
         } else {
             taskQue.add(scheduledTask);
@@ -234,7 +238,18 @@ public class AsynchronousScheduler implements TaskScheduler {
      */
     @Override
     public boolean paused() {
-        return schedulerPaused.get();
+        return schedulerOverloaded.get();
+    }
+
+    /**
+     * Get if the system is overloaded in
+     * for this scheduler
+     *
+     * @return if the system is overloaded
+     */
+    @Override
+    public boolean overloaded() {
+        return systemOverloaded.get();
     }
 
     /**

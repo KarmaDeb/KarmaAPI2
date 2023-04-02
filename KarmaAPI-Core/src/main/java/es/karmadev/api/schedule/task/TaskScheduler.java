@@ -55,6 +55,14 @@ public interface TaskScheduler {
     boolean paused();
 
     /**
+     * Get if the system is overloaded in
+     * for this scheduler
+     *
+     * @return if the system is overloaded
+     */
+    boolean overloaded();
+
+    /**
      * Get the amount of completed tasks
      *
      * @return the completed tasks
