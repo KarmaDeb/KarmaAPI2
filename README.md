@@ -15,25 +15,25 @@ KarmaAPI2 is the new version of the KarmaAPI
 - [X] [Task scheduler](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/schedule/task/TaskScheduler.java)
 - [X] [Scheduled task](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/schedule/task/ScheduledTask.java)
 - [X] [Asynchronous scheduler](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/schedule/task/scheduler/AsynchronousScheduler.java)
-- [ ] Synchronous scheduler
+- [X] [Task runner](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/schedule/runner/TaskRunner.java)
 
 ### File API
 - [X] [Yaml parser (with comments support)](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/file/yaml/handler/YamlReader.java)
 - [X] [Yaml helper](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/file/yaml/handler/YamlHandler.java)
 - [X] [Yaml interpreter](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/file/yaml/YamlFileHandler.java)
-- [ ] Path utilities
+- [X] [Path utilities](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/file/util/PathUtilities.java)
 - [ ] File utilities
-- [ ] Stream utilities
+- [X] [Stream utilities](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/file/util/StreamUtils.java)
 
 ### Logging API
-- [ ] Console logger
-- [ ] File logger
+- [X] [Console logger](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/logger/log/BoundedLogger.java)
+- [X] [File logger](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/logger/log/file/LogFile.java)
 - [X] [Logger manager](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/logger/LogManager.java)
 
 ### Web API
 - [ ] URL utilities
 - [ ] HTTP helper
-- [ ] Version utilities
+- [X] [Version utilities](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/version/checker/VersionChecker.java)
 
 ## Minecraft TODO
 
