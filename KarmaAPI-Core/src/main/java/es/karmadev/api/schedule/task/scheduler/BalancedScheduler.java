@@ -5,13 +5,15 @@ import es.karmadev.api.MemoryUnit;
 import es.karmadev.api.core.KarmaKore;
 import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.core.source.runtime.SourceRuntime;
-import es.karmadev.api.logger.LogLevel;
-import es.karmadev.api.logger.console.ConsoleLogger;
+import es.karmadev.api.logger.SourceLogger;
+import es.karmadev.api.logger.log.console.LogLevel;
 import es.karmadev.api.schedule.task.ScheduledTask;
 import es.karmadev.api.schedule.task.TaskScheduler;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -19,7 +21,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * KarmaAPI asynchronous scheduler
  */
-public class AsynchronousScheduler implements TaskScheduler {
+@SuppressWarnings("unused")
+public class BalancedScheduler implements TaskScheduler {
 
     private final ConcurrentLinkedQueue<Task> taskQue = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<Task> overloadQueue = new ConcurrentLinkedQueue<>();
@@ -36,7 +39,7 @@ public class AsynchronousScheduler implements TaskScheduler {
     /**
      * Create an asynchronous scheduler
      */
-    public AsynchronousScheduler() {
+    public BalancedScheduler() {
         this(1000, null, 10, 1);
     }
 
@@ -45,7 +48,7 @@ public class AsynchronousScheduler implements TaskScheduler {
      *
      * @param capacity the scheduler max capacity
      */
-    public AsynchronousScheduler(final int capacity) {
+    public BalancedScheduler(final int capacity) {
         this(capacity, null, 10, 1);
     }
 
@@ -55,7 +58,7 @@ public class AsynchronousScheduler implements TaskScheduler {
      * @param capacity the scheduler max capacity
      * @param source the scheduler source
      */
-    public AsynchronousScheduler(final int capacity, final KarmaSource source) {
+    public BalancedScheduler(final int capacity, final KarmaSource source) {
         this(capacity, source, 10, 1);
     }
 
@@ -65,7 +68,7 @@ public class AsynchronousScheduler implements TaskScheduler {
      * @param capacity the scheduler max capacity
      * @param source the scheduler source
      */
-    public AsynchronousScheduler(final int capacity, final KarmaSource source, final int simultaneous) {
+    public BalancedScheduler(final int capacity, final KarmaSource source, final int simultaneous) {
         this(capacity, source, simultaneous, 1);
     }
 
@@ -77,7 +80,7 @@ public class AsynchronousScheduler implements TaskScheduler {
      * @param simultaneous the amount of allowed simultaneous schedulers
      * @param perClass the amount fo allowed simultaneous schedulers for class
      */
-    public AsynchronousScheduler(final int capacity, final KarmaSource source, final int simultaneous, final int perClass) {
+    public BalancedScheduler(final int capacity, final KarmaSource source, final int simultaneous, final int perClass) {
         QUEUE_CAPACITY = Math.max(1, capacity);
         this.schedulerSource = (source != null ? source : KarmaKore.INSTANCE());
         globalSemaphore = new Semaphore(Math.max(2, simultaneous));
@@ -91,7 +94,7 @@ public class AsynchronousScheduler implements TaskScheduler {
         double rs = (double) memory / threads;
         long period = Math.round(rs * 1000);
 
-        ConsoleLogger logger = source.getConsole();
+        SourceLogger logger = source.getConsole();
         logger.send(LogLevel.INFO, "Using a period of {0} for the asynchronous scheduler", period);
 
         Set<Future<?>> queued = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -172,7 +175,7 @@ public class AsynchronousScheduler implements TaskScheduler {
     @Override
     public ScheduledTask schedule(final Runnable task) {
         SourceRuntime runtime = schedulerSource.getRuntime();
-        Class<?> clazz = AsynchronousScheduler.class;
+        Class<?> clazz = BalancedScheduler.class;
         try {
             clazz = runtime.getCallerClass();
         } catch (ClassNotFoundException ignored) {}

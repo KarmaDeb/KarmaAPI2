@@ -1,7 +1,7 @@
 package es.karmadev.api.core.source;
 
-import es.karmadev.api.logger.console.ConsoleLogger;
-import es.karmadev.api.core.version.Version;
+import es.karmadev.api.logger.SourceLogger;
+import es.karmadev.api.version.Version;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -10,6 +10,7 @@ import java.nio.file.Path;
 /**
  * KarmaAPI source loader
  */
+@SuppressWarnings("unused")
 public class SourceLoader {
 
     /**
@@ -71,10 +72,10 @@ public class SourceLoader {
      * @throws InstantiationException if the constructor doesn't allow the instantiation
      * @throws IllegalAccessException if the constructor is not accessible by this module
      */
-    public static KarmaSource prepareSource(final Class<? extends KarmaSource> clazz, final String name, final Version version, final String description, final String[] authors, final Path directory, final ConsoleLogger logger)
+    public static KarmaSource prepareSource(final Class<? extends KarmaSource> clazz, final String name, final Version version, final String description, final String[] authors, final Path directory, final SourceLogger logger)
             throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
 
-        Constructor<? extends KarmaSource> constructor = clazz.getConstructor(String.class, Version.class, String.class, String[].class, Path.class, ConsoleLogger.class);
+        Constructor<? extends KarmaSource> constructor = clazz.getConstructor(String.class, Version.class, String.class, String[].class, Path.class, SourceLogger.class);
         return constructor.newInstance(name, version, description, authors, directory, logger);
     }
 }

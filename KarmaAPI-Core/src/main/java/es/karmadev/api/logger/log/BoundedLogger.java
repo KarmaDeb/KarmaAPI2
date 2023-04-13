@@ -1,22 +1,51 @@
-package es.karmadev.api.logger.console;
+package es.karmadev.api.logger.log;
 
 import es.karmadev.api.core.config.APIConfiguration;
-import es.karmadev.api.logger.LogLevel;
 import es.karmadev.api.core.source.KarmaSource;
+import es.karmadev.api.logger.SourceLogger;
+import es.karmadev.api.logger.log.console.ConsoleColor;
+import es.karmadev.api.logger.log.console.LogLevel;
+import es.karmadev.api.logger.log.file.LogFile;
 
-public class SourceConsole implements ConsoleLogger {
+/**
+ * KarmaAPI bounded logger
+ */
+@SuppressWarnings("unused")
+public class BoundedLogger implements SourceLogger {
 
     private final static APIConfiguration config = new APIConfiguration();
 
     private final KarmaSource source;
+    private final LogFile log;
+    private boolean logToConsole;
 
     /**
      * Initialize the console
      *
      * @param owner the console owner
      */
-    public SourceConsole(final KarmaSource owner) {
+    public BoundedLogger(final KarmaSource owner) {
         this.source = owner;
+        log = new LogFile(source);
+    }
+
+    /**
+     * Set the logger log to console
+     *
+     * @param status the log console out status
+     */
+    public void setLogToConsole(final boolean status) {
+        logToConsole = status;
+    }
+
+    /**
+     * get if the logger log prints to
+     * console
+     *
+     * @return if the logger logs to console
+     */
+    public boolean logToConsole() {
+        return logToConsole;
     }
 
     /**
@@ -85,8 +114,10 @@ public class SourceConsole implements ConsoleLogger {
      */
     @Override
     public void log(final LogLevel level, final String message, final Object... replaces) {
-        send(level, message, replaces);
-        //TODO: Log in file
+        if (logToConsole)
+            send(level, message, replaces);
+
+        log.append(level, parseReplaces(message, replaces));
     }
 
     /**
@@ -98,8 +129,10 @@ public class SourceConsole implements ConsoleLogger {
      */
     @Override
     public void log(final Throwable error, final String message, final Object... replaces) {
-        send(error, message, replaces);
-        //TODO: Log in file
+        if (logToConsole)
+            send(error, message, replaces);
+
+        log.append(LogLevel.ERROR, error, parseReplaces(message, replaces));
     }
 
     /**
@@ -110,8 +143,10 @@ public class SourceConsole implements ConsoleLogger {
      */
     @Override
     public void log(final String message, final Object... replaces) {
-        send(message, replaces);
-        //TODO: Log in file
+        if (logToConsole)
+            send(message, replaces);
+
+        log.append(LogLevel.INFO, parseReplaces(message, replaces));
     }
 
     /**
@@ -135,12 +170,25 @@ public class SourceConsole implements ConsoleLogger {
     private String buildMessage(final LogLevel level, final String message, final Object... replaces) {
         String prefix = config.getPrefix(level).replace("{0}", source.getName());
 
+        String finalMessage = parseReplaces(message, replaces);
+        return prefix.replace("{1}", finalMessage);
+    }
+
+    /**
+     * Parse the message replaces
+     *
+     * @param message the message
+     * @param replaces the message replaces
+     * @return the message
+     */
+    private String parseReplaces(final String message, final Object... replaces) {
         String finalMessage = message;
         for (int i = 0; i < replaces.length; i++) {
             String placeholder = "{" + i + "}";
             Object replace = replaces[i];
             finalMessage = finalMessage.replace(placeholder, String.valueOf(replace));
         }
-        return prefix.replace("{1}", finalMessage);
+
+        return finalMessage;
     }
 }

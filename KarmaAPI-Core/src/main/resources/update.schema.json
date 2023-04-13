@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "versions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "patternProperties": {
+          "^[0-9]+(\\.[0-9]+)*$": {
+            "type": "object",
+            "properties": {
+              "build": {
+                "type": "string"
+              },
+              "changelog": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["build", "changelog"]
+          }
+        }
+      }
+    }
+  },
+  "required": ["versions"]
+}

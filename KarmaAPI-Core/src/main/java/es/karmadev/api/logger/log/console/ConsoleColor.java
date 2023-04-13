@@ -1,4 +1,4 @@
-package es.karmadev.api.logger.console;
+package es.karmadev.api.logger.log.console;
 
 import lombok.Getter;
 
@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
 /**
  * Console colors
  */
+@SuppressWarnings("unused")
 public enum ConsoleColor {
     /**
      * Console color
@@ -97,6 +98,7 @@ public enum ConsoleColor {
      */
     STRIKETHROUGH('m', "\033[9m", "\u001B[9m");
 
+    @SuppressWarnings("NonFinalFieldInEnum")
     public static boolean forceOtherOs = false;
 
     @Getter

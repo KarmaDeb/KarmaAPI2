@@ -109,6 +109,7 @@ class Task implements ScheduledTask {
         if (!cancelled) {
             running = true;
             task.run();
+            running = false;
         }
     }
 }

@@ -1,7 +1,7 @@
 package es.karmadev.api;
 
 import es.karmadev.api.core.ExceptionCollector;
-import es.karmadev.api.core.version.Version;
+import es.karmadev.api.version.Version;
 
 import java.lang.management.*;
 import java.time.Instant;

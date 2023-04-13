@@ -1,13 +1,14 @@
 package es.karmadev.api.core;
 
-import es.karmadev.api.logger.LogLevel;
-import es.karmadev.api.logger.LogManager;
-import es.karmadev.api.logger.console.ConsoleLogger;
 import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.core.source.SourceManager;
 import es.karmadev.api.core.source.exception.AlreadyRegisteredException;
 import es.karmadev.api.core.source.exception.UnknownProviderException;
-import es.karmadev.api.core.version.Version;
+import es.karmadev.api.logger.LogManager;
+import es.karmadev.api.logger.SourceLogger;
+import es.karmadev.api.logger.log.UnboundedLogger;
+import es.karmadev.api.logger.log.console.LogLevel;
+import es.karmadev.api.version.Version;
 
 /**
  * KarmaKore
@@ -27,10 +28,6 @@ public final class KarmaKore extends KarmaSource {
                 "KarmaDev");
 
         SourceManager.register(this);
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            ConsoleLogger logger = LogManager.getLogger(this);
-            logger.log(LogLevel.INFO, "Shutting down KarmaAPI");
-        }));
     }
 
     /**
@@ -39,7 +36,12 @@ public final class KarmaKore extends KarmaSource {
     @Override
     public void start() {
         if (directory == null) directory = runtime.getFile().getParent().resolve(name);
-        if (console == null) console = LogManager.getLogger(this);
+        if (console instanceof UnboundedLogger) {
+            UnboundedLogger unbound = (UnboundedLogger) console;
+            unbound.bind(this);
+
+            unbound.log("Beep!");
+        }
     }
 
     /**
@@ -47,7 +49,18 @@ public final class KarmaKore extends KarmaSource {
      */
     @Override
     public void kill() {
+        SourceLogger logger = LogManager.getLogger(this);
+        logger.log(LogLevel.INFO, "Boop!");
+    }
 
+    /**
+     * Get the source update URL
+     *
+     * @return the source update URL
+     */
+    @Override
+    public String updateURL() {
+        return "https://karmadev.es/tests/api2.versions.json";
     }
 
     /**

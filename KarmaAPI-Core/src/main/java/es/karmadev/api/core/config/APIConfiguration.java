@@ -4,7 +4,7 @@ import com.google.gson.*;
 import es.karmadev.api.core.KarmaKore;
 import es.karmadev.api.file.util.PathUtilities;
 import es.karmadev.api.file.util.StreamUtils;
-import es.karmadev.api.logger.LogLevel;
+import es.karmadev.api.logger.log.console.LogLevel;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,6 +16,7 @@ import java.util.logging.Logger;
 /**
  * KarmaAPI configuration
  */
+@SuppressWarnings("unused")
 public final class APIConfiguration {
 
     private final static Logger logger = Logger.getLogger("KarmaSource - Configuration");

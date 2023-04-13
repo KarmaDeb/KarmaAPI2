@@ -1,4 +1,4 @@
-package es.karmadev.api.logger;
+package es.karmadev.api.logger.log.console;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
@@ -9,36 +9,39 @@ import java.util.logging.Level;
 /**
  * Karma logging level
  */
+@SuppressWarnings("unused")
 public enum LogLevel {
     /**
      * Non important debug message
      */
-    DEBUG("&7[DEBUG] {0}:&f {1}", Level.INFO),
+    DEBUG("DEBUG", "&7[DEBUG] {0}:&f {1}", Level.INFO),
     /**
      * Important debug message
      */
-    DEBUG_SEVERE("&7[SEVERE DEBUG] {0}:&f {1}", Level.INFO),
+    DEBUG_SEVERE("SEVERE DEBUG", "&7[SEVERE DEBUG] {0}:&f {1}", Level.INFO),
     /**
      * Success message
      */
-    SUCCESS("&7[SUCCESS] {0}:&f {1}", Level.FINE),
+    SUCCESS("SUCCESS", "&7[SUCCESS] {0}:&f {1}", Level.FINE),
     /**
      * Informative message
      */
-    INFO("&7[INFO] {0}:&f {1}", Level.INFO),
+    INFO("INFO", "&7[INFO] {0}:&f {1}", Level.INFO),
     /**
      * Warning message
      */
-    WARNING("&7[WARNING] {0}:&f {1}", Level.WARNING),
+    WARNING("WARNING", "&7[WARNING] {0}:&f {1}", Level.WARNING),
     /**
      * Severe message
      */
-    SEVERE("&7[SEVERE] {0}:&f {1}", Level.SEVERE),
+    SEVERE("SEVERE", "&7[SEVERE] {0}:&f {1}", Level.SEVERE),
     /**
      * Error message
      */
-    ERROR("&7[ERROR] {0}:&f {1}", Level.SEVERE);
+    ERROR("ERROR", "&7[ERROR] {0}:&f {1}", Level.SEVERE);
 
+    @Getter
+    private final String raw;
     /**
      * Level prefix
      */
@@ -54,7 +57,8 @@ public enum LogLevel {
      * @param prefix the level prefix
      * @param level the java logger level
      */
-    LogLevel(final String prefix, final Level level) {
+    LogLevel(final String raw, final String prefix, final Level level) {
+        this.raw = raw;
         this.prefix = prefix;
         this.nameElement = new JsonPrimitive(this.name());
         this.level = level;
