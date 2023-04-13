@@ -4,15 +4,19 @@ import es.karmadev.api.file.util.StreamUtils;
 import es.karmadev.api.file.yaml.YamlFileHandler;
 import org.yaml.snakeyaml.Yaml;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Yaml file parser
  */
+@SuppressWarnings("unused")
 public class YamlHandler implements ResourceLoader {
 
     public final static ResourceLoader DEFAULT_RESOURCE_LOADER = new YamlHandler();
