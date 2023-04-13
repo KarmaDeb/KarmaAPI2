@@ -1,3 +1,5 @@
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/0e5d13e8a34d46bea5c2e426196e6b6d)](https://app.codacy.com/gh/KarmaDeb/KarmaAPI2/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
+
 # KarmaAPI2
 KarmaAPI2 is the new version of the KarmaAPI
 
