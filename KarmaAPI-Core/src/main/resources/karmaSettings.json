@@ -48,5 +48,9 @@
       "async": true
     }
   },
+  "url": {
+    "strict": false,
+    "timeout": 5000
+  },
   "experimental": false
 }

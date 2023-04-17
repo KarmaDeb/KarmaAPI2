@@ -119,7 +119,7 @@ public class VersionChecker {
         URL url = new URL(rawUrl);
 
         try (URLConnectionWrapper connection = URLConnectionWrapper.fromURL(url)) {
-            connection.setRequestProperty("User-Agent", KarmaAPI.USER_AGENT);
+            connection.setUserAgent(KarmaAPI.USER_AGENT);
             connection.setRequestProperty("Content-Type", "application/json");
 
             int code = connection.getResponseCode();

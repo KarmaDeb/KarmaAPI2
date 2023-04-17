@@ -16,7 +16,23 @@
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <maven.build.timestamp.format>dd-MM-yyyy HH:mm:ss</maven.build.timestamp.format>
+        <api.today>${maven.build.timestamp}</api.today>
+        <api.build>1</api.build>
     </properties>
+
+    <build>
+        <pluginManagement>
+
+        </pluginManagement>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+    </build>
 
     <dependencyManagement>
         <dependencies>

@@ -2,8 +2,7 @@ package es.karmadev.api.logger.log.console;
 
 import lombok.Getter;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -203,5 +202,79 @@ public enum ConsoleColor {
         }
 
         return str;
+    }
+
+    /**
+     * Strip all the color codes from the string
+     *
+     * @param message the message
+     * @return the uncolored message
+     */
+    public static String strip(final String message) {
+        String str = message;
+        if (str.contains("§")) {
+            str = str.replace("§", "&");
+        }
+
+        Pattern pattern = Pattern.compile("&[0-9a-flrnom]");
+        Matcher matcher = pattern.matcher(str);
+
+        Set<String> parts = new HashSet<>();
+        while (matcher.find()) {
+            int start = matcher.start();
+            int end = matcher.end();
+
+            String part = str.substring(start, end);
+            parts.add(part);
+        }
+
+        for (String unixValue : unixCodes.values()) str = str.replace(unixValue, "");
+        for (String winValue : winCodes.values()) str = str.replace(winValue, "");
+        for (String part : parts) str = str.replace(part, "");
+
+        return str;
+    }
+
+    /**
+     * Get all the colors of the string
+     *
+     * @param message the message
+     * @return the message colors
+     */
+    public static String[] colors(final String message) {
+        String str = message;
+        if (str.contains("§")) {
+            str = str.replace("§", "&");
+        }
+
+        Set<String> parts = new LinkedHashSet<>();
+        for (char cCode : codes.keySet()) {
+            String code = "&" + cCode;
+            String unixReplacement = unixCodes.get(cCode);
+            String winReplacement = winCodes.get(cCode);
+
+            if (str.contains(unixReplacement) || str.contains(winReplacement) || str.contains(code)) {
+                parts.add(code);
+            }
+        }
+
+        String[] colors = parts.toArray(new String[0]);
+        String lastColor = colors[colors.length - 1];
+        if (lastColor.equalsIgnoreCase("&r")) {
+            parts.remove(lastColor);
+        }
+
+        return parts.toArray(new String[0]);
+    }
+
+    /**
+     * Get the last color of the message
+     *
+     * @param message the message
+     * @return the last color
+     */
+    public static String lastColor(final String message) {
+        String[] colors = colors(message);
+        return colors[colors.length - 1];
     }
 }

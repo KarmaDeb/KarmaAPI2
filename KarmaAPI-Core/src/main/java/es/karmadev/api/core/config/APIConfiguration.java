@@ -199,6 +199,46 @@ public final class APIConfiguration {
     }
 
     /**
+     * Get if the configuration requests the URL
+     * response codes to be 200
+     *
+     * @return if the requests URL response codes
+     * must be 200
+     */
+    public boolean strictURLCodes() {
+        if (!settings.has("url") || !settings.get("url").isJsonObject()) {
+            return false;
+        }
+
+        JsonObject urlSettings = settings.get("url").getAsJsonObject();
+        if (!urlSettings.has("strict") || !urlSettings.get("strict").isJsonPrimitive()) {
+            return false;
+        }
+
+        JsonPrimitive primitive = urlSettings.get("strict").getAsJsonPrimitive();
+        return (primitive.isBoolean() && primitive.getAsBoolean());
+    }
+
+    /**
+     * Get the configuration URL requests timeout
+     *
+     * @return the requests timeout
+     */
+    public int requestTimeout() {
+        if (!settings.has("url") || !settings.get("url").isJsonObject()) {
+            return 5000;
+        }
+
+        JsonObject urlSettings = settings.get("url").getAsJsonObject();
+        if (!urlSettings.has("timeout") || !urlSettings.get("timeout").isJsonPrimitive()) {
+            return 5000;
+        }
+
+        JsonPrimitive primitive = urlSettings.get("timeout").getAsJsonPrimitive();
+        return (primitive.isNumber() ? primitive.getAsInt() : 5000);
+    }
+
+    /**
      * Get if the configuration allows the use
      * of experimental features
      *

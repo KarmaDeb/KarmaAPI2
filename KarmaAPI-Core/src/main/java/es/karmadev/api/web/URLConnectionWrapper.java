@@ -1,5 +1,7 @@
 package es.karmadev.api.web;
 
+import es.karmadev.api.web.request.RequestData;
+
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLPeerUnverifiedException;
@@ -1244,6 +1246,39 @@ public class URLConnectionWrapper extends URLConnection implements AutoCloseable
         if (unsecureConnection != null) unsecureConnection.setRequestProperty(key, value);
         if (secureConnection != null) secureConnection.setRequestProperty(key, value);
         super.setRequestProperty(key, value);
+    }
+
+    /**
+     * Set the request user agent
+     *
+     * @param agent the request user agent
+     */
+    public void setUserAgent(final String agent) {
+        setRequestProperty("User-Agent", agent);
+    }
+
+    /**
+     * Set the request content type
+     *
+     * @param type the request content type
+     */
+    public void setContentType(final RequestData.ContentType type) {
+        String raw;
+        switch (type) {
+            case JSON:
+            case PRETTY_JSON:
+                raw = "application/json";
+                break;
+            case FORM:
+                raw = "multipart/form-data";
+                break;
+            case ENCODED:
+            default:
+                raw = "application/x-www-form-urlencoded";
+                break;
+        }
+
+        setRequestProperty("Content-Type", raw);
     }
 
     /**
