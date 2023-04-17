@@ -31,8 +31,7 @@ KarmaAPI2 is the new version of the KarmaAPI
 - [X] [Logger manager](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/logger/LogManager.java)
 
 ### Web API
-- [ ] URL utilities
-- [ ] HTTP helper
+- [X] [URL utilities](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/web/url/URLUtilities.java)
 - [X] [Version utilities](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/version/checker/VersionChecker.java)
 
 ## Minecraft TODO
