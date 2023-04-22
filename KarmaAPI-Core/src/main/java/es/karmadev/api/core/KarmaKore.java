@@ -8,7 +8,14 @@ import es.karmadev.api.logger.LogManager;
 import es.karmadev.api.logger.SourceLogger;
 import es.karmadev.api.logger.log.UnboundedLogger;
 import es.karmadev.api.logger.log.console.LogLevel;
+import es.karmadev.api.schedule.runner.TaskRunner;
+import es.karmadev.api.schedule.runner.async.AsyncTaskExecutor;
+import es.karmadev.api.schedule.runner.event.TaskEvent;
 import es.karmadev.api.version.Version;
+import es.karmadev.api.version.checker.VersionChecker;
+
+import java.net.URL;
+import java.util.concurrent.TimeUnit;
 
 /**
  * KarmaKore
@@ -23,7 +30,7 @@ public final class KarmaKore extends KarmaSource {
      */
     private KarmaKore() throws AlreadyRegisteredException {
         super("KarmaSource",
-                Version.of(2, 0, 0),
+                Version.parse(KarmaAPI.VERSION, KarmaAPI.BUILD),
                 "KarmaAPI is an API that helps in the development of java applications",
                 "KarmaDev");
 
@@ -41,6 +48,33 @@ public final class KarmaKore extends KarmaSource {
             unbound.bind(this);
 
             unbound.log("Beep!");
+
+            TaskRunner runner = new AsyncTaskExecutor(5, 10, TimeUnit.MINUTES);
+            runner.setRepeating(true);
+
+            runner.on(TaskEvent.RESTART, () -> {
+                unbound.send("Checking for KarmaAPI updates...", LogLevel.DEBUG);
+                VersionChecker checker = new VersionChecker(this);
+                checker.check().onComplete((task) -> {
+                    Throwable error = task.error();
+                    if (error == null) {
+                        Version latest = checker.getVersion();
+                        if (latest != null && !latest.equals(version) && latest.compareTo(version) > 0) {
+                            String[] changelog = checker.getChangelog();
+                            unbound.send("KarmaAPI is out of date! A new version has been found ({0}). Current is: {1}", latest, version);
+                            unbound.send("&7--&b CHANGELOG&7 --");
+                            for (String line : changelog) unbound.send(line);
+
+                            URL[] updateURLs = checker.getUpdateURLs();
+                            unbound.send("&7--&b UPDATE&7 --");
+                            for (URL url : updateURLs) unbound.send("&e" + url);
+                        }
+                    } else {
+                        unbound.log(error, "An error occurred while checking for updates");
+                    }
+                });
+            });
+            runner.start();
         }
     }
 
@@ -60,7 +94,7 @@ public final class KarmaKore extends KarmaSource {
      */
     @Override
     public String updateURL() {
-        return "https://karmadev.es/tests/api2.versions.json";
+        return "https://karmadev.es/updater/karmaapi.json";
     }
 
     /**

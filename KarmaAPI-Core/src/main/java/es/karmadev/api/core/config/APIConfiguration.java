@@ -55,6 +55,8 @@ public final class APIConfiguration {
                     if (!element.isJsonObject())
                         throw new RuntimeException("Cannot access API configuration because configuration is invalid");
 
+                    System.out.println("Initialized KarmaAPI configuration from: " + config);
+                    logger.log(Level.FINE, "Initialized KarmaAPI configuration from: {0}", config);
                     settings = element.getAsJsonObject();
                     return;
                 } catch (IOException ex) {

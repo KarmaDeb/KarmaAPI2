@@ -99,6 +99,8 @@ public enum ConsoleColor {
 
     @SuppressWarnings("NonFinalFieldInEnum")
     public static boolean forceOtherOs = false;
+    @SuppressWarnings("NonFinalFieldInEnum")
+    public static char ignoreCharacter = '\\';
 
     @Getter
     private final char code;
@@ -180,8 +182,18 @@ public enum ConsoleColor {
         Matcher matcher = pattern.matcher(str);
 
         while (matcher.find()) {
+            int pre = Math.max(matcher.start() - 1, 0);
             int start = matcher.start();
             int end = matcher.end();
+
+            if (start != pre) {
+                char character = str.charAt(pre);
+                if (character == ignoreCharacter) {
+                    String part = str.substring(pre, end);
+                    replacements.put(part, str.substring(start, end));
+                    continue;
+                }
+            }
 
             String part = str.substring(start, end);
             char code = part.charAt(1);
@@ -219,18 +231,28 @@ public enum ConsoleColor {
         Pattern pattern = Pattern.compile("&[0-9a-flrnom]");
         Matcher matcher = pattern.matcher(str);
 
-        Set<String> parts = new HashSet<>();
+        Map<String, String> parts = new ConcurrentHashMap<>();
         while (matcher.find()) {
+            int pre = Math.max(matcher.start() - 1, 0);
             int start = matcher.start();
             int end = matcher.end();
 
+            if (start != pre) {
+                char character = str.charAt(pre);
+                if (character == ignoreCharacter) {
+                    String part = str.substring(pre, end);
+                    parts.put(part, str.substring(start, end));
+                    continue;
+                }
+            }
+
             String part = str.substring(start, end);
-            parts.add(part);
+            parts.put(part, "");
         }
 
         for (String unixValue : unixCodes.values()) str = str.replace(unixValue, "");
         for (String winValue : winCodes.values()) str = str.replace(winValue, "");
-        for (String part : parts) str = str.replace(part, "");
+        for (String part : parts.keySet()) str = str.replace(part, parts.get(part));
 
         return str;
     }

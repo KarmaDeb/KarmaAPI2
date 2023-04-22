@@ -13,6 +13,13 @@
               "build": {
                 "type": "string"
               },
+              "update": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^(https?://).+$"
+                }
+              },
               "changelog": {
                 "type": "array",
                 "items": {

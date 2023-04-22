@@ -19,7 +19,7 @@ public class KarmaAPI {
         } catch (NullPointerException | IllegalArgumentException | IOException ignored) {}
     }
 
-    public final static String VERSION = properties.getProperty("version", "2.0.0");
+    public final static String VERSION = properties.getProperty("version", "1.0.0");
     public final static String BUILD = properties.getProperty("build", "1");
     public final static String FULL_VERSION = properties.getProperty("full", "2.0.0-1");
     public final static String COMPILER = properties.getProperty("java", "8");

@@ -15,6 +15,7 @@ import es.karmadev.api.schedule.task.completable.late.LateTask;
 import es.karmadev.api.version.BuildStatus;
 import es.karmadev.api.version.Version;
 import es.karmadev.api.web.URLConnectionWrapper;
+import es.karmadev.api.web.url.URLUtilities;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -24,6 +25,8 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -38,6 +41,7 @@ public class VersionChecker {
     private final Changelog changelog = new Changelog();
     private final List<Version> versionHistory = new CopyOnWriteArrayList<>();
     private Version version;
+    private final Map<Version, URL[]> updateURL = new ConcurrentHashMap<>();
     private boolean checking = false;
     private TaskCompletor<Void> checkTask;
 
@@ -147,12 +151,26 @@ public class VersionChecker {
                         String build = infoNode.get("build").asText();
                         if (build.replaceAll("\\s", "").isEmpty()) build = null;
 
+                        Version version = Version.parse(raw, build);
+
+                        List<URL> urls = new ArrayList<>();
+                        if (infoNode.has("update")) {
+                            ArrayNode rawUpdate = (ArrayNode) infoNode.get("update");
+                            for (JsonNode updateUrlLineNode : rawUpdate) {
+                                String rawURL = updateUrlLineNode.asText().replace("%version%", raw).replace("%build%", String.valueOf(build));
+                                URL realURL = URLUtilities.fromString(rawURL);
+                                if (realURL != null)
+                                    urls.add(realURL);
+                            }
+                        }
+
+                        updateURL.put(version, urls.toArray(new URL[0]));
+
                         ArrayNode rawChangelog = (ArrayNode) infoNode.get("changelog");
                         List<String> changelog = new ArrayList<>();
 
-                        Version version = Version.parse(raw, build);
                         versionHistory.add(version);
-                        for (JsonNode changelogLineNode : rawChangelog) changelog.add(changelogLineNode.asText().replace("%version%", raw));
+                        for (JsonNode changelogLineNode : rawChangelog) changelog.add(changelogLineNode.asText().replace("%version%", raw).replace("%build%", String.valueOf(build)));
                         this.changelog.define(version, changelog.toArray(new String[0]));
                     }
 
@@ -205,6 +223,28 @@ public class VersionChecker {
     public String[] getChangelog(final Version version) {
         if (version == null) return new String[0];
         return changelog.getFor(version);
+    }
+
+    /**
+     * Get the update URLs for
+     * the specified version
+     *
+     * @return the update URLs
+     */
+    public URL[] getUpdateURLs() {
+        return getUpdateURLs(version);
+    }
+
+    /**
+     * Get the update URLs for
+     * the specified version
+     *
+     * @param version the version
+     * @return the update URLs
+     */
+    public URL[] getUpdateURLs(final Version version) {
+        if (version == null) return new URL[0];
+        return updateURL.getOrDefault(version, new URL[0]);
     }
 
     /**
