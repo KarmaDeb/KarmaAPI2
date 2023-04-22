@@ -10,6 +10,7 @@ KarmaAPI2 is the new version of the KarmaAPI
 - [X] [Source configuration](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/core/config/APIConfiguration.java)
 - [ ] String utilities
 - [X] [JavaVM utilities](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/JavaVirtualMachine.java)
+- [X] [Placeholder engine](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/strings/placeholder/PlaceholderEngine.java)
 
 ### Scheduler API
 - [X] [Task scheduler](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Core/src/main/java/es/karmadev/api/schedule/task/TaskScheduler.java)
