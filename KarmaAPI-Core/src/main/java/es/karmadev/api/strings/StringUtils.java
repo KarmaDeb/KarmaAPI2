@@ -5,6 +5,7 @@ import java.util.*;
 /**
  * String utilities
  */
+@SuppressWarnings("unused")
 public class StringUtils {
 
     private final static char[][] RANDOM_CHARACTERS = {
@@ -189,5 +190,56 @@ public class StringUtils {
         return builder.toString();
     }
 
+    /**
+     * Generate a separated string
+     *
+     * @return the split string
+     */
+    public static String generateSplit() {
+        return generateSplit(32, '-');
+    }
 
+    /**
+     * Generate a separated string
+     *
+     * @param splitter the split character
+     * @return the split string
+     */
+    public static String generateSplit(final char splitter) {
+        return generateSplit(32, splitter);
+    }
+
+    /**
+     * Generate a separated string
+     *
+     * @param length the string length
+     * @return the split string
+     */
+    public static String generateSplit(final int length) {
+        return generateSplit(length, '-');
+    }
+
+    /**
+     * Generate a separated string
+     *
+     * @param length the string length
+     * @param splitter the split character
+     * @return the split string
+     */
+    public static String generateSplit(final int length, final char splitter) {
+        String random = generateString(Math.max(length, 12), StringOptions.UPPERCASE, StringOptions.NUMBERS);
+        if (splitter == '\0') return random;
+
+        int splitEach = Math.max(Math.max(length, 12) / 6, 1);
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < random.length(); i++) {
+            if (i != 0 && i % splitEach == 0) {
+                builder.append(splitter);
+            }
+
+            builder.append(random.charAt(i));
+        }
+
+        return builder.toString();
+    }
 }
