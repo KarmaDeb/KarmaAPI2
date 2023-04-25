@@ -2,8 +2,10 @@ package es.karmadev.api.file.util;
 
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.file.yaml.handler.ResourceLoader;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
@@ -13,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -21,6 +24,44 @@ import java.util.stream.Stream;
  */
 @SuppressWarnings("unused")
 public class PathUtilities {
+
+    /**
+     * Get a path size
+     *
+     * @param path the path
+     * @return the path size
+     */
+    public static long getSize(final Path path) {
+        if (Files.isDirectory(path)) {
+            AtomicLong initialSize = new AtomicLong(0);
+            try (Stream<Path> files = Files.list(path)) {
+                files.forEachOrdered((file) -> {
+                    if (Files.isDirectory(file)) {
+                        long size = getSize(file);
+                        initialSize.addAndGet(size);
+                    } else {
+                        try {
+                            initialSize.addAndGet(Files.size(file));
+                        } catch (IOException ex) {
+                            ExceptionCollector.catchException(PathUtilities.class, ex);
+                        }
+                    }
+                });
+
+                return initialSize.get();
+            } catch (IOException ex) {
+                ExceptionCollector.catchException(PathUtilities.class, ex);
+            }
+        } else {
+            try {
+                return Files.size(path);
+            } catch (IOException ex) {
+                ExceptionCollector.catchException(PathUtilities.class, ex);
+            }
+        }
+
+        return 0;
+    }
 
     /**
      * Create a path, without any
@@ -202,6 +243,57 @@ public class PathUtilities {
     }
 
     /**
+     * Get the {@link Path} path string
+     *
+     * @param path the path
+     * @return the {@link Path} path string
+     */
+    public static String pathString(final Path path) {
+        return pathString(path, '/');
+    }
+
+    /**
+     * Get the {@link Path} path string
+     *
+     * @param path the path
+     * @param directorySpacer the path string directory separator
+     * @return the {@link Path} path string
+     */
+    public static String pathString(final Path path, final char directorySpacer) {
+        if (Character.isSpaceChar(directorySpacer))
+            return path.toAbsolutePath().toString().replaceAll("%20", " ");
+
+        return path.toAbsolutePath().toString().replaceAll("%20", " ").replace(File.separatorChar, directorySpacer);
+    }
+
+    /**
+     * Get the path extension
+     *
+     * @param path the path
+     * @return the path extension
+     */
+    public static String getExtension(final @NotNull Path path) {
+        if (Files.isDirectory(path)) return "dir";
+        String name = path.getFileName().toString();
+        return getExtension(name);
+    }
+
+    /**
+     * Get the path extension
+     *
+     * @param name the path name
+     * @return the path extension
+     */
+    public static String getExtension(final @NotNull String name) {
+        if (name.contains(".")) {
+            String[] nameData = name.split("\\.");
+            return nameData[nameData.length - 1];
+        }
+
+        return "";
+    }
+
+    /**
      * Write to the file
      *
      * @param path the file to write to
@@ -211,7 +303,7 @@ public class PathUtilities {
      */
     public static boolean write(final Path path, final byte[] data, OpenOption... options) {
         if (Files.isDirectory(path)) return false;
-        if (createDirectory(path)) {
+        if (createPath(path)) {
             try {
                 Files.write(path, data, options);
                 return true;

@@ -6,6 +6,7 @@ import es.karmadev.api.logger.SourceLogger;
 import es.karmadev.api.logger.log.UnboundedLogger;
 import es.karmadev.api.schedule.task.TaskScheduler;
 import es.karmadev.api.schedule.task.scheduler.BalancedScheduler;
+import es.karmadev.api.strings.placeholder.PlaceholderEngine;
 import es.karmadev.api.version.Version;
 import org.jetbrains.annotations.Nullable;
 
@@ -155,6 +156,14 @@ public abstract class KarmaSource {
     public final String[] getAuthors() {
         return authors;
     }
+
+    /**
+     * Get the source placeholder engine
+     *
+     * @param name the engine name
+     * @return the placeholder engine
+     */
+    public abstract PlaceholderEngine getEngine(final String name);
 
     /**
      * Get the source update URL

@@ -1,6 +1,14 @@
 package es.karmadev.api.strings;
 
+import es.karmadev.api.core.ExceptionCollector;
+import es.karmadev.api.core.KarmaKore;
+import es.karmadev.api.strings.placeholder.PlaceholderEngine;
+import org.jetbrains.annotations.Nullable;
+
+import java.io.*;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * String utilities
@@ -241,5 +249,361 @@ public class StringUtils {
         }
 
         return builder.toString();
+    }
+
+    /**
+     * Format a string
+     *
+     * @param sequence the text to format
+     * @param replaces the replaces
+     * @return the formatted text
+     */
+    public static String format(final CharSequence sequence, final Object... replaces) {
+        if (sequence == null) return "";
+
+        String str = sequence.toString();
+        for (int i = 0; i < replaces.length; i++) {
+            str = str.replace("{" + i + "}", String.valueOf(replaces[i]));
+        }
+
+        KarmaKore kore = KarmaKore.INSTANCE();
+        if (kore != null) {
+            PlaceholderEngine engine = kore.getEngine("default");
+            str = engine.parse(str);
+        }
+
+        return str;
+    }
+
+    /**
+     * Format a string
+     *
+     * @param sequence the text to format
+     * @param replaces the replaces
+     * @return the formatted text
+     */
+    public static String format(final CharSequence sequence, final Map<String, Object> replaces) {
+        MapEntry[] entries = new MapEntry[replaces.size()];
+        int index = 0;
+        for (Map.Entry<String, Object> entry : replaces.entrySet()) {
+            entries[index++] = MapEntry.fromEntry(entry);
+        }
+
+        return format(sequence, entries);
+    }
+
+    /**
+     * Format a string
+     *
+     * @param sequence the text to format
+     * @param replaces the replaces
+     * @return the formatted text
+     */
+    @SafeVarargs
+    public static String format(final CharSequence sequence, final Map.Entry<String, Object>... replaces) {
+        if (sequence == null) return "";
+
+        String str = sequence.toString();
+        for (Map.Entry<String, Object> entry : replaces) {
+            str = str.replace("{" + entry.getKey() + "}", String.valueOf(entry.getValue()));
+        }
+
+        KarmaKore kore = KarmaKore.INSTANCE();
+        if (kore != null) {
+            PlaceholderEngine engine = kore.getEngine("default");
+            str = engine.parse(str);
+        }
+
+        return str;
+    }
+
+    /**
+     * Escape the text
+     *
+     * @param sequence the text to scape
+     * @param ignore the characters to not scape
+     * @return the scape text
+     */
+    public static String escape(final CharSequence sequence, final char... ignore) {
+        StringBuilder builder = new StringBuilder();
+        List<Character> ignoreChars = new ArrayList<>();
+        for (char character : ignore) ignoreChars.add(character);
+
+        for (int i = 0; i < sequence.length(); i++) {
+            char character = sequence.charAt(i);
+            if (ignoreChars.contains(character)) {
+                builder.append(character);
+                continue;
+            }
+
+            switch (character) {
+                case '$':
+                case '(':
+                case ')':
+                case '*':
+                case '+':
+                case '-':
+                case '.':
+                case '?':
+                case '[':
+                case ']':
+                case '^':
+                case '{':
+                case '|':
+                case '}':
+                    builder.append("\\").append(character);
+                    break;
+                default:
+                    builder.append(character);
+                    break;
+            }
+        }
+
+        return builder.toString();
+    }
+
+    /**
+     * Serialize an object into a text
+     *
+     * @param instance the object
+     * @return the serialized instance
+     * @param <T> the object type
+     */
+    public static <T extends Serializable> String serialize(final T instance) {
+        try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream ous = new ObjectOutputStream(bos)) {
+            ous.writeObject(instance);
+            ous.flush();
+
+            return Base64.getEncoder().encodeToString(bos.toByteArray());
+        } catch (Throwable ex) {
+            ExceptionCollector.catchException(StringUtils.class, ex);
+            return "";
+        }
+    }
+
+    /**
+     * Load a serialized object
+     *
+     * @param instance the string instance
+     * @return the resolved object
+     */
+    public static Optional<Object> load(final String instance) {
+        Object loaded = null;
+
+        try {
+            byte[] bytes = Base64.getDecoder().decode(instance);
+            try (ByteArrayInputStream bis = new ByteArrayInputStream(bytes); ObjectInputStream ois = new ObjectInputStream(bis)) {
+                loaded = ois.readObject();
+            } catch (IOException | ClassNotFoundException ex) {
+                ExceptionCollector.catchException(StringUtils.class, ex);
+            }
+        } catch (IllegalArgumentException ignored) {}
+
+        return Optional.ofNullable(loaded);
+    }
+
+    /**
+     * Load a serialized object
+     *
+     * @param instance the string instance
+     * @param <T> the object type
+     * @return the resolved object
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> @Nullable T loadAndCast(final String instance) {
+        T loaded = null;
+
+        try {
+            byte[] bytes = Base64.getDecoder().decode(instance);
+            try (ByteArrayInputStream bis = new ByteArrayInputStream(bytes); ObjectInputStream ois = new ObjectInputStream(bis)) {
+                loaded = (T) ois.readObject();
+            } catch (IOException | ClassNotFoundException | ClassCastException ex) {
+                ExceptionCollector.catchException(StringUtils.class, ex);
+            }
+        } catch (IllegalArgumentException ignored) {}
+
+        return loaded;
+    }
+
+    /**
+     * Get if the text contains any letter
+     *
+     * @param sequence the text
+     * @return if the text contains any letter
+     */
+    public static boolean containsLetter(final CharSequence sequence) {
+        if (sequence == null) return false;
+        Pattern pattern = Pattern.compile("[a-zA-Z]");
+        Matcher matcher = pattern.matcher(sequence);
+
+        return matcher.find();
+    }
+
+    /**
+     * Get if the text contains any number
+     *
+     * @param sequence the text
+     * @return if the text contains any number
+     */
+    public static boolean containsNumber(final CharSequence sequence) {
+        if (sequence == null) return false;
+        Pattern pattern = Pattern.compile("[0-9]");
+        Matcher matcher = pattern.matcher(sequence);
+
+        return matcher.find();
+    }
+
+    /**
+     * Extract the numbers from the text
+     *
+     * @param sequence the text
+     * @return the text numbers
+     */
+    public static Number[] extractNumbers(final CharSequence sequence) {
+        if (sequence == null) return new Number[0];
+
+        List<Number> numbers = new ArrayList<>();
+        Pattern pattern = Pattern.compile("-?(?:\\d+[.,]?\\d*|\\.\\d+)(?:[eE][+-]?\\d+)?");
+        Matcher matcher = pattern.matcher(sequence);
+
+        while (matcher.find()) {
+            String raw = matcher.group();
+            if (raw.contains(",") || raw.contains(".")) {
+                try {
+                    numbers.add(Float.parseFloat(raw.replace(",", "")));
+                } catch (NumberFormatException ex) {
+                    numbers.add(Double.parseDouble(raw.replace(",", "")));
+                }
+            } else {
+                try {
+                    numbers.add(Short.parseShort(raw));
+                } catch (NumberFormatException ex) {
+                    try {
+                        numbers.add(Integer.parseInt(raw));
+                    } catch (NumberFormatException ex2) {
+                        numbers.add(Long.parseLong(raw));
+                    }
+                }
+            }
+        }
+
+        return numbers.toArray(new Number[0]);
+    }
+
+    /**
+     * Remove the numbers from the text, this can be
+     * considered as the "reverse" method of {@link StringUtils#extractNumbers(CharSequence)}
+     *
+     * @param sequence the text
+     * @return the text without numbers
+     */
+    public static String removeNumbers(final CharSequence sequence) {
+        if (sequence == null) return "";
+        List<String> numbers = new ArrayList<>();
+
+        Pattern pattern = Pattern.compile("-?(?:\\d+[.,]?\\d*|\\.\\d+)(?:[eE][+-]?\\d+)?");
+        Matcher matcher = pattern.matcher(sequence);
+
+        while (matcher.find()) {
+            numbers.add(matcher.group());
+        }
+
+        String modified = sequence.toString();
+        for (String number : numbers) {
+            modified = modified.replace(number, "");
+        }
+
+        return modified;
+    }
+
+    /**
+     * Split the string when it finds the other
+     * text
+     *
+     * @param sequence the text
+     * @param other the text to stop at
+     * @return the split string
+     */
+    public static String splitAt(final CharSequence sequence, final CharSequence other) {
+        if (sequence == null || other == null) return (sequence != null ? sequence.toString() : "");
+
+        String str = sequence.toString();
+        String dst = other.toString();
+        String dstEscaped = escape(dst);
+
+        if (str.contains(dst)) {
+            String[] data = str.split(dstEscaped);
+            return data[0];
+        }
+
+        return str;
+    }
+}
+
+class MapEntry implements Map.Entry<String, Object> {
+
+    private final String key;
+    private final Object value;
+
+    MapEntry(final String key, final Object value) {
+        this.key = key;
+        this.value = value;
+    }
+
+    /**
+     * Returns the key corresponding to this entry.
+     *
+     * @return the key corresponding to this entry
+     * @throws IllegalStateException implementations may, but are not
+     *                               required to, throw this exception if the entry has been
+     *                               removed from the backing map.
+     */
+    @Override
+    public String getKey() {
+        return key;
+    }
+
+    /**
+     * Returns the value corresponding to this entry.  If the mapping
+     * has been removed from the backing map (by the iterator's
+     * <tt>remove</tt> operation), the results of this call are undefined.
+     *
+     * @return the value corresponding to this entry
+     * @throws IllegalStateException implementations may, but are not
+     *                               required to, throw this exception if the entry has been
+     *                               removed from the backing map.
+     */
+    @Override
+    public Object getValue() {
+        return value;
+    }
+
+    /**
+     * Replaces the value corresponding to this entry with the specified
+     * value (optional operation).  (Writes through to the map.)  The
+     * behavior of this call is undefined if the mapping has already been
+     * removed from the map (by the iterator's <tt>remove</tt> operation).
+     *
+     * @param value new value to be stored in this entry
+     * @return old value corresponding to the entry
+     * @throws UnsupportedOperationException if the <tt>put</tt> operation
+     *                                       is not supported by the backing map
+     * @throws ClassCastException            if the class of the specified value
+     *                                       prevents it from being stored in the backing map
+     * @throws NullPointerException          if the backing map does not permit
+     *                                       null values, and the specified value is null
+     * @throws IllegalArgumentException      if some property of this value
+     *                                       prevents it from being stored in the backing map
+     * @throws IllegalStateException         implementations may, but are not
+     *                                       required to, throw this exception if the entry has been
+     *                                       removed from the backing map.
+     */
+    @Override
+    public Object setValue(final Object value) {
+        throw new UnsupportedOperationException();
+    }
+
+    public static MapEntry fromEntry(final Map.Entry<String, Object> entry) {
+        return new MapEntry(entry.getKey(), entry.getValue());
     }
 }

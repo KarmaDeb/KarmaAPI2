@@ -11,16 +11,23 @@ import es.karmadev.api.logger.log.console.LogLevel;
 import es.karmadev.api.schedule.runner.TaskRunner;
 import es.karmadev.api.schedule.runner.async.AsyncTaskExecutor;
 import es.karmadev.api.schedule.runner.event.TaskEvent;
+import es.karmadev.api.strings.placeholder.PlaceholderEngine;
+import es.karmadev.api.strings.placeholder.engine.SimpleEngine;
+import es.karmadev.api.strings.placeholder.engine.SimplePlaceholder;
 import es.karmadev.api.version.Version;
 import es.karmadev.api.version.checker.VersionChecker;
 
 import java.net.URL;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
  * KarmaKore
  */
 public final class KarmaKore extends KarmaSource {
+
+    private final Map<String, PlaceholderEngine> engines = new ConcurrentHashMap<>();
 
     /**
      * Initialize the KarmaAPI core
@@ -35,6 +42,13 @@ public final class KarmaKore extends KarmaSource {
                 "KarmaDev");
 
         SourceManager.register(this);
+        SimpleEngine engine = new SimpleEngine();
+        engine.protect();
+        engine.register(new SimplePlaceholder<>("version", KarmaAPI.VERSION).asProtected());
+        engine.register(new SimplePlaceholder<>("build", KarmaAPI.BUILD).asProtected());
+        engine.register(new SimplePlaceholder<>("date", KarmaAPI.COMPILE_DATE).asProtected());
+
+        engines.put("default", engine);
     }
 
     /**
@@ -85,6 +99,17 @@ public final class KarmaKore extends KarmaSource {
     public void kill() {
         SourceLogger logger = LogManager.getLogger(this);
         logger.log(LogLevel.INFO, "Boop!");
+    }
+
+    /**
+     * Get the source placeholder engine
+     *
+     * @param name the engine name
+     * @return the placeholder engine
+     */
+    @Override
+    public PlaceholderEngine getEngine(final String name) {
+        return engines.computeIfAbsent(name, (engine) -> new SimpleEngine());
     }
 
     /**

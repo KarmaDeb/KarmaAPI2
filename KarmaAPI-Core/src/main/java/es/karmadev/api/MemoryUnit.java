@@ -1,5 +1,7 @@
 package es.karmadev.api;
 
+import lombok.Getter;
+
 /**
  * Most common used memory units
  */
@@ -8,26 +10,37 @@ public enum MemoryUnit {
     /**
      * Bits unit
      */
-    BITS,
+    BITS("b"),
     /**
      * Bytes unit
      */
-    BYTES,
+    BYTES("B"),
     /**
      * KiloBytes unit
      */
-    KILOBYTES,
+    KILOBYTES("KB"),
     /**
      * MegaBytes unit
      */
-    MEGABYTES,
+    MEGABYTES("MB"),
     /**
      * GigaByte units
      */
-    GIGABYTES;
+    GIGABYTES("GB");
 
+    @Getter
+    private final String name;
     private final static int BYTES_PER_KB = 1024;
     private final static int BITS_PER_BYTE = 8;
+
+    /**
+     * Initialize the memory unit
+     *
+     * @param name the unit name
+     */
+    MemoryUnit(final String name) {
+        this.name = name;
+    }
 
     /**
      * Converts from a memory unit to the
@@ -108,6 +121,59 @@ public enum MemoryUnit {
     }
 
     /**
+     * Get the highest memory unit available for
+     * the specified value
+     *
+     * @param value the value
+     * @return the value highest memory unit
+     */
+    public static MemoryUnit highestAvailable(final long value, final MemoryUnit start) {
+        if (start == MemoryUnit.GIGABYTES) return GIGABYTES;
+
+        long bytes;
+        long kilobytes;
+        long megabytes;
+        long gigabytes;
+
+        switch (start) {
+            case BITS:
+                bytes = start.toBytes(value);
+                kilobytes = start.toKiloBytes(value);
+                megabytes = start.toMegaBytes(value);
+                gigabytes = start.toGigaBytes(value);
+
+                if (kilobytes > 0) return KILOBYTES;
+                if (megabytes > 0) return MEGABYTES;
+                if (gigabytes > 0) return GIGABYTES;
+                if (bytes > 0) return BYTES;
+
+                return BITS;
+            case BYTES:
+                kilobytes = start.toKiloBytes(value);
+                megabytes = start.toMegaBytes(value);
+                gigabytes = start.toGigaBytes(value);
+
+                if (megabytes > 0) return MEGABYTES;
+                if (gigabytes > 0) return GIGABYTES;
+                if (kilobytes > 0) return KILOBYTES;
+
+                return BYTES;
+            case KILOBYTES:
+                megabytes = start.toMegaBytes(value);
+                gigabytes = start.toGigaBytes(value);
+
+                if (gigabytes > 0) return GIGABYTES;
+                if (megabytes > 0) return MEGABYTES;
+                return KILOBYTES;
+            case MEGABYTES:
+                gigabytes = start.toGigaBytes(value);
+                return (gigabytes > 0 ? GIGABYTES : MEGABYTES);
+        }
+
+        return BITS;
+    }
+
+    /**
      * Converts from the current memory
      * unit to bits
      *
@@ -160,5 +226,17 @@ public enum MemoryUnit {
      */
     public long toGigaBytes(final long value) {
         return fromTo(this, MemoryUnit.GIGABYTES, value);
+    }
+
+    /**
+     * Converts from the current memory
+     * unit to the specified one
+     *
+     * @param value the unit value
+     * @param target the unit to convert to
+     * @return the converted memory unit
+     */
+    public long to(final long value, final MemoryUnit target) {
+        return fromTo(this, target, value);
     }
 }
