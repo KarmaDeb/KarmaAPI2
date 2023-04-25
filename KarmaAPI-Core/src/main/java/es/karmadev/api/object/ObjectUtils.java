@@ -14,7 +14,7 @@ public class ObjectUtils {
      * @throws NullPointerException if the object is null or empty
      */
     public static void assertNullOrEmpty(final Object object, final String message) throws NullPointerException {
-        if (object == null) throw new NullPointerException(message);
+        if (object == null) throw new NullPointerException(message);a
         String str = String.valueOf(object);
         if (str.replaceAll("\\s", "").isEmpty()) throw new NullPointerException(message);
     }
