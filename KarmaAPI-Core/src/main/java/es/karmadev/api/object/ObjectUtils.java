@@ -30,7 +30,6 @@ public class ObjectUtils {
      */
     public static void assertNullOrEmpty(final Object[] objects, final String message, final boolean checkAll) throws NullPointerException {
         int nulls = 0;
-
         for (Object object : objects) {
             if (object == null) {
                 if (checkAll) {
