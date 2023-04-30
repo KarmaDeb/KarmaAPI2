@@ -153,8 +153,8 @@ public class StringUtils {
      * @param options the string options
      * @return the generated string
      */
-    public static String generateString(int length, final StringOptions... options) {
-        if (length > Short.MAX_VALUE) length = Short.MAX_VALUE;
+    public static String generateString(final int length, final StringOptions... options) {
+        char[] string = new char[Math.max(1, Math.min(Short.MAX_VALUE, length))];
 
         char[] lowerCase = RANDOM_CHARACTERS[0];
         char[] upperCase = RANDOM_CHARACTERS[1];
@@ -182,20 +182,18 @@ public class StringUtils {
         char[] mixed = new char[mixedLength];
         if (optionsList.contains(StringOptions.LOWERCASE))
             System.arraycopy(lowerCase, 0, mixed, 0, lowerCase.length);
-
         if (optionsList.contains(StringOptions.UPPERCASE))
             System.arraycopy(upperCase, 0, mixed, part1, upperCase.length);
-
         if (optionsList.contains(StringOptions.NUMBERS))
             System.arraycopy(numbers, 0, mixed, part2, numbers.length);
 
-        StringBuilder builder = new StringBuilder();
-        for (short i = 0; i < length; i++) {
-            int random = new Random().nextInt(mixed.length);
-            builder.append(mixed[random]);
+        Random random = new Random();
+        for (short i = 0; i < string.length; i++) {
+            int rnd = random.nextInt(mixed.length);
+            string[i] = mixed[rnd];
         }
 
-        return builder.toString();
+        return new String(string);
     }
 
     /**

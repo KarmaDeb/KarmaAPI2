@@ -39,3 +39,6 @@ build/
 /.idea/discord.xml
 /.idea/encodings.xml
 /KarmaAPI-Core/src/test/
+/KarmaAPI-Spigot/ir/
+/KarmaAPI-Core/ir/
+/ir/

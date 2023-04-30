@@ -101,29 +101,33 @@ public class BalancedScheduler implements TaskScheduler {
 
         ScheduledThreadPoolExecutor scheduler = new ScheduledThreadPoolExecutor(Math.max(1, threads / 2));
         scheduler.scheduleAtFixedRate(() -> {
-            if (globalSemaphore.tryAcquire() && !systemOverloaded.get()) {
-                Future<?> task = scheduler.submit(() -> {
-                    Task next = taskQue.peek();
-                    if (next != null) {
-                        Semaphore subSemaphore = clazzSemaphores.computeIfAbsent(next.owner(), (p) -> new Semaphore(perClass));
-                        if (subSemaphore.tryAcquire()) {
-                            taskQue.poll();
+            if (!taskQue.isEmpty()) {
+                if (globalSemaphore.tryAcquire() && !systemOverloaded.get()) {
+                    Future<?> task = scheduler.submit(() -> {
+                        Task next = taskQue.peek();
+                        if (next != null) {
+                            Semaphore subSemaphore = clazzSemaphores.computeIfAbsent(next.owner(), (p) -> new Semaphore(perClass));
+                            if (subSemaphore.tryAcquire()) {
+                                taskQue.poll();
 
-                            if (next.cancelled()) {
+                                if (next.cancelled()) {
+                                    globalSemaphore.release();
+                                    subSemaphore.release();
+                                    cancelledTasks.addAndGet(1);
+                                    return;
+                                }
+
+                                next.run();
+                                completedTasks.addAndGet(1);
                                 globalSemaphore.release();
                                 subSemaphore.release();
-                                cancelledTasks.addAndGet(1);
-                                return;
                             }
-
-                            next.run();
-                            completedTasks.addAndGet(1);
+                        } else {
                             globalSemaphore.release();
-                            subSemaphore.release();
                         }
-                    }
-                });
-                queued.add(task);
+                    });
+                    queued.add(task);
+                }
             }
         }, 0, period, TimeUnit.MILLISECONDS);
 

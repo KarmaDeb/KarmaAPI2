@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * KarmaAPI task
  */
-class Task implements ScheduledTask {
+public class Task implements ScheduledTask {
 
     private final static AtomicInteger globalId = new AtomicInteger(0);
 
@@ -18,6 +18,7 @@ class Task implements ScheduledTask {
     private boolean cancelled = false;
     private boolean running = false;
     private Runnable onRun;
+    private Runnable onEnd;
 
     /**
      * Initialize the task
@@ -92,6 +93,16 @@ class Task implements ScheduledTask {
     }
 
     /**
+     * Set the task end consumer
+     *
+     * @param action the action to perform when the task ends
+     */
+    @Override
+    public void onEnd(final Runnable action) {
+        onEnd = action;
+    }
+
+    /**
      * When an object implementing interface <code>Runnable</code> is used
      * to create a thread, starting the thread causes the object's
      * <code>run</code> method to be called in that separately executing
@@ -110,6 +121,7 @@ class Task implements ScheduledTask {
             running = true;
             task.run();
             running = false;
+            if (onEnd != null) onEnd.run();
         }
     }
 }

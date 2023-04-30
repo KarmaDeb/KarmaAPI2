@@ -45,4 +45,11 @@ public interface ScheduledTask extends Runnable {
      * @param action the action to perform when the task runs
      */
     void onRun(final Runnable action);
+
+    /**
+     * Set the task end consumer
+     *
+     * @param action the action to perform when the task ends
+     */
+    void onEnd(final Runnable action);
 }
