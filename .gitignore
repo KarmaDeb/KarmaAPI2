@@ -36,9 +36,9 @@ build/
 
 ### Mac OS ###
 .DS_Store
-/.idea/discord.xml
-/.idea/encodings.xml
-/KarmaAPI-Core/src/test/
-/KarmaAPI-Spigot/ir/
-/KarmaAPI-Core/ir/
-/ir/
+.idea/discord.xml
+.idea/encodings.xml
+KarmaAPI-Core/src/test/
+KarmaAPI-Spigot/ir/
+KarmaAPI-Core/ir/
+ir/
