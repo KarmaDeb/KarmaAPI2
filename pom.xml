@@ -65,6 +65,10 @@
                                         <pattern>com.github.fge</pattern>
                                         <shadedPattern>es.karmadev.api.shaded.fge</shadedPattern>
                                     </relocation>
+                                    <relocation>
+                                        <pattern>com.github.yeetmanlord.reflection_api</pattern>
+                                        <shadedPattern>es.karmadev.api.shaded.yeetmanlord.reflection</shadedPattern>
+                                    </relocation>
                                 </relocations>
                             </configuration>
                         </execution>
@@ -84,6 +88,10 @@
         <repository>
             <id>spigot-repo</id>
             <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
+        </repository>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
         </repository>
     </repositories>
 
@@ -149,6 +157,13 @@
                 <artifactId>spigot-api</artifactId>
                 <version>1.19.4-R0.1-SNAPSHOT</version>
                 <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>com.github.YeetManLord</groupId>
+                <artifactId>ReflectionAPI</artifactId>
+                <version>1.0.5</version>
+                <scope>compile</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>

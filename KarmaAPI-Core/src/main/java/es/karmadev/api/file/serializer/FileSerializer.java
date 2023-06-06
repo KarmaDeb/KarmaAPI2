@@ -89,26 +89,34 @@ public class FileSerializer {
         KarmaKore kore = KarmaKore.INSTANCE();
 
         if (kore != null) {
-            Path destination = kore.getWorkingDirectory().resolve("serializer").resolve("dictionary").resolve(name + ".sdc");
+            Path destination = kore.workingDirectory().resolve("serializer").resolve("dictionary").resolve(name + ".sdc");
             PathUtilities.createPath(destination);
 
             kore.createScheduler("async").schedule(() -> {
                 try {
                     if (Files.isDirectory(file)) {
+                        kore.logger().send(LogLevel.DEBUG, "Scanning directory. This might take a while");
+
                         long dirLength = PathUtilities.getSize(file);
 
                         MemoryUnit highest = MemoryUnit.highestAvailable(dirLength, MemoryUnit.BYTES);
                         long conversed = MemoryUnit.BYTES.to(dirLength, highest);
+
+                        kore.logger().send(LogLevel.DEBUG, "Preparing to serialize {0}{1} of data", conversed, highest.getName());
 
                         Collection<SerializedFile> serializedFiles = serializeDirectory(file, "/");
                         SerializedDictionary dictionary = new SerializedDictionary(serializedFiles.toArray(new SerializedFile[0]));
 
                         String serializedBase64 = StringUtils.serialize(dictionary);
                         byte[] raw = Base64.getDecoder().decode(serializedBase64);
+
+                        MemoryUnit hg = MemoryUnit.highestAvailable(raw.length, MemoryUnit.BYTES);
+                        kore.logger().send(LogLevel.DEBUG, "Serialized data: {0}{1}", MemoryUnit.BYTES.to(raw.length, hg), hg.getName());
+
                         byte[] compressed;
                         switch (compressor) {
                             case ZLIB:
-                                kore.getConsole().send("Using ZLIB compression", LogLevel.DEBUG);
+                                kore.logger().send(LogLevel.DEBUG, "Using ZLIB compression");
 
                                 Deflater deflater = new Deflater();
                                 deflater.setLevel(Deflater.BEST_COMPRESSION);
@@ -127,7 +135,7 @@ public class FileSerializer {
                                     MemoryUnit compressedUnit = MemoryUnit.highestAvailable(compressed.length, MemoryUnit.BYTES);
                                     long compressedConversed = MemoryUnit.BYTES.to(compressed.length, highest);
 
-                                    kore.getConsole().send("ZLIB took {0} ms to compress {1} {2} into {3} {4}",
+                                    kore.logger().send(LogLevel.DEBUG, "ZLIB took {0} ms to compress {1} {2} into {3} {4}",
                                             (zlibEnd - zlibStart),
                                             conversed,
                                             highest.getName(),
@@ -136,7 +144,7 @@ public class FileSerializer {
                                 }
                                 break;
                             case LZ4:
-                                kore.getConsole().send("Using LZ4 compression", LogLevel.DEBUG);
+                                kore.logger().send(LogLevel.DEBUG, "Using LZ4 compression");
                                 LZ4Factory factory = LZ4Factory.fastestInstance();
                                 LZ4Compressor lz4Compressor = factory.fastCompressor();
 
@@ -147,7 +155,7 @@ public class FileSerializer {
                                 MemoryUnit compressedUnit = MemoryUnit.highestAvailable(compressed.length, MemoryUnit.BYTES);
                                 long compressedConversed = MemoryUnit.BYTES.to(compressed.length, highest);
 
-                                kore.getConsole().send("LZ4 took {0} ms to compress {1} {2} into {3} {4}",
+                                kore.logger().send("LZ4 took {0} ms to compress {1} {2} into {3} {4}",
                                         (lz4end - lz4start),
                                         conversed,
                                         highest.getName(),
@@ -156,7 +164,7 @@ public class FileSerializer {
                                 break;
                             case ZSTD:
                             default:
-                                kore.getConsole().send("Using ZSTD compression", LogLevel.DEBUG);
+                                kore.logger().send(LogLevel.DEBUG, "Using ZSTD compression");
 
                                 long zdtStart = System.currentTimeMillis();
                                 compressed = Zstd.compress(raw, Zstd.maxCompressionLevel());
@@ -165,7 +173,7 @@ public class FileSerializer {
                                 MemoryUnit compressedZSTDUnit = MemoryUnit.highestAvailable(compressed.length, MemoryUnit.BYTES);
                                 long compressedZSTDConversed = MemoryUnit.BYTES.to(compressed.length, highest);
 
-                                kore.getConsole().send("ZSTD took {0} ms to compress {1} {2} into {3} {4}",
+                                kore.logger().send("ZSTD took {0} ms to compress {1} {2} into {3} {4}",
                                         (zdtEnd - zdtStart),
                                         conversed,
                                         highest.getName(),
@@ -176,7 +184,7 @@ public class FileSerializer {
 
                         JsonObject sizes = new JsonObject();
                         JsonObject thisData = new JsonObject();
-                        Path sizesPath = kore.getWorkingDirectory().resolve("serializer").resolve("dictionary").resolve("data.json");
+                        Path sizesPath = kore.workingDirectory().resolve("serializer").resolve("dictionary").resolve("data.json");
                         Gson gson = new GsonBuilder().create();
 
                         if (Files.exists(sizesPath)) {
@@ -221,20 +229,29 @@ public class FileSerializer {
      */
     private Collection<SerializedFile> serializeDirectory(final Path directory, final String path) {
         List<SerializedFile> serializedFiles = new ArrayList<>();
+        KarmaKore kore = KarmaKore.INSTANCE();
+        assert kore != null;
+
         try (Stream<Path> files = Files.list(directory)) {
             files.forEachOrdered((file) -> {
                 if (Files.isDirectory(file)) {
                     serializedFiles.addAll(serializeDirectory(file, path + file.getFileName().toString() + "/"));
                 } else {
                     try {
+                        kore.logger().send(LogLevel.DEBUG, "Serializing file {0}", path + file.getFileName().toString());
+
                         SerializedFile serialized = new SerializedFile(path, file);
                         serializedFiles.add(serialized);
+
+                        kore.logger().send(LogLevel.DEBUG, "Serialized file {0}", path + file.getFileName().toString());
                     } catch (NoSuchAlgorithmException | IOException ex) {
+                        //ex.printStackTrace();
                         ExceptionCollector.catchException(FileSerializer.class, ex);
                     }
                 }
             });
         } catch (IOException ex) {
+            //ex.printStackTrace();
             ExceptionCollector.catchException(FileSerializer.class, ex);
         }
 

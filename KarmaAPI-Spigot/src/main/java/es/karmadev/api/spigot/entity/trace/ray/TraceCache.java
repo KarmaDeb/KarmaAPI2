@@ -1,4 +1,4 @@
-package es.karmadev.api.spigot.entity.trace;
+package es.karmadev.api.spigot.entity.trace.ray;
 
 import es.karmadev.api.strings.StringUtils;
 import org.bukkit.Location;
@@ -69,6 +69,30 @@ class TraceCache {
         }
 
         return cache;
+    }
+
+    public void definePoints(final double distance, final double precision, final Location... traces) {
+        TracePointCache tpc = new TracePointCache(distance, precision, traces);
+        PointCache pCache = new PointCache(point1, point2);
+
+        if (hasCache(distance, precision)) {
+            List<TracePointCache> caches = locations.get(pCache);
+            int index = 0;
+            for (TracePointCache trace : caches) {
+                if (trace.distance == distance && trace.precision == precision) {
+                    break;
+                }
+
+                index++;
+            }
+
+            caches.set(index, tpc); //Update the existing cache
+            locations.put(pCache, caches);
+        } else {
+            List<TracePointCache> caches = locations.getOrDefault(pCache, new CopyOnWriteArrayList<>());
+            caches.add(tpc);
+            locations.put(pCache, caches);
+        }
     }
 }
 

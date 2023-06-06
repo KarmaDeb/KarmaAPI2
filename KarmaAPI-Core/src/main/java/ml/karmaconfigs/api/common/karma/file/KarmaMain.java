@@ -76,7 +76,7 @@ public class KarmaMain {
      * @param path   the file path
      */
     public KarmaMain(final KarmaSource source, final String name, final String... path) {
-        Path main = source.getWorkingDirectory();
+        Path main = source.workingDirectory();
         for (String str : path)
             main = main.resolve(str);
 
@@ -1330,14 +1330,14 @@ public class KarmaMain {
 
         KarmaSource source = KarmaKore.INSTANCE();
         try {
-            source.getConsole().send("Saving file {0}", LogLevel.DEBUG, PathUtilities.pathString(target));
+            source.logger().send("Saving file {0}", LogLevel.DEBUG, PathUtilities.pathString(target));
 
             List<String> write = new ArrayList<>();
             List<String> lines = PathUtilities.readAllLines(document);
             Set<String> wrote_keys = new HashSet<>();
 
             if (!lines.isEmpty()) {
-                source.getConsole().send("File is not empty", LogLevel.DEBUG);
+                source.logger().send("File is not empty", LogLevel.DEBUG);
 
                 write.add("(\"main\"");
                 Pattern keyMatcher = Pattern.compile("'.*' .?->");
@@ -1360,7 +1360,7 @@ public class KarmaMain {
                     Matcher badMatcher = badKeyMatcher.matcher(line);
 
                     if (matcher.find() || badMatcher.find() && !readingList && !readingMap) {
-                        source.getConsole().send("Found key!", LogLevel.DEBUG);
+                        source.logger().send("Found key!", LogLevel.DEBUG);
 
                         if (section.toString().isEmpty())
                             section.append("main");
@@ -1378,12 +1378,12 @@ public class KarmaMain {
                         String space = line.substring(0, start);
                         String result = line.substring(start, end);
 
-                        source.getConsole().send("The path is: {0} ( From line: {1} )", LogLevel.DEBUG, result, line);
+                        source.logger().send("The path is: {0} ( From line: {1} )", LogLevel.DEBUG, result, line);
 
                         boolean recursive = line.endsWith("<->");
                         String name = result.substring(1, result.length() - (recursive ? 5 : 4));
 
-                        source.getConsole().send("Key name is: {0}", LogLevel.DEBUG, name);
+                        source.logger().send("Key name is: {0}", LogLevel.DEBUG, name);
 
                         String key = section + "." + name;
                         String value = line.replaceFirst(line.substring(0, start) + result + " ", "");
@@ -1401,9 +1401,9 @@ public class KarmaMain {
                         if (element != null) {
                             wrote_keys.add(key);
 
-                            source.getConsole().send("Key {0} has a known value: {1}", LogLevel.DEBUG, key, element);
+                            source.logger().send("Key {0} has a known value: {1}", LogLevel.DEBUG, key, element);
                             if (element.isPrimitive() && !readingList && !readingMap) {
-                                source.getConsole().send("Wrote!", LogLevel.DEBUG);
+                                source.logger().send("Wrote!", LogLevel.DEBUG);
                                 ElementPrimitive primitive = element.getAsPrimitive();
                                 if (primitive.isString() || primitive.isCharacter()) {
                                     write.add(space + "'" + name + "' " + (recursive ? "<-> '" : "-> '") + element + "'");
@@ -1417,7 +1417,7 @@ public class KarmaMain {
                                             readingMap = true;
                                             write.add(space + "'" + name + "' " + (recursive ? "<-> " : "-> ") + "[");
 
-                                            source.getConsole().send("Writing map", LogLevel.DEBUG);
+                                            source.logger().send("Writing map", LogLevel.DEBUG);
 
                                             ElementMap<ElementPrimitive> kA = (KarmaMap) element;
                                             kA.forEachKey((k) -> {
@@ -1433,7 +1433,7 @@ public class KarmaMain {
                                         } else {
                                             readingList = true;
                                             write.add(space + "'" + name + "' " + (recursive ? "<-> " : "-> ") + "{");
-                                            source.getConsole().send("Writing list", LogLevel.DEBUG);
+                                            source.logger().send("Writing list", LogLevel.DEBUG);
 
                                             ElementArray<ElementPrimitive> a = (KarmaArray) element;
                                             for (ElementPrimitive sub : a) {
@@ -1449,7 +1449,7 @@ public class KarmaMain {
                                             readingMap = true;
                                             write.add(space + "'" + name + "' " + (recursive ? "<-> " : "-> ") + "[");
 
-                                            source.getConsole().send("Writing map", LogLevel.DEBUG);
+                                            source.logger().send("Writing map", LogLevel.DEBUG);
 
                                             ElementMap<ElementPrimitive> kA = (KarmaMap) element;
                                             kA.forEachKey((k) -> {
@@ -1483,7 +1483,7 @@ public class KarmaMain {
                             }
                         } else {
                             if (!readingList && !readingMap) {
-                                source.getConsole().log(LogLevel.DEBUG,
+                                source.logger().log(LogLevel.DEBUG,
                                         "An error occurred while saving file {0}. Required key {1} is not defined{2}. The file will be try to be saved anyway",
                                         PathUtilities.pathString(document),
                                         key,
@@ -1574,13 +1574,13 @@ public class KarmaMain {
                             values.put(key, content.get(key));
 
                             sections.put(key, values);
-                            source.getConsole().send("Adding section {0}", LogLevel.DEBUG, key);
+                            source.logger().send("Adding section {0}", LogLevel.DEBUG, key);
                         } else {
                             Map<String, Element<?>> values = sections.getOrDefault("main", new LinkedHashMap<>());
                             values.put(data[1], content.get(key));
 
                             sections.put("main", values);
-                            source.getConsole().send("Adding section {0}", LogLevel.DEBUG, "main");
+                            source.logger().send("Adding section {0}", LogLevel.DEBUG, "main");
                         }
                     }
                 }
@@ -1611,13 +1611,13 @@ public class KarmaMain {
                                         write.add(b + "(\"" + sub + "\"");
                                         Map<String, Element<?>> values = sections.getOrDefault(realKeyBuilder.toString(), new LinkedHashMap<>());
 
-                                        source.getConsole().send("Section: {0} ({1})", LogLevel.DEBUG, sub, realKeyBuilder);
+                                        source.logger().send("Section: {0} ({1})", LogLevel.DEBUG, sub, realKeyBuilder);
 
                                         if (!values.isEmpty()) {
                                             for (String key : values.keySet()) {
                                                 Element<?> value = values.get(key);
                                                 if (value.isArray()) {
-                                                    source.getConsole().send("Writing list {0}", LogLevel.DEBUG, key);
+                                                    source.logger().send("Writing list {0}", LogLevel.DEBUG, key);
 
                                                     write.add(b + "\t'" + key + "' -> {");
                                                     ElementArray<ElementPrimitive> array = (KarmaArray) value;
@@ -1632,7 +1632,7 @@ public class KarmaMain {
                                                     write.add(b + "\t}");
                                                 } else {
                                                     if (value.isMap()) {
-                                                        source.getConsole().send("Writing map {0}", LogLevel.DEBUG, key);
+                                                        source.logger().send("Writing map {0}", LogLevel.DEBUG, key);
 
                                                         write.add(b + "\t'" + key + "' -> [");
                                                         ElementMap<ElementPrimitive> array = (KarmaMap) value;
@@ -1647,7 +1647,7 @@ public class KarmaMain {
                                                         });
                                                         write.add(b + "\t]");
                                                     } else {
-                                                        source.getConsole().send("Writing key {0} with value: {1}", LogLevel.DEBUG, key, values.get(key));
+                                                        source.logger().send("Writing key {0} with value: {1}", LogLevel.DEBUG, key, values.get(key));
 
                                                         Element<?> element = values.get(key);
                                                         if (element.isPrimitive()) {
@@ -1668,7 +1668,7 @@ public class KarmaMain {
                                     }
                                 }
                             } else {
-                                source.getConsole().send("Section: {0}", LogLevel.DEBUG, s);
+                                source.logger().send("Section: {0}", LogLevel.DEBUG, s);
 
                                 write.add("\t(\"" + s + "\"");
                                 Map<String, Element<?>> values = sections.getOrDefault(s, new LinkedHashMap<>());
@@ -1677,7 +1677,7 @@ public class KarmaMain {
                                     Element<?> value = values.get(key);
 
                                     if (value.isArray()) {
-                                        source.getConsole().send("Writing list {0}", LogLevel.DEBUG, key);
+                                        source.logger().send("Writing list {0}", LogLevel.DEBUG, key);
 
                                         write.add("\t\t'" + key + "' -> {");
                                         ElementArray<ElementPrimitive> array = (KarmaArray) value;
@@ -1692,7 +1692,7 @@ public class KarmaMain {
                                         write.add("\t\t}");
                                     } else {
                                         if (value.isMap()) {
-                                            source.getConsole().send("Writing map {0}", LogLevel.DEBUG, key);
+                                            source.logger().send("Writing map {0}", LogLevel.DEBUG, key);
 
                                             write.add("\t\t'" + key + "' -> [");
                                             ElementMap<ElementPrimitive> array = (KarmaMap) value;
@@ -1707,7 +1707,7 @@ public class KarmaMain {
                                             });
                                             write.add("\t\t]");
                                         } else {
-                                            source.getConsole().send("Writing key {0} with value: {1}", LogLevel.DEBUG, key, values.get(key));
+                                            source.logger().send("Writing key {0} with value: {1}", LogLevel.DEBUG, key, values.get(key));
 
                                             Element<?> element = values.get(key);
                                             if (element.isPrimitive()) {
@@ -1724,7 +1724,7 @@ public class KarmaMain {
                             }
                         }
                     } else {
-                        source.getConsole().send("Section: main", LogLevel.DEBUG);
+                        source.logger().send("Section: main", LogLevel.DEBUG);
 
                         Map<String, Element<?>> values = sections.getOrDefault(s, new LinkedHashMap<>());
 
@@ -1736,7 +1736,7 @@ public class KarmaMain {
                                 Element<?> value = values.get(key);
 
                                 if (value.isArray()) {
-                                    source.getConsole().send("Writing list {0}", LogLevel.DEBUG, key);
+                                    source.logger().send("Writing list {0}", LogLevel.DEBUG, key);
 
                                     write.add("\t'" + key + "' -> {");
                                     ElementArray<ElementPrimitive> array = (KarmaArray) value;
@@ -1751,7 +1751,7 @@ public class KarmaMain {
                                     write.add("\t}");
                                 } else {
                                     if (value.isMap()) {
-                                        source.getConsole().send("Writing map {0}", LogLevel.DEBUG, key);
+                                        source.logger().send("Writing map {0}", LogLevel.DEBUG, key);
 
                                         write.add("\t'" + key + "' -> [");
                                         ElementMap<ElementPrimitive> array = (KarmaMap) value;
@@ -1766,7 +1766,7 @@ public class KarmaMain {
                                         });
                                         write.add("\t]");
                                     } else {
-                                        source.getConsole().send("Writing key {0} with value: {1}", LogLevel.DEBUG, key, values.get(key));
+                                        source.logger().send("Writing key {0} with value: {1}", LogLevel.DEBUG, key, values.get(key));
 
                                         Element<?> element = values.get(key);
                                         if (element.isPrimitive()) {
@@ -1797,7 +1797,7 @@ public class KarmaMain {
                     write.add(0, "(\"main\"");
                 }
             } else {
-                source.getConsole().send("File is empty. Storing only set paths", LogLevel.DEBUG);
+                source.logger().send("File is empty. Storing only set paths", LogLevel.DEBUG);
 
                 //Basically the file is new and we must set the values
                 Map<String, Map<String, Element<?>>> sections = new LinkedHashMap<>();
@@ -1843,12 +1843,12 @@ public class KarmaMain {
                                     write.add(b + "(\"" + sub + "\"");
                                     Map<String, Element<?>> values = sections.getOrDefault(realKeyBuilder.toString(), new LinkedHashMap<>());
 
-                                    source.getConsole().send("Section: {0}", LogLevel.DEBUG, sub);
+                                    source.logger().send("Section: {0}", LogLevel.DEBUG, sub);
 
                                     for (String key : values.keySet()) {
                                         Element<?> value = values.get(key);
                                         if (value.isArray()) {
-                                            source.getConsole().send("Writing list {0}", LogLevel.DEBUG, key);
+                                            source.logger().send("Writing list {0}", LogLevel.DEBUG, key);
 
                                             write.add(b + "\t'" + key + "' -> {");
                                             ElementArray<ElementPrimitive> array = (KarmaArray) value;
@@ -1863,7 +1863,7 @@ public class KarmaMain {
                                             write.add(b + "\t}");
                                         } else {
                                             if (value.isMap()) {
-                                                source.getConsole().send("Writing map {0}", LogLevel.DEBUG, key);
+                                                source.logger().send("Writing map {0}", LogLevel.DEBUG, key);
 
                                                 write.add(b + "\t'" + key + "' -> [");
                                                 ElementMap<ElementPrimitive> array = (KarmaMap) value;
@@ -1878,7 +1878,7 @@ public class KarmaMain {
                                                 });
                                                 write.add(b + "\t]");
                                             } else {
-                                                source.getConsole().send("Writing key {0} with value: {1}", LogLevel.DEBUG, key, values.get(key));
+                                                source.logger().send("Writing key {0} with value: {1}", LogLevel.DEBUG, key, values.get(key));
 
                                                 Element<?> element = values.get(key);
                                                 if (element.isPrimitive()) {
@@ -1898,7 +1898,7 @@ public class KarmaMain {
                                 }
                             }
                         } else {
-                            source.getConsole().send("Section: {0}", LogLevel.DEBUG, section);
+                            source.logger().send("Section: {0}", LogLevel.DEBUG, section);
 
                             write.add("\t(\"" + section + "\"");
                             Map<String, Element<?>> values = sections.getOrDefault(section, new LinkedHashMap<>());
@@ -1907,7 +1907,7 @@ public class KarmaMain {
                                 Element<?> value = values.get(key);
 
                                 if (value.isArray()) {
-                                    source.getConsole().send("Writing list {0}", LogLevel.DEBUG, key);
+                                    source.logger().send("Writing list {0}", LogLevel.DEBUG, key);
 
                                     write.add("\t\t'" + key + "' -> {");
                                     ElementArray<ElementPrimitive> array = (KarmaArray) value;
@@ -1922,7 +1922,7 @@ public class KarmaMain {
                                     write.add("\t\t}");
                                 } else {
                                     if (value.isMap()) {
-                                        source.getConsole().send("Writing map {0}", LogLevel.DEBUG, key);
+                                        source.logger().send("Writing map {0}", LogLevel.DEBUG, key);
 
                                         write.add("\t\t'" + key + "' -> [");
                                         ElementMap<ElementPrimitive> array = (KarmaMap) value;
@@ -1937,7 +1937,7 @@ public class KarmaMain {
                                         });
                                         write.add("\t\t]");
                                     } else {
-                                        source.getConsole().send("Writing key {0} with value: {1}", LogLevel.DEBUG, key, values.get(key));
+                                        source.logger().send("Writing key {0} with value: {1}", LogLevel.DEBUG, key, values.get(key));
 
                                         Element<?> element = values.get(key);
                                         if (element.isPrimitive()) {
@@ -1953,7 +1953,7 @@ public class KarmaMain {
                             }
                         }
                     } else {
-                        source.getConsole().send("Section: main", LogLevel.DEBUG);
+                        source.logger().send("Section: main", LogLevel.DEBUG);
 
                         write.add("(\"main\"");
                         Map<String, Element<?>> values = sections.getOrDefault(section, new LinkedHashMap<>());
@@ -1963,7 +1963,7 @@ public class KarmaMain {
                             Element<?> value = values.get(key);
 
                             if (value.isArray()) {
-                                source.getConsole().send("Writing list {0}", LogLevel.DEBUG, key);
+                                source.logger().send("Writing list {0}", LogLevel.DEBUG, key);
 
                                 write.add("\t'" + key + "' -> {");
                                 ElementArray<ElementPrimitive> array = (KarmaArray) value;
@@ -1978,7 +1978,7 @@ public class KarmaMain {
                                 write.add("\t}");
                             } else {
                                 if (value.isMap()) {
-                                    source.getConsole().send("Writing map {0}", LogLevel.DEBUG, key);
+                                    source.logger().send("Writing map {0}", LogLevel.DEBUG, key);
 
                                     write.add("\t'" + key + "' -> [");
                                     ElementMap<ElementPrimitive> array = (KarmaMap) value;
@@ -1993,7 +1993,7 @@ public class KarmaMain {
                                     });
                                     write.add("\t]");
                                 } else {
-                                    source.getConsole().send("Writing key {0} with value: {1}", LogLevel.DEBUG, key, values.get(key));
+                                    source.logger().send("Writing key {0} with value: {1}", LogLevel.DEBUG, key, values.get(key));
 
                                     Element<?> element = values.get(key);
                                     if (element.isPrimitive()) {

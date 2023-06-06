@@ -1,10 +1,13 @@
 package es.karmadev.api.logger.log;
 
+import es.karmadev.api.core.source.APISource;
 import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.logger.LogManager;
 import es.karmadev.api.logger.SourceLogger;
 import es.karmadev.api.logger.log.console.ConsoleColor;
 import es.karmadev.api.logger.log.console.LogLevel;
+
+import java.util.Arrays;
 
 /**
  * Unbounded console. Mainly made for the kore source
@@ -12,7 +15,7 @@ import es.karmadev.api.logger.log.console.LogLevel;
 @SuppressWarnings("unused")
 public class UnboundedLogger implements SourceLogger {
 
-    private KarmaSource source;
+    private APISource source;
     private SourceLogger logger;
 
     /**
@@ -21,7 +24,7 @@ public class UnboundedLogger implements SourceLogger {
      * @param source the source
      */
     @SuppressWarnings("UnusedReturnValue")
-    public UnboundedLogger bind(final KarmaSource source) {
+    public UnboundedLogger bind(final APISource source) {
         this.source = source;
         logger = LogManager.getLogger(source);
         return this;
@@ -91,6 +94,17 @@ public class UnboundedLogger implements SourceLogger {
             return;
         }
 
+        if (replaces.length >= 1) {
+            Object firstReplace = replaces[0];
+            if (firstReplace instanceof LogLevel) {
+                LogLevel level = (LogLevel) firstReplace;
+                Object[] finalReplaces = Arrays.copyOfRange(replaces, 1, replaces.length);
+
+                send(level, message, finalReplaces);
+                return;
+            }
+        }
+
         send((LogLevel) null, message, replaces);
     }
 
@@ -152,7 +166,7 @@ public class UnboundedLogger implements SourceLogger {
      * @return the console source
      */
     @Override
-    public KarmaSource owner() {
+    public APISource owner() {
         return source;
     }
 

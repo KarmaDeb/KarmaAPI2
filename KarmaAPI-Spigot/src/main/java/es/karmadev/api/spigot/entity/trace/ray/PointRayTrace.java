@@ -1,6 +1,8 @@
-package es.karmadev.api.spigot.entity.trace;
+package es.karmadev.api.spigot.entity.trace.ray;
 
 import es.karmadev.api.schedule.task.completable.TaskCompletor;
+import es.karmadev.api.spigot.entity.trace.RayDirection;
+import es.karmadev.api.spigot.entity.trace.TraceOption;
 import es.karmadev.api.spigot.entity.trace.result.RayTraceResult;
 
 /**
@@ -15,6 +17,13 @@ public interface PointRayTrace {
      * @param value the precision
      */
     void setPrecision(final double value);
+
+    /**
+     * Set the raytrace direction
+     *
+     * @param direction the direction
+     */
+    void setDirection(final RayDirection direction);
 
     /**
      * Cancel the raytrace

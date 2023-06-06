@@ -1,5 +1,6 @@
 package es.karmadev.api.core.source.exception;
 
+import es.karmadev.api.core.source.APISource;
 import es.karmadev.api.core.source.KarmaSource;
 
 /**
@@ -24,7 +25,7 @@ public class UnknownProviderException extends Exception {
      *
      * @param clazz the source class
      */
-    public UnknownProviderException(final Class<? extends KarmaSource> clazz) {
+    public UnknownProviderException(final Class<? extends APISource> clazz) {
         super("Cannot retrieve karma source by class " + clazz.getCanonicalName() + " because it's not registered as provider");
     }
 }

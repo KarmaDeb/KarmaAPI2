@@ -4,21 +4,36 @@ import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.core.source.SourceManager;
 import es.karmadev.api.core.source.exception.AlreadyRegisteredException;
 import es.karmadev.api.core.source.exception.UnknownProviderException;
+import es.karmadev.api.database.DatabaseManager;
+import es.karmadev.api.database.exception.ProtectedEngineException;
+import es.karmadev.api.database.model.JsonDatabase;
+import es.karmadev.api.database.model.json.JsonConnection;
 import es.karmadev.api.logger.LogManager;
 import es.karmadev.api.logger.SourceLogger;
 import es.karmadev.api.logger.log.UnboundedLogger;
 import es.karmadev.api.logger.log.console.LogLevel;
+import es.karmadev.api.object.ObjectUtils;
 import es.karmadev.api.schedule.runner.TaskRunner;
 import es.karmadev.api.schedule.runner.async.AsyncTaskExecutor;
 import es.karmadev.api.schedule.runner.event.TaskEvent;
+import es.karmadev.api.security.LockedProperties;
+import es.karmadev.api.security.PermissionManager;
+import es.karmadev.api.security.permission.PermissionNode;
+import es.karmadev.api.strings.StringUtils;
 import es.karmadev.api.strings.placeholder.PlaceholderEngine;
 import es.karmadev.api.strings.placeholder.engine.SimpleEngine;
 import es.karmadev.api.strings.placeholder.engine.SimplePlaceholder;
 import es.karmadev.api.version.Version;
 import es.karmadev.api.version.checker.VersionChecker;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.net.URI;
 import java.net.URL;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -28,6 +43,8 @@ import java.util.concurrent.TimeUnit;
 public final class KarmaKore extends KarmaSource {
 
     private final Map<String, PlaceholderEngine> engines = new ConcurrentHashMap<>();
+    private final Map<String, CoreModule> modules = new ConcurrentHashMap<>();
+    private String koreIdentifier = StringUtils.shuffle(StringUtils.generateSplit(18, '\0'), UUID.randomUUID().toString().replaceAll("-", ""));
 
     /**
      * Initialize the KarmaAPI core
@@ -49,6 +66,22 @@ public final class KarmaKore extends KarmaSource {
         engine.register(new SimplePlaceholder<>("date", KarmaAPI.COMPILE_DATE).asProtected());
 
         engines.put("default", engine);
+        modules.put("permissions", new PermissionManager() {
+            @Override
+            public boolean register(final PermissionNode permission) {
+                return false;
+            }
+
+            @Override
+            public PermissionNode[] getByName(final String name) {
+                return new PermissionNode[0];
+            }
+
+            @Override
+            public PermissionNode getByIndex(final int index) {
+                return null;
+            }
+        });
     }
 
     /**
@@ -90,6 +123,16 @@ public final class KarmaKore extends KarmaSource {
             });
             runner.start();
         }
+
+        try {
+            DatabaseManager.register(new JsonDatabase());
+        } catch (ProtectedEngineException ex) {
+            ExceptionCollector.catchException(KarmaKore.class, ex);
+        }
+
+        saveIdentifier();
+        LockedProperties locked = (LockedProperties) KarmaAPI.properties;
+        locked.setProtected("identifier", koreIdentifier);
     }
 
     /**
@@ -99,27 +142,6 @@ public final class KarmaKore extends KarmaSource {
     public void kill() {
         SourceLogger logger = LogManager.getLogger(this);
         logger.log(LogLevel.INFO, "Boop!");
-    }
-
-    /**
-     * Get the source placeholder engine
-     *
-     * @param name the engine name
-     * @return the placeholder engine
-     */
-    @Override
-    public PlaceholderEngine getEngine(final String name) {
-        return engines.computeIfAbsent(name, (engine) -> new SimpleEngine());
-    }
-
-    /**
-     * Get the source update URL
-     *
-     * @return the source update URL
-     */
-    @Override
-    public String updateURL() {
-        return "https://karmadev.es/updater/karmaapi.json";
     }
 
     /**
@@ -143,5 +165,99 @@ public final class KarmaKore extends KarmaSource {
         }
 
         return null;
+    }
+
+    /**
+     * Get the source identifier
+     *
+     * @return the source identifier
+     */
+    @Override
+    public @NotNull String identifier() {
+        return koreIdentifier;
+    }
+
+    /**
+     * Get the source update URI
+     *
+     * @return the source update URI
+     */
+    @Override
+    public @Nullable URI updateURI() {
+        return null;
+    }
+
+    /**
+     * Get the source placeholder engine.
+     * This will never return null, as if the engine does
+     * not exist, a new one will be created
+     *
+     * @param name the placeholder engine name
+     * @return the source placeholder engine
+     */
+    @Override
+    public @NotNull PlaceholderEngine placeholderEngine(final String name) {
+        return engines.computeIfAbsent(name, (engine) -> new SimpleEngine());
+    }
+
+    /**
+     * Get a module by name
+     *
+     * @param name the module name
+     * @return the module
+     */
+    @Override
+    public @Nullable CoreModule getModule(final String name) {
+        return modules.getOrDefault(name, null);
+    }
+
+    /**
+     * Register a module
+     *
+     * @param module the module to register
+     * @return if the module was able to be registered
+     */
+    @Override
+    public boolean registerModule(final CoreModule module) {
+        if (modules.containsKey(module.getName())) return false;
+        return modules.put(module.getName(), module) == null;
+    }
+
+    /**
+     * Load an identifier
+     *
+     * @param name the identifier name
+     */
+    @Override
+    public void loadIdentifier(final String name) {
+        JsonDatabase database = (JsonDatabase) DatabaseManager.getEngine("json").orElse(new JsonDatabase());
+        JsonConnection connection = database.grabConnection("identifiers");
+
+        String stored = connection.getString(name);
+        if (stored != null) koreIdentifier = stored;
+    }
+
+    /**
+     * Generate and save an identifier
+     *
+     * @param name the identifier name
+     */
+    @Override
+    public void saveIdentifier(final String name) {
+        JsonDatabase database = (JsonDatabase) DatabaseManager.getEngine("json").orElse(new JsonDatabase());
+        JsonConnection connection = database.grabConnection("identifiers");
+
+        String stored = connection.getString(name);
+        if (stored != null) {
+            koreIdentifier = stored;
+            return;
+        }
+
+        if (ObjectUtils.isNullOrEmpty(koreIdentifier)) {
+            koreIdentifier = StringUtils.generateSplit(18, '\0');
+        }
+
+        connection.set(name, koreIdentifier);
+        connection.save();
     }
 }

@@ -33,13 +33,13 @@ public final class APIConfiguration {
         if (settings == null) {
             if (source == null)
                 throw new RuntimeException("Cannot access API configuration because KarmaAPI source is null");
-            Path config = source.getWorkingDirectory().resolve("settings.json");
+            Path config = source.workingDirectory().resolve("settings.json");
             boolean write = !Files.exists(config);
 
             if (PathUtilities.createPath(config)) {
                 if (write) {
                     if (PathUtilities.copy(PathUtilities.DEFAULT_LOADER, "karmaSettings.json", config)) {
-                        //source.getConsole().log(LogLevel.DEBUG, "Exported source settings.json");
+                        //source.logger().log(LogLevel.DEBUG, "Exported source settings.json");
                         logger.log(Level.FINE, "Exported source settings.json");
                     } else {
                         PathUtilities.destroy(config);

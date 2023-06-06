@@ -15,7 +15,8 @@ import java.util.function.Predicate;
  */
 public final class SourceManager {
 
-    private final static Set<KarmaSource> sources = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private static String principal;
+    private final static Set<APISource> sources = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     /**
      * Initialize the source managers
@@ -31,9 +32,10 @@ public final class SourceManager {
      * @param source the source
      * @throws AlreadyRegisteredException if the source is already registered
      */
-    public static void register(final KarmaSource source) throws AlreadyRegisteredException {
+    public static void register(final APISource source) throws AlreadyRegisteredException {
         if (sources.stream().noneMatch(compare(source))) {
             sources.add(source);
+            if (principal == null) principal = source.name();
             return;
         }
 
@@ -50,9 +52,9 @@ public final class SourceManager {
      * has been registered
      */
     @SuppressWarnings("unchecked")
-    public static <A extends KarmaSource> A getProvider(final Class<A> clazz) throws UnknownProviderException {
+    public static <A extends APISource> A getProvider(final Class<A> clazz) throws UnknownProviderException {
         if (sources.stream().anyMatch(compare(clazz.getCanonicalName()))) {
-            Optional<KarmaSource> source = sources.stream().filter(compare(clazz.getCanonicalName())).findAny();
+            Optional<APISource> source = sources.stream().filter(compare(clazz.getCanonicalName())).findAny();
             if (source.isPresent()) {
                 return (A) source.get();
             }
@@ -69,7 +71,7 @@ public final class SourceManager {
      * @throws UnknownProviderException if no provider with that name is
      * registered
      */
-    public static KarmaSource getProvider(final String name) throws UnknownProviderException {
+    public static APISource getProvider(final String name) throws UnknownProviderException {
         if (sources.stream().anyMatch(compare(name))) {
             return sources.stream().filter(compare(name)).findFirst().orElse(null);
         }
@@ -77,21 +79,33 @@ public final class SourceManager {
         throw new UnknownProviderException(name);
     }
 
-    private static Predicate<KarmaSource> compare(final KarmaSource source) {
-        String name = source.getName();
+    /**
+     * Get the principal source provider
+     *
+     * @return the principal source provider
+     * @throws UnknownProviderException if no provider with that name
+     * is longer registered
+     */
+    public static APISource getPrincipal() throws UnknownProviderException {
+        if (principal == null) return null;
+        return getProvider(principal);
+    }
+
+    private static Predicate<APISource> compare(final APISource source) {
+        String name = source.name();
         String clazz = source.getClass().getCanonicalName();
 
         return registered -> {
-            String registeredName = registered.getName();
+            String registeredName = registered.name();
             String registeredClazz = registered.getClass().getCanonicalName();
 
             return registeredName.equals(name) || registeredClazz.equals(clazz);
         };
     }
 
-    private static Predicate<KarmaSource> compare(final String name) {
+    private static Predicate<APISource> compare(final String name) {
         return registered -> {
-            String registeredName = registered.getName();
+            String registeredName = registered.name();
             String registeredClazz = registered.getClass().getCanonicalName();
 
             return registeredName.equals(name) || registeredClazz.equals(name);

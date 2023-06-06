@@ -144,7 +144,8 @@ public class StreamUtils {
             }
         }
 
-        return new ByteArrayInputStream(baos.toByteArray());
+        byte[] bytes = baos.toByteArray();
+        return new ByteArrayInputStream(bytes);
     }
 
     /**

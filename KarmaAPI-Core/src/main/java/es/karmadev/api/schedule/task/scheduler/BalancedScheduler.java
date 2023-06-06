@@ -94,7 +94,7 @@ public class BalancedScheduler implements TaskScheduler {
         double rs = (double) memory / threads;
         long period = Math.round(rs * 1000);
 
-        SourceLogger logger = source.getConsole();
+        SourceLogger logger = source.logger();
         logger.send(LogLevel.INFO, "Using a period of {0} for the asynchronous scheduler", period);
 
         Set<Future<?>> queued = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -178,7 +178,7 @@ public class BalancedScheduler implements TaskScheduler {
      */
     @Override
     public ScheduledTask schedule(final Runnable task) {
-        SourceRuntime runtime = schedulerSource.getRuntime();
+        SourceRuntime runtime = schedulerSource.runtime();
         Class<?> clazz = BalancedScheduler.class;
         try {
             clazz = runtime.getCallerClass();

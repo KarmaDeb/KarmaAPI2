@@ -46,4 +46,45 @@ public class ArrayUtils {
 
         return false;
     }
+
+    /**
+     * Get if the array contains any of the
+     * elements
+     *
+     * @param array the array
+     * @param elements the elements
+     * @return if the array contains the element
+     * @param <T> the element type
+     */
+    @SafeVarargs
+    public static <T> boolean containsOnAny(final Collection<T> array, T... elements) {
+        for (T element : elements) {
+            if (element == null) continue;
+            return array.stream().anyMatch((s) -> s != null && s.toString().contains(element.toString()));
+        }
+
+        return false;
+    }
+
+    /**
+     * Get if the array contains any of
+     * the elements
+     *
+     * @param array the array
+     * @param elements the elements
+     * @return if the array contains the element
+     * @param <T> the element type
+     */
+    @SafeVarargs
+    public static <T> boolean containsOnAny(final T[] array, T... elements) {
+        for (T arrayItem : array) {
+            if (arrayItem != null) {
+                for (T element : elements) {
+                    if (arrayItem.toString().contains(element.toString())) return true;
+                }
+            }
+        }
+
+        return false;
+    }
 }

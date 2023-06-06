@@ -1,5 +1,8 @@
 package es.karmadev.api.logger.log.console;
 
+import es.karmadev.api.core.KarmaKore;
+import es.karmadev.api.strings.placeholder.PlaceholderEngine;
+import es.karmadev.api.strings.placeholder.engine.SimpleEngine;
 import lombok.Getter;
 
 import java.util.*;
@@ -167,6 +170,19 @@ public enum ConsoleColor {
     }
 
     /**
+     * Print a colored message
+     *
+     * @param message the message to print
+     */
+    public void print(final String message) {
+        String uncolored = toColorCode() + strip(message);
+        PlaceholderEngine engine = KarmaKore.INSTANCE().placeholderEngine("default");
+        String placeholderParsed = engine.parse(uncolored);
+
+        System.out.println(placeholderParsed);
+    }
+
+    /**
      * Parse colors of the string
      *
      * @param message the message
@@ -298,5 +314,18 @@ public enum ConsoleColor {
     public static String lastColor(final String message) {
         String[] colors = colors(message);
         return colors[colors.length - 1];
+    }
+
+    /**
+     * Print a message
+     *
+     * @param message the message
+     */
+    public static void printColored(final String message) {
+        String colorParsed = parse(message);
+        PlaceholderEngine engine = KarmaKore.INSTANCE().placeholderEngine("default");
+        String placeholderParsed = engine.parse(colorParsed);
+
+        System.out.println(placeholderParsed);
     }
 }

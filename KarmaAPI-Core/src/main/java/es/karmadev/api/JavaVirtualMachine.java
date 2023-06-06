@@ -4,6 +4,7 @@ import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.version.Version;
 
 import java.lang.management.*;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -511,5 +512,27 @@ public class JavaVirtualMachine {
      */
     public static long getUsageTime(final long id) {
         return threadBean.getThreadUserTime(id);
+    }
+
+    /**
+     * Append a jarfile into the current
+     * class loader
+     *
+     * @param jarFile the jarfile to append
+     */
+    public static void append(final Path jarFile) {
+        /*List<String> modules = new ArrayList<>();
+        ModuleLayer.boot().modules().forEach(module -> modules.add(module.getName()));
+
+        ModuleLayer parentLayer = ModuleLayer.boot();
+        ModuleFinder finder = ModuleFinder.of(jarFile);
+        ModuleReference reference = finder.findAll().iterator().next();
+        ModuleDescriptor descriptor = reference.descriptor();
+        ModuleLayer.Controller controller = parentLayer.controller().newModuleLayer(
+                parentLayer.configuration().resolveAndBind(ModuleFinder.of(), ModuleFinder.of(), ModuleFinder.of()),
+                List.of(parentLayer),
+                ClassLoader.getSystemClassLoader()
+        );
+        ClassLoader customClassLoader = controller.layer().findLoader(descriptor.name());*/
     }
 }

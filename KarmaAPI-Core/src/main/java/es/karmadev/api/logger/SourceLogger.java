@@ -1,5 +1,6 @@
 package es.karmadev.api.logger;
 
+import es.karmadev.api.core.source.APISource;
 import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.logger.log.console.LogLevel;
 
@@ -72,5 +73,5 @@ public interface SourceLogger {
      *
      * @return the console source
      */
-    KarmaSource owner();
+    APISource owner();
 }

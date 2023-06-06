@@ -1,11 +1,13 @@
 package es.karmadev.api.logger.log;
 
 import es.karmadev.api.core.config.APIConfiguration;
-import es.karmadev.api.core.source.KarmaSource;
+import es.karmadev.api.core.source.APISource;
 import es.karmadev.api.logger.SourceLogger;
 import es.karmadev.api.logger.log.console.ConsoleColor;
 import es.karmadev.api.logger.log.console.LogLevel;
 import es.karmadev.api.logger.log.file.LogFile;
+
+import java.util.Arrays;
 
 /**
  * KarmaAPI bounded logger
@@ -15,7 +17,7 @@ public class BoundedLogger implements SourceLogger {
 
     private final static APIConfiguration config = new APIConfiguration();
 
-    private final KarmaSource source;
+    private final APISource source;
     private final LogFile log;
     private boolean logToConsole;
 
@@ -24,7 +26,7 @@ public class BoundedLogger implements SourceLogger {
      *
      * @param owner the console owner
      */
-    public BoundedLogger(final KarmaSource owner) {
+    public BoundedLogger(final APISource owner) {
         this.source = owner;
         log = new LogFile(source);
     }
@@ -101,6 +103,17 @@ public class BoundedLogger implements SourceLogger {
      */
     @Override
     public void send(final String message, final Object... replaces) {
+        if (replaces.length >= 1) {
+            Object firstReplace = replaces[0];
+            if (firstReplace instanceof LogLevel) {
+                LogLevel level = (LogLevel) firstReplace;
+                Object[] finalReplaces = Arrays.copyOfRange(replaces, 1, replaces.length);
+
+                send(level, message, finalReplaces);
+                return;
+            }
+        }
+
         String finalMessage = buildMessage(null, message, replaces);
         System.out.println(ConsoleColor.parse(finalMessage));
     }
@@ -143,6 +156,17 @@ public class BoundedLogger implements SourceLogger {
      */
     @Override
     public void log(final String message, final Object... replaces) {
+        if (replaces.length >= 1) {
+            Object firstReplace = replaces[0];
+            if (firstReplace instanceof LogLevel) {
+                LogLevel level = (LogLevel) firstReplace;
+                Object[] finalReplaces = Arrays.copyOfRange(replaces, 1, replaces.length);
+
+                log(level, message, finalReplaces);
+                return;
+            }
+        }
+        
         if (logToConsole)
             send(message, replaces);
 
@@ -155,7 +179,7 @@ public class BoundedLogger implements SourceLogger {
      * @return the console source
      */
     @Override
-    public KarmaSource owner() {
+    public APISource owner() {
         return source;
     }
 
@@ -168,7 +192,7 @@ public class BoundedLogger implements SourceLogger {
      * @return the message
      */
     private String buildMessage(final LogLevel level, final String message, final Object... replaces) {
-        String prefix = config.getPrefix(level).replace("{0}", source.getName());
+        String prefix = config.getPrefix(level).replace("{0}", source.name());
 
         String finalMessage = parseReplaces(message, replaces);
         return prefix.replace("{1}", finalMessage);

@@ -3,7 +3,6 @@ package es.karmadev.api.web.url;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonSyntaxException;
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.core.KarmaAPI;
 import es.karmadev.api.core.config.APIConfiguration;
@@ -94,7 +93,7 @@ public class URLUtilities {
 
         try {
             try (URLConnectionWrapper wrapper = URLConnectionWrapper.fromURL(url)) {
-                wrapper.setUserAgent(KarmaAPI.USER_AGENT);
+                wrapper.setUserAgent(KarmaAPI.USER_AGENT.get());
                 wrapper.setConnectTimeout(configuration.requestTimeout());
                 wrapper.setInstanceFollowRedirects(true);
                 wrapper.setRequestMethod("HEAD");
@@ -187,7 +186,7 @@ public class URLUtilities {
             String requestData = request.build();
             if (requestData == null) return "";
 
-            wrapper.setUserAgent(KarmaAPI.USER_AGENT);
+            wrapper.setUserAgent(KarmaAPI.USER_AGENT.get());
             wrapper.setConnectTimeout(configuration.requestTimeout());
             wrapper.setInstanceFollowRedirects(true);
             wrapper.setRequestMethod("POST");
@@ -249,7 +248,7 @@ public class URLUtilities {
         APIConfiguration configuration = new APIConfiguration();
 
         try (URLConnectionWrapper wrapper = URLConnectionWrapper.fromURL(url)) {
-            wrapper.setUserAgent(KarmaAPI.USER_AGENT);
+            wrapper.setUserAgent(KarmaAPI.USER_AGENT.get());
             wrapper.setConnectTimeout(configuration.requestTimeout());
             wrapper.setInstanceFollowRedirects(true);
             wrapper.setRequestMethod("GET");

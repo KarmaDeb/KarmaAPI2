@@ -79,7 +79,7 @@ public class SerializedDictionary implements Serializable, Iterable<SerializedFi
         SerializedDictionary dictionary = null;
 
         if (kore != null) {
-            Path sizesPath = kore.getWorkingDirectory().resolve("serializer").resolve("dictionary").resolve("data.json");
+            Path sizesPath = kore.workingDirectory().resolve("serializer").resolve("dictionary").resolve("data.json");
             Gson gson = new GsonBuilder().create();
 
             JsonObject sizes = new JsonObject();
@@ -92,7 +92,7 @@ public class SerializedDictionary implements Serializable, Iterable<SerializedFi
                 int length = thisData.get("size").getAsInt();
                 SerializeCompressor method = SerializeCompressor.valueOf(thisData.get("method").getAsString());
 
-                Path destination = kore.getWorkingDirectory().resolve("serializer").resolve("dictionary").resolve(name + ".sdc");
+                Path destination = kore.workingDirectory().resolve("serializer").resolve("dictionary").resolve(name + ".sdc");
                 if (Files.exists(destination)) {
                     byte[] decompressed = null;
                     byte[] raw = PathUtilities.readBytes(destination);

@@ -21,6 +21,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -118,12 +119,14 @@ public class VersionChecker {
      * @throws ProcessingException if the version data is not valid
      */
     private void checkOnline() throws MalformedURLException, IOException, ProcessingException {
-        String rawUrl = source.updateURL();
-        if (rawUrl == null) throw new IOException("Cannot check version for a source with invalid update URL");
+        URI uri = source.updateURI();
+        if (uri == null) return;
+
+        String rawUrl = uri.toString();
         URL url = new URL(rawUrl);
 
         try (URLConnectionWrapper connection = URLConnectionWrapper.fromURL(url)) {
-            connection.setUserAgent(KarmaAPI.USER_AGENT);
+            connection.setUserAgent(KarmaAPI.USER_AGENT.get());
             connection.setRequestProperty("Content-Type", "application/json");
 
             int code = connection.getResponseCode();
@@ -211,7 +214,7 @@ public class VersionChecker {
      * @return the version changelog
      */
     public String[] getChangelog() {
-        return getChangelog(version != null ? version : source.getVersion());
+        return getChangelog(version != null ? version : source.version());
     }
 
     /**
@@ -266,7 +269,7 @@ public class VersionChecker {
     public BuildStatus compareWith(final Version version) {
         if (version == null) return BuildStatus.OUTDATED;
 
-        Version current = source.getVersion();
+        Version current = source.version();
         return version.compareTo(current) >= 0 ? BuildStatus.UPDATED : BuildStatus.OUTDATED;
     }
 }

@@ -6,6 +6,7 @@ import es.karmadev.api.strings.placeholder.PlaceholderEngine;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -266,7 +267,7 @@ public class StringUtils {
 
         KarmaKore kore = KarmaKore.INSTANCE();
         if (kore != null) {
-            PlaceholderEngine engine = kore.getEngine("default");
+            PlaceholderEngine engine = kore.placeholderEngine("default");
             str = engine.parse(str);
         }
 
@@ -308,7 +309,7 @@ public class StringUtils {
 
         KarmaKore kore = KarmaKore.INSTANCE();
         if (kore != null) {
-            PlaceholderEngine engine = kore.getEngine("default");
+            PlaceholderEngine engine = kore.placeholderEngine("default");
             str = engine.parse(str);
         }
 
@@ -535,6 +536,30 @@ public class StringUtils {
         }
 
         return str;
+    }
+
+    /**
+     * Shuffle the specified strings
+     *
+     * @param strings the strings
+     * @return the shuffled strings
+     */
+    public static String shuffle(final String... strings) {
+        StringBuilder builder = new StringBuilder();
+        for (String str : strings) {
+            builder.append(str);
+        }
+
+        Random random = new Random();
+        char[] chars = builder.toString().toCharArray();
+        for (int i = 0; i < chars.length; i++) {
+            int j = random.nextInt(i + 1);
+            char temp = chars[i];
+            chars[i] = chars[j];
+            chars[j] = temp;
+        }
+
+        return new String(chars);
     }
 }
 

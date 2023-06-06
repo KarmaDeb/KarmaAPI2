@@ -1,18 +1,24 @@
-package es.karmadev.api.spigot.entity.trace;
+package es.karmadev.api.spigot.entity.trace.ray;
 
+import com.github.yeetmanlord.reflection_api.entity.NMSAxisAlignedBBReflection;
+import com.github.yeetmanlord.reflection_api.entity.NMSEntityReflection;
 import com.google.common.util.concurrent.AtomicDouble;
 import es.karmadev.api.array.ArrayUtils;
+import es.karmadev.api.logger.log.console.ConsoleColor;
+import es.karmadev.api.spigot.entity.trace.RayDirection;
+import es.karmadev.api.spigot.entity.trace.TraceOption;
+import es.karmadev.api.spigot.entity.trace.event.RayTraceCollideEvent;
 import es.karmadev.api.spigot.entity.trace.result.HitPosition;
 import es.karmadev.api.spigot.entity.trace.result.RayTraceResult;
 import es.karmadev.api.spigot.entity.trace.result.raw.RawTraceBuilder;
-import org.bukkit.Chunk;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.block.data.type.Door;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.Openable;
 import org.bukkit.block.data.type.Slab;
-import org.bukkit.block.data.type.TrapDoor;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.util.Vector;
@@ -49,10 +55,11 @@ public class RayTrace implements PointRayTrace {
      */
     public final static double FAST_PRECISION = 1.5;
 
-    private final Set<UUID> entityFilter = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private final Set<EntityType> entityTypeFilter = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private final Set<Location> blockFilter = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private final Set<Material> blockTypeFilter = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private RayDirection direction = RayDirection.DOWN_TO_UP;
+    private final Set<UUID> entityFilter = ConcurrentHashMap.newKeySet();
+    private final Set<EntityType> entityTypeFilter = ConcurrentHashMap.newKeySet();
+    private final Set<Location> blockFilter = ConcurrentHashMap.newKeySet();
+    private final Set<Material> blockTypeFilter = ConcurrentHashMap.newKeySet();
     private double precision = MEDIUM_PRECISION;
     private final Location source;
     private final Location target;
@@ -190,6 +197,16 @@ public class RayTrace implements PointRayTrace {
     }
 
     /**
+     * Set the raytrace direction
+     *
+     * @param direction the direction
+     */
+    @Override
+    public void setDirection(final RayDirection direction) {
+        this.direction = direction;
+    }
+
+    /**
      * Cancel the raytrace
      */
     @Override
@@ -278,7 +295,10 @@ public class RayTrace implements PointRayTrace {
         Set<TraceCache> caches = cache.get();
         List<Location> iterations = new ArrayList<>();
 
+        Map<Integer, Entity[]> locationChunk = new LinkedHashMap<>();
         if (caches != null) {
+            ConsoleColor.GREEN.print("Using cache");
+
             TraceCache cacheItem = null;
             for (TraceCache cache : caches) {
                 if ((cache.point1.equals(source) || cache.point1.equals(target)) && (cache.point2.equals(source) || cache.point2.equals(target))) {
@@ -289,7 +309,11 @@ public class RayTrace implements PointRayTrace {
             if (cacheItem != null) {
                 if (cacheItem.hasCache(maxDistance, precision)) {
                     TracePointCache pointCache = cacheItem.getCache(maxDistance, precision);
-                    for (Location location : pointCache.locations) iterations.add(location.clone());
+                    int index = 0;
+                    for (Location location : pointCache.locations) {
+                        iterations.add(location.clone());
+                        locationChunk.put(index++, location.getChunk().getEntities());
+                    }
                 }
             }
         }
@@ -301,14 +325,23 @@ public class RayTrace implements PointRayTrace {
             assert world != null;
 
             Vector direction = end.toVector().subtract(start.toVector()).normalize();
+            int index = 0;
             for (double i = precision; i < maxDistance; i += precision) {
                 direction.multiply(i);
                 start.add(direction).clone();
 
                 iterations.add(start.clone());
+                locationChunk.put(index++, start.getChunk().getEntities());
 
                 start.subtract(direction);
                 direction.normalize();
+            }
+
+            if (caches != null) {
+                TraceCache tmpCache = new TraceCache(source.clone(), target.clone());
+                tmpCache.definePoints(maxDistance, precision, iterations.toArray(new Location[0]));
+
+                caches.add(tmpCache);
             }
         }
 
@@ -320,77 +353,101 @@ public class RayTrace implements PointRayTrace {
         AtomicReference<HitPosition> currentPosition = new AtomicReference<>(HitPosition.FEET);
         AtomicDouble yOffset = new AtomicDouble(0.1);
 
-        World world = null;
+        if (direction.equals(RayDirection.UP_TO_DOWN)) {
+            currentPosition.set(HitPosition.HEAD);
+            yOffset.set(1.25);
+        }
+
+        World world = iterations.get(0).getWorld();
+        Set<Block> checked = new HashSet<>();
+
+        int index = 0;
         for (Location locationIteration : iterations) {
             if (preventExecution.get() || cancelled.get()) break;
-            Location location = locationIteration.add(0, yOffset.get(), 0);
+            Location location = locationIteration.clone().add(0, yOffset.get(), 0);
             world = location.getWorld();
 
             traceResultBuilder.assign(location, currentPosition.get());
             Block block = location.getBlock();
+
             Material blockType = block.getType();
 
             boolean isSolid = blockType.isSolid();
             boolean isAir = blockType.name().endsWith("AIR"); //Adds support for "CAVE_AIR"
 
-            if (blockType.name().contains("SLAB")) {
-                Slab slab = (Slab) block.getBlockData();
-                double y = location.getY();
-                BigDecimal decimal = BigDecimal.valueOf(y).subtract(BigDecimal.valueOf(Math.floor(y)));
+            boolean stop = false;
+            if (!checked.contains(block)) {
+                BlockData data = block.getBlockData();
+                if (data instanceof Slab) {
+                    Slab slab = (Slab) data;
+                    double y = location.getY();
+                    BigDecimal decimal = BigDecimal.valueOf(y).subtract(BigDecimal.valueOf(Math.floor(y)));
 
-                boolean isLow = decimal.compareTo(new BigDecimal("0.5")) <= 0;
-                //System.out.printf("%s: %b%n", y, isLow); Debug lol
-                if (slab.getType().equals((isLow ? Slab.Type.TOP : Slab.Type.BOTTOM))) {
-                    isSolid = false;
-                    isAir = true;
-                }
-            }
-            if (blockType.name().contains("TRAPDOOR")) {
-                TrapDoor trapDoor = (TrapDoor) block.getBlockData();
-                if (!trapDoor.isOpen()) {
-                    isSolid = false;
-                    isAir = true;
-                }
-            } else {
-                if (blockType.name().contains("DOOR")) {
-                    Door door = (Door) block.getBlockData();
-                    if (door.isOpen()) {
+                    boolean isLow = decimal.compareTo(new BigDecimal("0.5")) < 0;
+                    if (slab.getType().equals((isLow ? Slab.Type.TOP : Slab.Type.BOTTOM))) {
                         isSolid = false;
                         isAir = true;
                     }
                 }
+                if (data instanceof Openable) {
+                    isSolid = false;
+                    isAir = true;
+                }
+
+                if (blockType.name().contains("PRESSURE") || blockType.name().contains("GLASS")) {
+                    isSolid = false;
+                    isAir = true;
+                }
+
+                if (blockFilter.contains(block.getLocation()) || blockTypeFilter.contains(blockType)) {
+                    isSolid = false;
+                    isAir = true;
+                    //We parse the block as air
+                }
+
+                if (!isAir) {
+                    blockResultBuilder.assign(block, currentPosition.get());
+                    RayTraceCollideEvent event = new RayTraceCollideEvent(null, block, currentPosition.get());
+                    Bukkit.getServer().getPluginManager().callEvent(event);
+                }
+                if (direction.hasHit(currentPosition.get())) {
+                    stop =
+                            (ArrayUtils.containsAny(options, TraceOption.STOP_ON_HIT, TraceOption.STOP_ON_BLOCK) && !isAir) ||
+                                    (ArrayUtils.containsAny(options, TraceOption.STOP_ON_SOLID_HIT, TraceOption.STOP_ON_SOLID_BLOCK) && isSolid);
+                }
             }
-            //TODO: Use switch cases or a list instead of if/else
-            //TODO: Fix pressure plates
 
-            if (blockFilter.contains(block.getLocation()) || blockTypeFilter.contains(blockType)) {
-                isSolid = false;
-                isAir = true;
-                //We parse the block as air
-            }
-
-            if (!isAir) blockResultBuilder.assign(block, currentPosition.get());
-
-            boolean stop =
-                    (ArrayUtils.containsAny(options, TraceOption.STOP_ON_HIT, TraceOption.STOP_ON_BLOCK) && !isAir) ||
-                            (ArrayUtils.containsAny(options, TraceOption.STOP_ON_SOLID_HIT, TraceOption.STOP_ON_SOLID_BLOCK) && isSolid);
-
+            if (blockType.name().endsWith("AIR")) checked.add(block);
             if (stop) {
                 preventExecution.set(true);
             } else {
                 if (isSolid) {
                     switch (currentPosition.get()) {
                         case HEAD:
-                            yOffset.set(yOffset.get() + 0.25);
+                            if (direction.equals(RayDirection.DOWN_TO_UP)) {
+                                yOffset.set(yOffset.get() + 0.25);
+                            } else {
+                                currentPosition.set(HitPosition.TORSO);
+                                yOffset.set(0.75);
+                            }
                             break;
                         case TORSO:
-                            currentPosition.set(HitPosition.HEAD);
-                            yOffset.set(1);
+                            if (direction.equals(RayDirection.DOWN_TO_UP)) {
+                                currentPosition.set(HitPosition.HEAD);
+                                yOffset.set(1);
+                            } else {
+                                currentPosition.set(HitPosition.FEET);
+                                yOffset.set(0.5);
+                            }
                             break;
                         case FEET:
                         default:
-                            currentPosition.set(HitPosition.TORSO);
-                            yOffset.set(0.75);
+                            if (direction.equals(RayDirection.DOWN_TO_UP)) {
+                                currentPosition.set(HitPosition.TORSO);
+                                yOffset.set(0.75);
+                            } else {
+                                yOffset.set(yOffset.get() - 0.25);
+                            }
                             break;
                     }
                 }
@@ -400,15 +457,38 @@ public class RayTrace implements PointRayTrace {
                 break;
             }
 
-            Chunk chunk = block.getChunk();
-            for (Entity entity : chunk.getEntities()) {
-                if (!entityFilter.contains(entity.getUniqueId()) && entityTypeFilter.contains(entity.getType())) {
-                    double distance = entity.getLocation().distance(location);
-                    if (distance <= precision) {
-                        if (ArrayUtils.containsAny(options, TraceOption.STOP_ON_ENTITY)) {
-                            entityResultBuilder.assign(entity, currentPosition.get());
+            Entity[] entities = locationChunk.get(index++);
+            for (Entity entity : entities) {
+                if (!entityFilter.contains(entity.getUniqueId()) && !entityTypeFilter.contains(entity.getType())) {
+                    NMSEntityReflection reflectedEntity = new NMSEntityReflection(entity);
+                    NMSAxisAlignedBBReflection bounding = reflectedEntity.getBoundingBox();
+
+                    Location entityLocation = entity.getLocation();
+                    double feeY = entityLocation.getY() + 0.25; //Legs center
+                    double midY = feeY + (entity.getHeight() / 2); //Torso
+                    double maxY = feeY + entity.getHeight() - 0.25; //Head center
+                    double locationY = location.getY();
+
+                    if (bounding.isWithinBoundingBox(location.getX(), locationY, location.getZ())) {
+                        entityFilter.add(entity.getUniqueId());
+                        double feetDiff = Math.abs(locationY - feeY);
+                        double torsoDiff = Math.abs(locationY - midY);
+                        double headDiff = Math.abs(locationY - maxY);
+
+                        boolean closestToFeet = feetDiff < torsoDiff && feetDiff < headDiff;
+                        boolean closestToTorso = torsoDiff < feetDiff && torsoDiff < headDiff;
+                        //boolean closestToHead = headDiff < feetDiff && headDiff < torsoDiff;
+
+                        HitPosition position = (closestToFeet ? HitPosition.FEET : (closestToTorso ? HitPosition.TORSO : HitPosition.HEAD));
+
+                        entityResultBuilder.assign(entity, position);
+                        RayTraceCollideEvent event = new RayTraceCollideEvent(entity, null, position);
+                        Bukkit.getServer().getPluginManager().callEvent(event);
+
+                        if (ArrayUtils.containsAny(options, TraceOption.STOP_ON_ENTITY, TraceOption.STOP_ON_SOLID_HIT)) {
                             preventExecution.set(true);
                         }
+                        break;
                     }
                 }
             }

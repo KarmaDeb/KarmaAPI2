@@ -1,5 +1,7 @@
 package es.karmadev.api.core.source.runtime;
 
+import java.io.File;
+import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Path;
@@ -19,6 +21,31 @@ public interface SourceRuntime {
      * @return the source file
      */
     Path getFile();
+
+    /**
+     * Get the file of the class
+     *
+     * @param clazz the class
+     * @return the class file
+     */
+    Path getFileFrom(final Class<?> clazz);
+
+    /**
+     * Get the source runtime classes
+     *
+     * @return the runtime classes
+     */
+    Collection<Class<?>> getClasses();
+
+    /**
+     * Return if the caller can execute the specified method
+     *
+     * @param caller the caller
+     * @param method the method to run
+     * @return if the caller can execute the specified
+     * method
+     */
+    boolean canExecute(final File caller, final Method method);
 
     /**
      * Get the class that is calling the current

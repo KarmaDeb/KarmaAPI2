@@ -3,6 +3,7 @@ package es.karmadev.api.logger.log.file;
 import es.karmadev.api.JavaVirtualMachine;
 import es.karmadev.api.MemoryUnit;
 import es.karmadev.api.core.ExceptionCollector;
+import es.karmadev.api.core.source.APISource;
 import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.file.util.PathUtilities;
 import es.karmadev.api.file.util.StreamUtils;
@@ -35,7 +36,7 @@ public class LogFile {
 
     private final LogHeader header = new LogHeader();
     private final LogQueue queue = new LogQueue();
-    private final KarmaSource source;
+    private final APISource source;
     private final AtomicBoolean writing = new AtomicBoolean(false);
 
     /**
@@ -43,7 +44,7 @@ public class LogFile {
      *
      * @param source the log file source
      */
-    public LogFile(final KarmaSource source) {
+    public LogFile(final APISource source) {
         this.source = source;
         header.add(new HeaderLine("# System information"));
         header.add(new HeaderLine(() -> "OS Name: " + JavaVirtualMachine.osName()));
@@ -79,9 +80,9 @@ public class LogFile {
         header.add(new HeaderLine(() -> "API Date: 27-03-2023 19:20:40"));
         header.add(new HeaderLine().lineBreak(false));
         header.add(new HeaderLine("# Source information"));
-        header.add(new HeaderLine(() -> "Name: " + source.getName()));
-        header.add(new HeaderLine(() -> "Version: " + source.getVersion()));
-        header.add(new HeaderLine(() -> "Description: " + source.getDescription()));
+        header.add(new HeaderLine(() -> "Name: " + source.name()));
+        header.add(new HeaderLine(() -> "Version: " + source.version()));
+        header.add(new HeaderLine(() -> "Description: " + source.description()));
 
         Path fl = logFile();
         rebuildHeader(fl);
@@ -158,10 +159,10 @@ public class LogFile {
         String month = zdt.getMonth().getDisplayName(TextStyle.FULL, Locale.getDefault()).toLowerCase();
         String year = String.valueOf(zdt.getYear());
 
-        Path schema = source.getWorkingDirectory().resolve("logs").resolve("year\\\\month\\\\day.md");
+        Path schema = source.workingDirectory().resolve("logs").resolve("year\\\\month\\\\day.md");
         PathUtilities.createPath(schema);
 
-        Path file = source.getWorkingDirectory().resolve("logs").resolve(year).resolve(month).resolve(day + ".md");
+        Path file = source.workingDirectory().resolve("logs").resolve(year).resolve(month).resolve(day + ".md");
         boolean create = !Files.exists(file);
         PathUtilities.createPath(file);
 
