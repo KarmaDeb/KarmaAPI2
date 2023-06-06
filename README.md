@@ -47,7 +47,7 @@ KarmaAPI2 is the new version of the KarmaAPI
 - [ ] Actionbar API
 - [ ] BossBar API
 - [ ] Legacy support
-- [X] ArmorStand trackers
+- [X] [ArmorStand trackers](https://github.com/KarmaDeb/KarmaAPI2/blob/master/KarmaAPI-Spigot/src/main/java/es/karmadev/api/spigot/tracker/stand/TrackerStand.java)
 - [ ] Inventory API
 
 ### BungeeCord API
