@@ -1,5 +1,6 @@
 package es.karmadev.api.core;
 
+import es.karmadev.api.core.source.APISource;
 import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.core.source.SourceManager;
 import es.karmadev.api.core.source.exception.AlreadyRegisteredException;
@@ -18,6 +19,7 @@ import es.karmadev.api.schedule.runner.async.AsyncTaskExecutor;
 import es.karmadev.api.schedule.runner.event.TaskEvent;
 import es.karmadev.api.security.LockedProperties;
 import es.karmadev.api.security.PermissionManager;
+import es.karmadev.api.security.permission.PermissionFactory;
 import es.karmadev.api.security.permission.PermissionNode;
 import es.karmadev.api.strings.StringUtils;
 import es.karmadev.api.strings.placeholder.PlaceholderEngine;
@@ -29,7 +31,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.net.URL;
 import java.util.Map;
@@ -66,20 +67,75 @@ public final class KarmaKore extends KarmaSource {
         engine.register(new SimplePlaceholder<>("date", KarmaAPI.COMPILE_DATE).asProtected());
 
         engines.put("default", engine);
-        modules.put("permissions", new PermissionManager() {
+        modules.put("permissions", new PermissionManager<PermissionNode<Object>, Object>() {
+            /**
+             * Get if the module is protected
+             *
+             * @return if this is a protected module
+             */
             @Override
-            public boolean register(final PermissionNode permission) {
+            public boolean isProtected() {
                 return false;
             }
 
+            /**
+             * Get the permission factory
+             *
+             * @return the safe permission factory
+             */
             @Override
-            public PermissionNode[] getByName(final String name) {
+            public PermissionFactory getFactory() {
+                return null;
+            }
+
+            @Override
+            public boolean register(final PermissionNode<Object> permission) {
+                return false;
+            }
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public PermissionNode<Object>[] getByName(final String name) {
                 return new PermissionNode[0];
             }
 
             @Override
-            public PermissionNode getByIndex(final int index) {
+            public PermissionNode<Object> getByIndex(final int index) {
                 return null;
+            }
+
+            /**
+             * Get if the holder has the specified permission
+             *
+             * @param o    the permission holder
+             * @param node the permission node
+             * @return if the holder has the permission
+             */
+            @Override
+            public boolean hasPermission(Object o, PermissionNode<Object> node) {
+                return false;
+            }
+
+            /**
+             * Grant a permission
+             *
+             * @param o    the permission holder
+             * @param node the permission node
+             */
+            @Override
+            public void grantPermission(Object o, PermissionNode<Object> node) {
+
+            }
+
+            /**
+             * Revoke a permission
+             *
+             * @param o    the permission holder
+             * @param node the permission node
+             */
+            @Override
+            public void revokePermission(Object o, PermissionNode<Object> node) {
+
             }
         });
     }
@@ -149,19 +205,29 @@ public final class KarmaKore extends KarmaSource {
      *
      * @return if the source was able to be initialized
      */
-    public static KarmaKore INSTANCE() {
+    public static APISource INSTANCE() {
         try {
-            return SourceManager.getProvider(KarmaKore.class);
-        } catch (UnknownProviderException ex) {
-            ExceptionCollector.catchException(KarmaSource.class, ex);
-            try {
-                KarmaKore kore = new KarmaKore();
-                kore.start();
+            APISource source = SourceManager.getPrincipal();
+            if (source == null) {
+                source = new KarmaKore();
+                ((KarmaKore) source).start();
 
-                return kore;
-            } catch (AlreadyRegisteredException ex2) {
-                ExceptionCollector.catchException(KarmaSource.class, ex2);
+                try {
+                    Class<SourceManager> manager = SourceManager.class;
+                    Field PRINCIPAL = manager.getDeclaredField("principal");
+                    PRINCIPAL.setAccessible(true);
+                    PRINCIPAL.set(manager, "KarmaSource");
+                    PRINCIPAL.setAccessible(false);
+                } catch (NoSuchFieldException | IllegalAccessException ex) {
+                    ExceptionCollector.catchException(KarmaKore.class, ex);
+                }
+
+                SourceManager.register(source);
             }
+
+            return source;
+        } catch (UnknownProviderException | AlreadyRegisteredException ex2) {
+            ExceptionCollector.catchException(KarmaKore.class, ex2);
         }
 
         return null;

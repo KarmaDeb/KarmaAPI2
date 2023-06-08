@@ -3,7 +3,7 @@ package es.karmadev.api.schedule.task.scheduler;
 import es.karmadev.api.JavaVirtualMachine;
 import es.karmadev.api.MemoryUnit;
 import es.karmadev.api.core.KarmaKore;
-import es.karmadev.api.core.source.KarmaSource;
+import es.karmadev.api.core.source.APISource;
 import es.karmadev.api.core.source.runtime.SourceRuntime;
 import es.karmadev.api.logger.SourceLogger;
 import es.karmadev.api.logger.log.console.LogLevel;
@@ -33,7 +33,7 @@ public class BalancedScheduler implements TaskScheduler {
     private final Semaphore globalSemaphore;
     private final Map<Class<?>, Semaphore> clazzSemaphores = new ConcurrentHashMap<>();
 
-    private final KarmaSource schedulerSource;
+    private final APISource schedulerSource;
     private final int QUEUE_CAPACITY;
 
     /**
@@ -58,7 +58,7 @@ public class BalancedScheduler implements TaskScheduler {
      * @param capacity the scheduler max capacity
      * @param source the scheduler source
      */
-    public BalancedScheduler(final int capacity, final KarmaSource source) {
+    public BalancedScheduler(final int capacity, final APISource source) {
         this(capacity, source, 10, 1);
     }
 
@@ -68,7 +68,7 @@ public class BalancedScheduler implements TaskScheduler {
      * @param capacity the scheduler max capacity
      * @param source the scheduler source
      */
-    public BalancedScheduler(final int capacity, final KarmaSource source, final int simultaneous) {
+    public BalancedScheduler(final int capacity, final APISource source, final int simultaneous) {
         this(capacity, source, simultaneous, 1);
     }
 
@@ -80,7 +80,7 @@ public class BalancedScheduler implements TaskScheduler {
      * @param simultaneous the amount of allowed simultaneous schedulers
      * @param perClass the amount fo allowed simultaneous schedulers for class
      */
-    public BalancedScheduler(final int capacity, final KarmaSource source, final int simultaneous, final int perClass) {
+    public BalancedScheduler(final int capacity, final APISource source, final int simultaneous, final int perClass) {
         QUEUE_CAPACITY = Math.max(1, capacity);
         this.schedulerSource = (source != null ? source : KarmaKore.INSTANCE());
         globalSemaphore = new Semaphore(Math.max(2, simultaneous));
@@ -213,7 +213,7 @@ public class BalancedScheduler implements TaskScheduler {
      * @return the scheduler source
      */
     @Override
-    public KarmaSource getSource() {
+    public APISource getSource() {
         return schedulerSource;
     }
 

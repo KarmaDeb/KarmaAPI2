@@ -2,6 +2,8 @@ package es.karmadev.api.core.config;
 
 import com.google.gson.*;
 import es.karmadev.api.core.KarmaKore;
+import es.karmadev.api.core.source.APISource;
+import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.file.util.PathUtilities;
 import es.karmadev.api.file.util.StreamUtils;
 import es.karmadev.api.logger.log.console.LogLevel;
@@ -20,7 +22,7 @@ import java.util.logging.Logger;
 public final class APIConfiguration {
 
     private final static Logger logger = Logger.getLogger("KarmaSource - Configuration");
-    private final static KarmaKore source = KarmaKore.INSTANCE();
+    private final static APISource source = KarmaKore.INSTANCE();
     private static JsonObject settings;
 
     /**

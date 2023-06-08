@@ -7,6 +7,8 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.core.KarmaKore;
+import es.karmadev.api.core.source.APISource;
+import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.file.serializer.SerializeCompressor;
 import es.karmadev.api.file.util.PathUtilities;
 import es.karmadev.api.object.ObjectUtils;
@@ -75,7 +77,7 @@ public class SerializedDictionary implements Serializable, Iterable<SerializedFi
      * @return the dictionary
      */
     public static Optional<SerializedDictionary> load(final String name) {
-        KarmaKore kore = KarmaKore.INSTANCE();
+        APISource kore = KarmaKore.INSTANCE();
         SerializedDictionary dictionary = null;
 
         if (kore != null) {

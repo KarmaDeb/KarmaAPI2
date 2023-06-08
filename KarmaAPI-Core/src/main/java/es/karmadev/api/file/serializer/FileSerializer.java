@@ -7,6 +7,8 @@ import com.google.gson.JsonObject;
 import es.karmadev.api.MemoryUnit;
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.core.KarmaKore;
+import es.karmadev.api.core.source.APISource;
+import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.file.serializer.serialized.SerializedDictionary;
 import es.karmadev.api.file.serializer.serialized.SerializedFile;
 import es.karmadev.api.file.util.PathUtilities;
@@ -86,13 +88,13 @@ public class FileSerializer {
      */
     public BiTaskCompletor<Path, Integer> serialize(final String name, final SerializeCompressor compressor) {
         BiTaskCompletor<Path, Integer> task = new BiLateTask<>();
-        KarmaKore kore = KarmaKore.INSTANCE();
+        APISource kore = KarmaKore.INSTANCE();
 
         if (kore != null) {
             Path destination = kore.workingDirectory().resolve("serializer").resolve("dictionary").resolve(name + ".sdc");
             PathUtilities.createPath(destination);
 
-            kore.createScheduler("async").schedule(() -> {
+            kore.scheduler("async").schedule(() -> {
                 try {
                     if (Files.isDirectory(file)) {
                         kore.logger().send(LogLevel.DEBUG, "Scanning directory. This might take a while");
@@ -229,7 +231,7 @@ public class FileSerializer {
      */
     private Collection<SerializedFile> serializeDirectory(final Path directory, final String path) {
         List<SerializedFile> serializedFiles = new ArrayList<>();
-        KarmaKore kore = KarmaKore.INSTANCE();
+        APISource kore = KarmaKore.INSTANCE();
         assert kore != null;
 
         try (Stream<Path> files = Files.list(directory)) {

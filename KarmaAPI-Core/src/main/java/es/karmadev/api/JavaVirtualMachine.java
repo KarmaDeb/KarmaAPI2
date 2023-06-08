@@ -287,7 +287,7 @@ public class JavaVirtualMachine {
      * @return the JVM version
      */
     public static Version jvmVersion() {
-        String versionString = runtimeBean.getVmVersion();
+        String versionString = runtimeBean.getSpecVersion();
         int mayor = 0;
         int minor = 0;
         int patch = 0;

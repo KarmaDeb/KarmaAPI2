@@ -11,4 +11,11 @@ public interface CoreModule {
      * @return the module name
      */
     String getName();
+
+    /**
+     * Get if the module is protected
+     *
+     * @return if this is a protected module
+     */
+    boolean isProtected();
 }

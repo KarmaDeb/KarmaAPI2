@@ -54,17 +54,70 @@
                                         <shadedPattern>es.karmadev.api.shaded.luben.zstd</shadedPattern>
                                     </relocation>
                                     <relocation>
-                                        <pattern>net.jpountz</pattern>
-                                        <shadedPattern>es.karmadev.api.shaded.jpountz</shadedPattern>
-                                    </relocation>
-                                    <relocation>
                                         <pattern>com.github.luben</pattern>
                                         <shadedPattern>es.karmadev.api.shaded.gluben.zstd</shadedPattern>
                                     </relocation>
+
+                                    <relocation>
+                                        <pattern>net.jpountz</pattern>
+                                        <shadedPattern>es.karmadev.api.shaded.jpountz</shadedPattern>
+                                    </relocation>
+
                                     <relocation>
                                         <pattern>com.github.fge</pattern>
                                         <shadedPattern>es.karmadev.api.shaded.fge</shadedPattern>
                                     </relocation>
+
+                                    <!-- json schema validator -->
+                                    <relocation>
+                                        <pattern>com.fasterxml.jackson</pattern>
+                                        <shadedPattern>es.karmadev.api.shaded.jackson</shadedPattern>
+                                    </relocation>
+                                    <relocation>
+                                        <pattern>com.google</pattern>
+                                        <shadedPattern>es.karmadev.api.shaded.google</shadedPattern>
+                                    </relocation>
+                                    <relocation>
+                                        <pattern>com.sun.mail</pattern>
+                                        <shadedPattern>es.karmadev.api.shaded.com.sun.mail</shadedPattern>
+                                    </relocation>
+                                    <relocation>
+                                        <pattern>javax.annotation</pattern>
+                                        <shadedPattern>es.karmadev.api.shaded.javax.annotation</shadedPattern>
+                                    </relocation>
+                                    <relocation>
+                                        <pattern>javax.mail</pattern>
+                                        <shadedPattern>es.karmadev.api.shaded.javax.mail</shadedPattern>
+                                    </relocation>
+                                    <relocation>
+                                        <pattern>joptsimple</pattern>
+                                        <shadedPattern>es.karmadev.api.shaded.joptsimple</shadedPattern>
+                                    </relocation>
+                                    <relocation>
+                                        <pattern>org.checkerframework</pattern>
+                                        <shadedPattern>es.karmadev.api.shaded.checkerframework</shadedPattern>
+                                    </relocation>
+                                    <relocation>
+                                        <pattern>org.joda</pattern>
+                                        <shadedPattern>es.karmadev.api.shaded.joda</shadedPattern>
+                                    </relocation>
+                                    <relocation>
+                                        <pattern>org.mozilla</pattern>
+                                        <shadedPattern>es.karmadev.api.shaded.mozilla</shadedPattern>
+                                    </relocation>
+
+                                    <relocation>
+                                        <pattern>org.yaml.snakeyaml</pattern>
+                                        <shadedPattern>es.karmadev.api.shaded.snakeyaml</shadedPattern>
+                                    </relocation>
+
+                                    <!--
+                                    <relocation>
+                                        <pattern>org.burningwave</pattern>
+                                        <shadedPattern>es.karmadev.api.shaded.burningwave</shadedPattern>
+                                    </relocation>
+                                    -->
+
                                     <relocation>
                                         <pattern>com.github.yeetmanlord.reflection_api</pattern>
                                         <shadedPattern>es.karmadev.api.shaded.yeetmanlord.reflection</shadedPattern>
@@ -105,6 +158,20 @@
                 <scope>provided</scope>
             </dependency>
 
+            <dependency>
+                <groupId>org.burningwave</groupId>
+                <artifactId>core</artifactId>
+                <version>12.39.6</version>
+                <scope>provided</scope>
+            </dependency>
+            <!-- https://mvnrepository.com/artifact/io.github.toolfactory/jvm-driver -->
+            <dependency>
+                <groupId>io.github.toolfactory</groupId>
+                <artifactId>jvm-driver</artifactId>
+                <version>8.7.5</version>
+                <scope>provided</scope>
+            </dependency>
+
             <!-- Lombok/Annotation processors -->
             <dependency>
                 <groupId>org.projectlombok</groupId>
@@ -124,25 +191,25 @@
                 <groupId>com.google.code.gson</groupId>
                 <artifactId>gson</artifactId>
                 <version>2.10.1</version>
-                <scope>provided</scope>
+                <scope>compile</scope>
             </dependency>
             <dependency>
                 <groupId>com.github.java-json-tools</groupId>
                 <artifactId>json-schema-validator</artifactId>
                 <version>2.2.14</version>
-                <scope>compile</scope>
+                <scope>provided</scope>
             </dependency>
             <dependency>
                 <groupId>com.github.luben</groupId>
                 <artifactId>zstd-jni</artifactId>
                 <version>1.4.8-2</version>
-                <scope>compile</scope>
+                <scope>provided</scope>
             </dependency>
             <dependency>
                 <groupId>org.lz4</groupId>
                 <artifactId>lz4-java</artifactId>
                 <version>1.8.0</version>
-                <scope>compile</scope>
+                <scope>provided</scope>
             </dependency>
 
             <!-- Internals -->
@@ -157,13 +224,6 @@
                 <artifactId>spigot-api</artifactId>
                 <version>1.19.4-R0.1-SNAPSHOT</version>
                 <scope>provided</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>com.github.YeetManLord</groupId>
-                <artifactId>ReflectionAPI</artifactId>
-                <version>1.0.5</version>
-                <scope>compile</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>

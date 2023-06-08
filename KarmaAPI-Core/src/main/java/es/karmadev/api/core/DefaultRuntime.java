@@ -1,5 +1,6 @@
 package es.karmadev.api.core;
 
+import es.karmadev.api.core.source.APISource;
 import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.core.source.runtime.SourceRuntime;
 import org.jetbrains.annotations.NotNull;
@@ -36,7 +37,7 @@ public final class DefaultRuntime implements SourceRuntime {
      * @param source the source owning this runtime
      * @throws IllegalStateException if the runtime fails to initialize
      */
-    public DefaultRuntime(final KarmaSource source) throws IllegalStateException {
+    public DefaultRuntime(final APISource source) throws IllegalStateException {
         URL location = getURL(source);
 
         try {
@@ -52,7 +53,7 @@ public final class DefaultRuntime implements SourceRuntime {
     }
 
     @NotNull
-    private static URL getURL(final KarmaSource source) {
+    private static URL getURL(final APISource source) {
         Class<?> clazz = source.getClass();
         ProtectionDomain domain = clazz.getProtectionDomain();
         if (domain == null) throw new IllegalStateException("Cannot initialize source runtime because the protected domain is null");

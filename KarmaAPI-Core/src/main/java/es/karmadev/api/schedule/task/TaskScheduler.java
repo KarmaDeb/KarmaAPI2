@@ -1,5 +1,6 @@
 package es.karmadev.api.schedule.task;
 
+import es.karmadev.api.core.source.APISource;
 import es.karmadev.api.core.source.KarmaSource;
 import org.jetbrains.annotations.Nullable;
 
@@ -30,7 +31,7 @@ public interface TaskScheduler {
      *
      * @return the scheduler source
      */
-    KarmaSource getSource();
+    APISource getSource();
 
     /**
      * Get the task scheduler size

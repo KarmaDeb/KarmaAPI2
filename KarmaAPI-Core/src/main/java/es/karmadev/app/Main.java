@@ -1,15 +1,19 @@
 package es.karmadev.app;
 
+import es.karmadev.api.core.KarmaAPI;
 import es.karmadev.api.file.serializer.FileSerializer;
 import es.karmadev.api.file.serializer.SerializeCompressor;
 import es.karmadev.api.object.ObjectUtils;
 
+import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class Main {
 
-    public static void main(final String[] args) {
+    public static void main(final String[] args) throws URISyntaxException {
+        KarmaAPI.setup();
+
         if (args.length == 0) {
             System.out.println("Please specify a serialize directory");
             return;

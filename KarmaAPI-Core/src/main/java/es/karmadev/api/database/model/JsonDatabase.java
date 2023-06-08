@@ -2,11 +2,14 @@ package es.karmadev.api.database.model;
 
 import es.karmadev.api.core.KarmaAPI;
 import es.karmadev.api.core.KarmaKore;
+import es.karmadev.api.core.source.APISource;
+import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.core.source.runtime.SourceRuntime;
 import es.karmadev.api.database.DatabaseEngine;
 import es.karmadev.api.database.model.json.JsonConnection;
 import es.karmadev.api.logger.log.console.LogLevel;
 
+import java.io.File;
 import java.nio.file.Path;
 
 /**
@@ -24,7 +27,7 @@ public final class JsonDatabase implements DatabaseEngine {
      * out of the API
      */
     public JsonDatabase() throws IllegalStateException, SecurityException {
-        KarmaKore kore = KarmaKore.INSTANCE();
+        APISource kore = KarmaKore.INSTANCE();
         if (kore == null) throw new IllegalStateException("Cannot create a json database without main kore");
 
         SourceRuntime runtime = kore.runtime();
@@ -82,10 +85,19 @@ public final class JsonDatabase implements DatabaseEngine {
      */
     @Override
     public JsonConnection grabConnection(final String name) {
-        KarmaKore source = KarmaKore.INSTANCE();
+        APISource source = KarmaKore.INSTANCE();
         if (source == null) throw new IllegalStateException("Cannot grab a json connection without the main kore");
 
-        Path file = source.workingDirectory().resolve("databases").resolve(name + ".json");
+        Path file = source.workingDirectory().resolve("databases");
+        if (name.contains(File.pathSeparator)) {
+            String[] data = name.split(File.pathSeparator);
+            for (String str : data) {
+                file = file.resolve(str);
+            }
+        } else {
+            file = file.resolve(name + ".json");
+        }
+
         return new JsonConnection(file, null, null);
     }
 }

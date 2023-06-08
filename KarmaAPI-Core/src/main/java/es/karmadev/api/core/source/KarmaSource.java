@@ -2,6 +2,7 @@ package es.karmadev.api.core.source;
 
 import es.karmadev.api.core.DefaultRuntime;
 import es.karmadev.api.core.ExceptionCollector;
+import es.karmadev.api.core.source.exception.AlreadyRegisteredException;
 import es.karmadev.api.core.source.runtime.SourceRuntime;
 import es.karmadev.api.file.util.NamedStream;
 import es.karmadev.api.file.util.PathUtilities;
@@ -11,6 +12,7 @@ import es.karmadev.api.logger.log.UnboundedLogger;
 import es.karmadev.api.object.ObjectUtils;
 import es.karmadev.api.schedule.task.TaskScheduler;
 import es.karmadev.api.schedule.task.scheduler.BalancedScheduler;
+import es.karmadev.api.security.PermissionManager;
 import es.karmadev.api.strings.StringFilter;
 import es.karmadev.api.version.Version;
 import org.jetbrains.annotations.NotNull;

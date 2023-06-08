@@ -2,6 +2,8 @@ package es.karmadev.api.strings;
 
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.core.KarmaKore;
+import es.karmadev.api.core.source.APISource;
+import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.strings.placeholder.PlaceholderEngine;
 import org.jetbrains.annotations.Nullable;
 
@@ -265,7 +267,7 @@ public class StringUtils {
             str = str.replace("{" + i + "}", String.valueOf(replaces[i]));
         }
 
-        KarmaKore kore = KarmaKore.INSTANCE();
+        APISource kore = KarmaKore.INSTANCE();
         if (kore != null) {
             PlaceholderEngine engine = kore.placeholderEngine("default");
             str = engine.parse(str);
@@ -307,7 +309,7 @@ public class StringUtils {
             str = str.replace("{" + entry.getKey() + "}", String.valueOf(entry.getValue()));
         }
 
-        KarmaKore kore = KarmaKore.INSTANCE();
+        APISource kore = KarmaKore.INSTANCE();
         if (kore != null) {
             PlaceholderEngine engine = kore.placeholderEngine("default");
             str = engine.parse(str);

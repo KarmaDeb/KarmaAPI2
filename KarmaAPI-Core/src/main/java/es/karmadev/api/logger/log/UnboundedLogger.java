@@ -1,7 +1,6 @@
 package es.karmadev.api.logger.log;
 
 import es.karmadev.api.core.source.APISource;
-import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.logger.LogManager;
 import es.karmadev.api.logger.SourceLogger;
 import es.karmadev.api.logger.log.console.ConsoleColor;

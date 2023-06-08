@@ -245,11 +245,11 @@ public class URLUtilities {
      */
     public static String get(final URL url, final HeadEntry... entries) {
         if (url == null) return "";
-        APIConfiguration configuration = new APIConfiguration();
+        //APIConfiguration configuration = new APIConfiguration();
 
         try (URLConnectionWrapper wrapper = URLConnectionWrapper.fromURL(url)) {
             wrapper.setUserAgent(KarmaAPI.USER_AGENT.get());
-            wrapper.setConnectTimeout(configuration.requestTimeout());
+            //wrapper.setConnectTimeout(configuration.requestTimeout());
             wrapper.setInstanceFollowRedirects(true);
             wrapper.setRequestMethod("GET");
             wrapper.setUseCaches(false);
@@ -287,5 +287,49 @@ public class URLUtilities {
             ExceptionCollector.catchException(URLUtilities.class, ex);
             return "";
         }
+    }
+
+    /**
+     * Download a resource
+     *
+     * @param url the url to download from
+     * @param entries the request head entries
+     * @return the resource
+     */
+    public static InputStream download(final URL url, final HeadEntry... entries) {
+        return download("GET", url, entries);
+    }
+
+    /**
+     * Download a resource
+     *
+     * @param method the request method
+     * @param url the url to download from
+     * @param entries the request head entries
+     * @return the resource
+     */
+    public static InputStream download(final String method, final URL url, final HeadEntry... entries) {
+        if (url == null) return null;
+        //APIConfiguration configuration = new APIConfiguration();
+
+        try (URLConnectionWrapper wrapper = URLConnectionWrapper.fromURL(url)) {
+            wrapper.setUserAgent(KarmaAPI.USER_AGENT.get());
+            //wrapper.setConnectTimeout(configuration.requestTimeout());
+            wrapper.setInstanceFollowRedirects(true);
+            wrapper.setRequestMethod(method.toUpperCase());
+            wrapper.setUseCaches(false);
+
+            wrapper.setDoInput(true);
+
+            for (HeadEntry entry : entries) {
+                wrapper.setRequestProperty(entry.getKey(), String.valueOf(entry.getValue()));
+            }
+
+            return wrapper.getInputStream();
+        } catch (IOException ex) {
+            ExceptionCollector.catchException(URLUtilities.class, ex);
+        }
+
+        return null;
     }
 }

@@ -2,6 +2,8 @@ package es.karmadev.api.security;
 
 import es.karmadev.api.core.KarmaAPI;
 import es.karmadev.api.core.KarmaKore;
+import es.karmadev.api.core.source.APISource;
+import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.core.source.runtime.SourceRuntime;
 import es.karmadev.api.logger.log.console.LogLevel;
 import org.jetbrains.annotations.Nullable;
@@ -1109,7 +1111,7 @@ public class LockedProperties extends Properties {
      * is not the protected key writer
      */
     public void setProtected(final String key, final String value) throws SecurityException {
-        KarmaKore kore = KarmaKore.INSTANCE();
+        APISource kore = KarmaKore.INSTANCE();
         if (kore == null) {
             setProperty(key, value);
             return;
@@ -1152,7 +1154,7 @@ public class LockedProperties extends Properties {
      * @throws IllegalStateException if something goes wrong
      */
     public void makeFree(final String key) throws SecurityException, IllegalStateException {
-        KarmaKore kore = KarmaKore.INSTANCE();
+        APISource kore = KarmaKore.INSTANCE();
         if (kore == null) {
             throw new IllegalStateException("Cannot make free a property because kore API is not available");
         }
@@ -1189,7 +1191,7 @@ public class LockedProperties extends Properties {
      * @return if the writer has access
      */
     private boolean hasAccess(final String key) {
-        KarmaKore kore = KarmaKore.INSTANCE();
+        APISource kore = KarmaKore.INSTANCE();
         if (kore == null) {
             return true;
         }

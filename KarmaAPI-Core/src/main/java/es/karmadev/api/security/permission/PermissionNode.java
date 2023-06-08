@@ -5,7 +5,7 @@ import java.util.Map;
 /**
  * KarmaAPI permission node
  */
-public interface PermissionNode {
+public interface PermissionNode<THolder> {
 
     /**
      * Get the permission index

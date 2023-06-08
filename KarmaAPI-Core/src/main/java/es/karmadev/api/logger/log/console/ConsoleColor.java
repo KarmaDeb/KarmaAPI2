@@ -2,7 +2,6 @@ package es.karmadev.api.logger.log.console;
 
 import es.karmadev.api.core.KarmaKore;
 import es.karmadev.api.strings.placeholder.PlaceholderEngine;
-import es.karmadev.api.strings.placeholder.engine.SimpleEngine;
 import lombok.Getter;
 
 import java.util.*;
