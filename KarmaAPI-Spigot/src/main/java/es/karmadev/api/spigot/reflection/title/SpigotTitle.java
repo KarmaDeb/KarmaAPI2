@@ -22,6 +22,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * Spigot title utilities
+ */
+@SuppressWarnings("unused")
 public class SpigotTitle implements SpigotPacket {
 
     private UUID target;
@@ -31,7 +35,7 @@ public class SpigotTitle implements SpigotPacket {
 
     private final static Map<UUID, SpigotTitle> titles = new ConcurrentHashMap<>();
 
-    private SignalHandler handler = new SignalHandler() {
+    private final SignalHandler handler = new SignalHandler() {
         @Override
         public void signal(final SignalParameter... parameters) {
             if (sendTick > 0 && target != null) {
@@ -98,7 +102,8 @@ public class SpigotTitle implements SpigotPacket {
      *                hide
      */
     public void send(final Player player, final int fadeIn, final int showIn, final int fadeOut) {
-        if (player == null && player.isOnline()) return;
+        KarmaPlugin plugin = (KarmaPlugin) KarmaKore.INSTANCE();
+        if (plugin == null || player == null || !player.isOnline()) return;
 
         SpigotTitle instance = titles.computeIfAbsent(player.getUniqueId(), (title) -> this);
         //We want a single instance per player
@@ -184,7 +189,7 @@ public class SpigotTitle implements SpigotPacket {
                     Object chatSubtitle = tmpChatSubtitle;
                     Object subtitlePacket = null;
                     try {
-                        subtitlePacket = titleConstructor.newInstance(subtitleObject, chatTitle, 20 * fadeIn, 20 * showIn, 20 * fadeOut);
+                        subtitlePacket = titleConstructor.newInstance(subtitleObject, chatSubtitle, 20 * fadeIn, 20 * showIn, 20 * fadeOut);
                     } catch (InvocationTargetException | InstantiationException | IllegalAccessException ignored) {}
                     if (subtitlePacket == null) return;
 
@@ -200,8 +205,6 @@ public class SpigotTitle implements SpigotPacket {
         this.fadeIn = fadeIn * 20;
         this.sendTick = showIn * 20;
         this.fadeOut = fadeOut * 20;
-
-        KarmaPlugin plugin = (KarmaPlugin) KarmaKore.INSTANCE();
 
         AtomicReference<BukkitTask> task = new AtomicReference<>();
         AtomicInteger lastTick = new AtomicInteger(sendTick);

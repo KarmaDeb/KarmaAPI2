@@ -9,11 +9,12 @@ import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
+/**
+ * KarmaAPI json connection
+ */
+@SuppressWarnings("unused")
 public class JsonConnection implements DatabaseConnection {
 
     private final Path file;
@@ -79,6 +80,31 @@ public class JsonConnection implements DatabaseConnection {
     }
 
     /**
+     * Get if the database has the specified table
+     *
+     * @param name the table name
+     * @return if the database has the table
+     */
+    public boolean hasTable(final String name) {
+        return database.has(name);
+    }
+
+    /**
+     * Remove the table
+     *
+     * @param name the table name
+     */
+    public void removeTable(final String name) {
+        if (database.has(table)) {
+            JsonElement element = database.get(name);
+            if (element.isJsonObject()) database.remove(name);
+
+            JsonObject typesObject = database.getAsJsonObject("types");
+            typesObject.remove(name);
+        }
+    }
+
+    /**
      * Create a table
      *
      * @param name the table name
@@ -90,12 +116,22 @@ public class JsonConnection implements DatabaseConnection {
         if (database.has(name)) {
             JsonElement element = database.get(name);
             if (!element.isJsonObject()) throw new UnsupportedOperationException("Cannot create a table " + name + " because another field with that name already exists");
+
+            JsonObject typesObject = database.getAsJsonObject("types");
+            if (typesObject.has(name)) {
+                String type = typesObject.get(name).getAsString();
+                if (!type.equals("table")) throw new UnsupportedOperationException("Cannot create a table " + name + " because another field with that name already exists");
+            }
+
             child = element.getAsJsonObject();
         }
 
         database.add(name, child);
         JsonConnection connection = new JsonConnection(file, this, name);
         connection.database = child;
+
+        JsonObject typesObject = database.getAsJsonObject("types");
+        typesObject.addProperty(name, "table");
 
         return connection;
     }
@@ -141,11 +177,44 @@ public class JsonConnection implements DatabaseConnection {
             JsonConnection connection = new JsonConnection(file, this, name);
             connection.database = child;
 
+            JsonObject typesObject = this.database.getAsJsonObject("types");
+            typesObject.addProperty(name, "table");
+
             connections.add(connection);
         }
         this.database.add(database, array);
 
         return connections;
+    }
+
+    /**
+     * Set a value
+     *
+     * @param key the value key
+     * @param value the value
+     * @throws UnsupportedOperationException if the field is already occupied by another non-primitive
+     * object
+     */
+    public void set(final String key, final Map<String, Object> value) throws UnsupportedOperationException {
+        if (database.has(key)) {
+            JsonElement element = database.get(key);
+            if (!element.isJsonObject()) throw new UnsupportedOperationException("Cannot redefine field " + key + " because existing type doesn't match new type");
+        }
+
+        if (value != null) {
+            Gson gson = new GsonBuilder().create();
+            JsonElement element = gson.toJsonTree(value);
+
+            database.add(key, element);
+
+            JsonObject typesObject = database.getAsJsonObject("types");
+            typesObject.addProperty(key, "map");
+        } else {
+            database.remove(key);
+
+            JsonObject typesObject = database.getAsJsonObject("types");
+            typesObject.remove(key);
+        }
     }
 
     /**
@@ -164,7 +233,16 @@ public class JsonConnection implements DatabaseConnection {
             if (!primitive.isString()) throw new UnsupportedOperationException("Cannot set string to non-string field!");
         }
 
-        database.addProperty(key, value);
+        if (value != null) {
+            database.addProperty(key, value);
+
+            JsonObject typesObject = database.getAsJsonObject("types");
+            typesObject.addProperty(key, "string");
+        } else {
+            database.remove(key);
+            JsonObject typesObject = database.getAsJsonObject("types");
+            typesObject.remove(key);
+        }
     }
 
     /**
@@ -183,7 +261,17 @@ public class JsonConnection implements DatabaseConnection {
             if (!primitive.isNumber()) throw new UnsupportedOperationException("Cannot set number to non-number field!");
         }
 
-        database.addProperty(key, value);
+        if (value != null) {
+            database.addProperty(key, value);
+
+            JsonObject typesObject = database.getAsJsonObject("types");
+            typesObject.addProperty(key, "number");
+        } else {
+            database.remove(key);
+
+            JsonObject typesObject = database.getAsJsonObject("types");
+            typesObject.remove(key);
+        }
     }
 
     /**
@@ -193,7 +281,7 @@ public class JsonConnection implements DatabaseConnection {
      * @param value the value
      * @throws UnsupportedOperationException if the field is already occupied by another non-primitive object
      */
-    public void set(final String key, final boolean value) throws UnsupportedOperationException {
+    public void set(final String key, final Boolean value) throws UnsupportedOperationException {
         if (database.has(key)) {
             JsonElement element = database.get(key);
             if (!element.isJsonPrimitive()) throw new UnsupportedOperationException("Cannot redefine field " + key + " because existing type doesn't match new type");
@@ -202,7 +290,17 @@ public class JsonConnection implements DatabaseConnection {
             if (!primitive.isBoolean()) throw new UnsupportedOperationException("Cannot set boolean to non-boolean field!");
         }
 
-        database.addProperty(key, value);
+        if (value != null) {
+            database.addProperty(key, value);
+
+            JsonObject typesObject = database.getAsJsonObject("types");
+            typesObject.addProperty(key, "boolean");
+        } else {
+            database.remove(key);
+
+            JsonObject typesObject = database.getAsJsonObject("types");
+            typesObject.remove(key);
+        }
     }
 
     /**
@@ -230,8 +328,18 @@ public class JsonConnection implements DatabaseConnection {
             if (!primitive.isString()) throw new UnsupportedOperationException("Cannot add string to non-string list!");
         }
 
-        for (String s : value) array.add(s);
-        database.add(key, array);
+        if (value != null) {
+            for (String s : value) array.add(s);
+            database.add(key, array);
+
+            JsonObject typesObject = database.getAsJsonObject("types");
+            typesObject.addProperty(key, "stringList");
+        } else {
+            database.remove(key);
+
+            JsonObject typesObject = database.getAsJsonObject("types");
+            typesObject.remove(key);
+        }
     }
 
     /**
@@ -259,8 +367,18 @@ public class JsonConnection implements DatabaseConnection {
             if (!primitive.isNumber()) throw new UnsupportedOperationException("Cannot add number to non-number list!");
         }
 
-        for (Number n : value) array.add(n);
-        database.add(key, array);
+        if (value != null) {
+            for (Number n : value) array.add(n);
+            database.add(key, array);
+
+            JsonObject typesObject = database.getAsJsonObject("types");
+            typesObject.addProperty(key, "numberList");
+        } else {
+            database.remove(key);
+
+            JsonObject typesObject = database.getAsJsonObject("types");
+            typesObject.remove(key);
+        }
     }
 
     /**
@@ -288,8 +406,18 @@ public class JsonConnection implements DatabaseConnection {
             if (!primitive.isBoolean()) throw new UnsupportedOperationException("Cannot add boolean to non-boolean list!");
         }
 
-        for (boolean b : value) array.add(b);
-        database.add(key, array);
+        if (value != null) {
+            for (boolean b : value) array.add(b);
+            database.add(key, array);
+
+            JsonObject typesObject = database.getAsJsonObject("types");
+            typesObject.addProperty(key, "booleanList");
+        } else {
+            database.remove(key);
+
+            JsonObject typesObject = database.getAsJsonObject("types");
+            typesObject.remove(key);
+        }
     }
 
     /**
@@ -437,6 +565,31 @@ public class JsonConnection implements DatabaseConnection {
         }
 
         return tables;
+    }
+
+    /**
+     * Get the type of the field key
+     *
+     * @param key the key
+     * @return the key type
+     */
+    public String getType(final String key) {
+        JsonObject typesObject = database.getAsJsonObject("types");
+        if (typesObject.has(key)) {
+            return typesObject.get(key).getAsString();
+        }
+
+        return "null";
+    }
+
+    /**
+     * Get all the database keys
+     *
+     * @return the database keys
+     */
+    public Set<String> getKeys() {
+        JsonObject typesObject = database.getAsJsonObject("types");
+        return typesObject.keySet();
     }
 
     /**
