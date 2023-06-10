@@ -1,4 +1,4 @@
-package es.karmadev.api.spigot.reflection.hologram.line.touch;
+package es.karmadev.api.spigot.reflection.hologram.line.handler;
 
 import es.karmadev.api.spigot.reflection.hologram.line.HologramLine;
 import org.bukkit.entity.Player;

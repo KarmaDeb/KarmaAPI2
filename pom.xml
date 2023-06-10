@@ -11,6 +11,7 @@
     <modules>
         <module>KarmaAPI-Core</module>
         <module>KarmaAPI-Spigot</module>
+        <module>KarmaAPIHologram</module>
     </modules>
 
     <properties>

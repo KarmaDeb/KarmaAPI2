@@ -1,6 +1,6 @@
 package es.karmadev.api.spigot.reflection.hologram.line;
 
-import es.karmadev.api.spigot.reflection.hologram.line.touch.TouchHandler;
+import es.karmadev.api.spigot.reflection.hologram.line.handler.TouchHandler;
 
 /**
  * Touchable hologram line
