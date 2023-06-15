@@ -1,14 +1,14 @@
-package es.karmadev.api.spigot.v1_8_R1.hologram.entity;
+package es.karmadev.api.spigot.v1_8_R3.hologram.entity;
 
 import es.karmadev.api.spigot.nms.common.hologram.util.ReflectionUtils;
 import es.karmadev.api.spigot.reflection.hologram.line.HologramLine;
 import es.karmadev.api.spigot.reflection.hologram.nms.entity.MinecraftArmorStand;
-import es.karmadev.api.spigot.v1_8_R1.hologram.entity.craft.CraftHologramStand;
-import es.karmadev.api.spigot.v1_8_R1.hologram.entity.util.NullBoundingBox;
-import net.minecraft.server.v1_8_R1.*;
+import es.karmadev.api.spigot.v1_8_R3.hologram.entity.craft.CraftHologramStand;
+import es.karmadev.api.spigot.v1_8_R3.hologram.entity.util.NullBoundingBox;
+import net.minecraft.server.v1_8_R3.*;
 import org.bukkit.World;
-import org.bukkit.craftbukkit.v1_8_R1.CraftWorld;
-import org.bukkit.craftbukkit.v1_8_R1.entity.CraftEntity;
+import org.bukkit.craftbukkit.v1_8_R3.CraftWorld;
+import org.bukkit.craftbukkit.v1_8_R3.entity.CraftEntity;
 import org.bukkit.entity.Entity;
 
 public final class HologramArmorStand extends EntityArmorStand implements MinecraftArmorStand {
@@ -36,47 +36,36 @@ public final class HologramArmorStand extends EntityArmorStand implements Minecr
         super.a(NullBoundingBox.INSTANCE);
     }
 
-    @Override
     public void b(NBTTagCompound nbttagcompound) {}
 
-    @Override
     public boolean c(NBTTagCompound nbttagcompound) {
         return false;
     }
 
-    @Override
     public boolean d(NBTTagCompound nbttagcompound) {
         return false;
     }
 
-    @Override
     public void e(NBTTagCompound nbttagcompound) {}
 
-    @Override
     public boolean isInvulnerable(DamageSource source) {
         return true;
     }
 
-    @Override
     public void setCustomName(String customName) {}
 
-    @Override
     public void setCustomNameVisible(boolean visible) {}
 
-    @Override
     public boolean a(EntityHuman human, Vec3D vec3d) {
         return true;
     }
 
-    @Override
     public boolean d(int i, ItemStack item) {
         return false;
     }
 
-    @Override
     public void setEquipment(int i, ItemStack item) {}
 
-    @Override
     public void a(AxisAlignedBB boundingBox) {}
 
     @Override
@@ -92,9 +81,9 @@ public final class HologramArmorStand extends EntityArmorStand implements Minecr
     }
 
     @Override
-    public void s_() {
+    public void t_() {
         if (!this.lockTick)
-            super.s_();
+            super.t_();
     }
 
     @Override

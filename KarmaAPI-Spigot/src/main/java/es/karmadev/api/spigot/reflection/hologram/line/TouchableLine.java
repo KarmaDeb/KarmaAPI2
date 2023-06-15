@@ -13,7 +13,7 @@ public interface TouchableLine extends Iterable<TouchHandler> {
      *
      * @param handler the touch handler
      */
-    void attTouchHandler(final TouchHandler handler);
+    void addTouchHandler(final TouchHandler handler);
 
     /**
      * Remove a touch handler from the line

@@ -1,4 +1,4 @@
-package es.karmadev.api.spigot.v1_8_R1.hologram.entity;
+package es.karmadev.api.spigot.v1_8_R2.hologram.entity;
 
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.spigot.nms.common.hologram.util.ReflectionUtils;
@@ -6,12 +6,12 @@ import es.karmadev.api.spigot.reflection.hologram.line.HologramLine;
 import es.karmadev.api.spigot.reflection.hologram.line.type.ItemHolderLine;
 import es.karmadev.api.spigot.reflection.hologram.nms.MinecraftEntity;
 import es.karmadev.api.spigot.reflection.hologram.nms.entity.MinecraftItem;
-import es.karmadev.api.spigot.v1_8_R1.hologram.entity.craft.CraftHologramItem;
-import net.minecraft.server.v1_8_R1.*;
+import es.karmadev.api.spigot.v1_8_R2.hologram.entity.craft.CraftHologramItem;
+import net.minecraft.server.v1_8_R2.*;
 import org.bukkit.World;
-import org.bukkit.craftbukkit.v1_8_R1.CraftWorld;
-import org.bukkit.craftbukkit.v1_8_R1.entity.CraftEntity;
-import org.bukkit.craftbukkit.v1_8_R1.inventory.CraftItemStack;
+import org.bukkit.craftbukkit.v1_8_R2.CraftWorld;
+import org.bukkit.craftbukkit.v1_8_R2.entity.CraftEntity;
+import org.bukkit.craftbukkit.v1_8_R2.inventory.CraftItemStack;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -27,10 +27,10 @@ public class HologramItem extends EntityItem implements MinecraftItem {
     }
 
     @Override
-    public void s_() {
+    public void t_() {
         this.ticksLived = 0;
         if (!this.lockTick)
-            super.s_();
+            super.t_();
     }
 
     @Override
@@ -38,27 +38,22 @@ public class HologramItem extends EntityItem implements MinecraftItem {
         if (human.locY < this.locY - 1.5D || human.locY > this.locY + 1.0D)
             return;
 
-        if (line.getPickupHandler() != null && human instanceof net.minecraft.server.v1_8_R1.EntityPlayer)
+        if (line.getPickupHandler() != null && human instanceof net.minecraft.server.v1_8_R2.EntityPlayer)
             line.getPickupHandler().onPickup((Player) human);
     }
 
-    @Override
     public void b(NBTTagCompound nbttagcompound) {}
 
-    @Override
     public boolean c(NBTTagCompound nbttagcompound) {
         return false;
     }
 
-    @Override
     public boolean d(NBTTagCompound nbttagcompound) {
         return false;
     }
 
-    @Override
     public void e(NBTTagCompound nbttagcompound) {}
 
-    @Override
     public boolean isInvulnerable(DamageSource source) {
         return true;
     }
@@ -153,8 +148,8 @@ public class HologramItem extends EntityItem implements MinecraftItem {
      */
     @Override
     public void mount(final MinecraftEntity base) {
-        if (!(base instanceof net.minecraft.server.v1_8_R1.Entity)) return;
-        net.minecraft.server.v1_8_R1.Entity entity = (net.minecraft.server.v1_8_R1.Entity) base;
+        if (!(base instanceof net.minecraft.server.v1_8_R2.Entity)) return;
+        net.minecraft.server.v1_8_R2.Entity entity = (net.minecraft.server.v1_8_R2.Entity) base;
 
         try {
             ReflectionUtils.setPrivateField(Entity.class, this, "ap", 0.0D);
@@ -177,9 +172,9 @@ public class HologramItem extends EntityItem implements MinecraftItem {
      */
     @Override
     public void setStack(final ItemStack stack) {
-        net.minecraft.server.v1_8_R1.ItemStack nmsItem = CraftItemStack.asNMSCopy(stack);
+        net.minecraft.server.v1_8_R2.ItemStack nmsItem = CraftItemStack.asNMSCopy(stack);
         if (nmsItem == null)
-            nmsItem = new net.minecraft.server.v1_8_R1.ItemStack(Blocks.BEDROCK);
+            nmsItem = new net.minecraft.server.v1_8_R2.ItemStack(Blocks.BEDROCK);
 
         if (nmsItem.getTag() == null)
             nmsItem.setTag(new NBTTagCompound());

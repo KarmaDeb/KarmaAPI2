@@ -1,17 +1,17 @@
-package es.karmadev.api.spigot.v1_8_R1.hologram.entity;
+package es.karmadev.api.spigot.v1_8_R2.hologram.entity;
 
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.spigot.nms.common.hologram.util.ReflectionUtils;
 import es.karmadev.api.spigot.reflection.hologram.line.HologramLine;
 import es.karmadev.api.spigot.reflection.hologram.nms.MinecraftEntity;
 import es.karmadev.api.spigot.reflection.hologram.nms.entity.MinecraftSlime;
-import es.karmadev.api.spigot.v1_8_R1.hologram.entity.craft.CraftHologramSlime;
-import es.karmadev.api.spigot.v1_8_R1.hologram.entity.util.NullBoundingBox;
-import net.minecraft.server.v1_8_R1.*;
+import es.karmadev.api.spigot.v1_8_R2.hologram.entity.craft.CraftHologramSlime;
+import es.karmadev.api.spigot.v1_8_R2.hologram.entity.util.NullBoundingBox;
+import net.minecraft.server.v1_8_R2.*;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
-import org.bukkit.craftbukkit.v1_8_R1.CraftWorld;
-import org.bukkit.craftbukkit.v1_8_R1.entity.CraftEntity;
+import org.bukkit.craftbukkit.v1_8_R2.CraftWorld;
+import org.bukkit.craftbukkit.v1_8_R2.entity.CraftEntity;
 import org.bukkit.entity.Entity;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 
@@ -35,7 +35,7 @@ public class HologramSlime extends EntitySlime implements MinecraftSlime {
     public void a(AxisAlignedBB boundingBox) {}
 
     @Override
-    public void s_() {
+    public void t_() {
         if (this.ticksLived % 20 == 0)
             if (this.vehicle == null)
                 die();
@@ -167,8 +167,8 @@ public class HologramSlime extends EntitySlime implements MinecraftSlime {
      */
     @Override
     public void mount(final MinecraftEntity base) {
-        if (!(base instanceof net.minecraft.server.v1_8_R1.Entity)) return;
-        net.minecraft.server.v1_8_R1.Entity entity = (net.minecraft.server.v1_8_R1.Entity) base;
+        if (!(base instanceof net.minecraft.server.v1_8_R2.Entity)) return;
+        net.minecraft.server.v1_8_R2.Entity entity = (net.minecraft.server.v1_8_R2.Entity) base;
 
         try {
             ReflectionUtils.setPrivateField(Entity.class, this, "ap", 0.0D);

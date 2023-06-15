@@ -13,4 +13,9 @@ public interface PickupHandler {
      * @param player the player
      */
     void onPickup(final Player player);
+
+    /**
+     * Empty pickup handler
+     */
+    PickupHandler EMPTY = player -> {};
 }

@@ -6,7 +6,6 @@ import es.karmadev.api.schedule.runner.signal.SignalHandler;
 import es.karmadev.api.schedule.runner.signal.parameter.SignalParameter;
 import es.karmadev.api.spigot.reflection.SpigotPacket;
 import es.karmadev.api.spigot.server.SpigotServer;
-import es.karmadev.api.version.Version;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
@@ -114,8 +113,8 @@ public class SpigotTitle implements SpigotPacket {
             return;
         }
 
-        if (SpigotServer.isUnder(Version.of(1, 11, 0))) {
-            if (SpigotServer.isUnder(Version.of(1, 8, 0))) return; //Minimum version
+        if (SpigotServer.isBetween(SpigotServer.v1_8_X, SpigotServer.v1_10_2)) {
+            //if (SpigotServer.isUnder(SpigotServer.v1_8_X)) return; //Minimum version
 
             SpigotServer.netMinecraftServer("IChatBaseComponent").ifPresent((IChatBaseComponent) -> {
                 Class<?>[] componentSubClasses = IChatBaseComponent.getDeclaredClasses();
@@ -198,7 +197,7 @@ public class SpigotTitle implements SpigotPacket {
                 });
             });
         } else {
-            player.sendTitle(title, subtitle, 20 * fadeIn, 20 * showIn, 20 * fadeOut);
+            if (SpigotServer.isOver(SpigotServer.v1_10_2)) player.sendTitle(title, subtitle, 20 * fadeIn, 20 * showIn, 20 * fadeOut);
         }
 
         this.target = player.getUniqueId();

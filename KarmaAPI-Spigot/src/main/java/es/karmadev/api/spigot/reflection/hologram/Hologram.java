@@ -30,11 +30,18 @@ public interface Hologram extends Iterable<HologramLine> {
     UUID id();
 
     /**
+     * Spawn the hologram if it's
+     * not spawned
+     */
+    void spawn();
+
+    /**
      * Append a text to the hologram
      *
      * @param text the text
      * @return the created line
      */
+    @SuppressWarnings("UnusedReturnValue")
     default HologramLine addLine(final String text) {
         return insert(size() + 1, text);
     }

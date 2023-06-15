@@ -13,4 +13,11 @@ public interface TextHolderLine extends HologramLine {
      * @return the text
      */
     String getText();
+
+    /**
+     * Set the line text
+     *
+     * @param text the text
+     */
+    void setText(final String text);
 }
