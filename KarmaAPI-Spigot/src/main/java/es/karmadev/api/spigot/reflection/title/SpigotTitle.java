@@ -2,6 +2,7 @@ package es.karmadev.api.spigot.reflection.title;
 
 import es.karmadev.api.core.KarmaKore;
 import es.karmadev.api.core.KarmaPlugin;
+import es.karmadev.api.object.ObjectUtils;
 import es.karmadev.api.schedule.runner.signal.SignalHandler;
 import es.karmadev.api.schedule.runner.signal.parameter.SignalParameter;
 import es.karmadev.api.spigot.reflection.SpigotPacket;
@@ -106,7 +107,7 @@ public class SpigotTitle implements SpigotPacket {
 
         SpigotTitle instance = titles.computeIfAbsent(player.getUniqueId(), (title) -> this);
         //We want a single instance per player
-        if (!instance.equals(this)) {
+        if (!ObjectUtils.equalsIgnoreCase(instance, this)) {
             instance.title = this.title; //Update title without emitting signal
             instance.subtitle = this.subtitle; //Update subtitle without emitting signal
             instance.send(player, fadeIn, showIn, fadeOut);
@@ -197,7 +198,9 @@ public class SpigotTitle implements SpigotPacket {
                 });
             });
         } else {
-            if (SpigotServer.isOver(SpigotServer.v1_10_2)) player.sendTitle(title, subtitle, 20 * fadeIn, 20 * showIn, 20 * fadeOut);
+            if (SpigotServer.isUnder(SpigotServer.v1_8_X)) return;
+
+            player.sendTitle(title, subtitle, 20 * fadeIn, 20 * showIn, 20 * fadeOut);
         }
 
         this.target = player.getUniqueId();

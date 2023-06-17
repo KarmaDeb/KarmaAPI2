@@ -1,14 +1,20 @@
 package es.karmadev.api.spigot.server;
 
+import es.karmadev.api.core.KarmaKore;
+import es.karmadev.api.core.KarmaPlugin;
+import es.karmadev.api.core.source.APISource;
 import es.karmadev.api.version.Version;
 import org.bukkit.Bukkit;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.scheduler.BukkitScheduler;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Spigot server utilities
@@ -80,6 +86,28 @@ public class SpigotServer {
     public final static Version v1_20_1 = Version.of(1, 20, 1);
 
     private final static Server server = Bukkit.getServer();
+
+    private static long currentTick = 0;
+
+    /**
+     * Start counting the tick
+     *
+     * @param owner the plugin owning the tick counter
+     * @return if the task could be started
+     */
+    public static boolean startTickCount(final Plugin owner) {
+        if (currentTick == 0) {
+            BukkitScheduler scheduler = Bukkit.getScheduler();
+
+            scheduler.runTaskTimer(owner, () -> {
+                currentTick++;
+            }, 0, 1);
+
+            return true;
+        }
+
+        return false;
+    }
 
     /**
      * Get the spigot server version
@@ -208,6 +236,29 @@ public class SpigotServer {
         if (isOver(v1_20_1)) return VersionType.FUTURE;
 
         return VersionType.valueOf(version);
+    }
+
+    /**
+     * Get the current tick
+     *
+     * @return the current tick
+     */
+    public static long getCurrentTick() {
+        return currentTick;
+    }
+
+    /**
+     * Get a future tick
+     *
+     * @param plusTime the time to add
+     * @param unit the time unit to add as
+     * @return the future tick
+     */
+    public static long getFutureTick(final long plusTime, final TimeUnit unit) {
+        long current = currentTick;
+        long seconds = TimeUnit.SECONDS.convert(plusTime, unit);
+
+        return current + (seconds * 20); //Each 20 ticks is 1 second
     }
 
     /**
