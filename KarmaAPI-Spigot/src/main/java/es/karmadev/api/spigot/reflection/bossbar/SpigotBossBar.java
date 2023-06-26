@@ -11,6 +11,7 @@ import es.karmadev.api.minecraft.bossbar.component.BarProgress;
 import es.karmadev.api.minecraft.bossbar.component.BarType;
 import es.karmadev.api.minecraft.client.GlobalPlayer;
 import es.karmadev.api.minecraft.client.exception.NonAvailableException;
+import es.karmadev.api.object.ObjectUtils;
 import es.karmadev.api.schedule.runner.TaskRunner;
 import es.karmadev.api.schedule.runner.async.AsyncTaskExecutor;
 import es.karmadev.api.schedule.runner.event.TaskEvent;
@@ -53,28 +54,14 @@ public class SpigotBossBar extends BossBarProvider {
     private static boolean packetCompatible = false;
     private static boolean useHealth = false;
     private static Class<?> craftWorldClass;
-
-    private static Class<?> craftPlayerClass;
-
-    private static Class<?> playerConnectionClass;
-
     private static Constructor<?> packetPlayOutEntityDestroy;
-
     private static Constructor<?> witherConstructor;
-
     private static Constructor<?> entityLivingConstructor;
-
     private static Constructor<?> packetTeleportConstructor;
     private static Constructor<?> packetPlayOutMetadata;
 
     private static Method craftWorldHandle;
-
-    private static Method craftPlayerHandle;
-
-    private static Method packetConnectionSend;
-
     private static Method witherSetLocation;
-
     private static Method witherSetProgress;
     private static Method witherSetInvisible;
     private static Method witherSetCustomNameVisible;
@@ -506,145 +493,118 @@ public class SpigotBossBar extends BossBarProvider {
     /**
      * Build the reflection methods
      */
+    @SuppressWarnings("DataFlowIssue")
     private static void buildReflection() {
-        //TODO: Prevent nesting
         packetCompatible = false; //Reset
-        SpigotServer.orgBukkitCraftbukkit("CraftWorld").ifPresent((CraftWorld) -> {
-            craftWorldClass = CraftWorld;
-            SpigotServer.netMinecraftServer("EntityWither").ifPresent((EntityWither) ->
-                    SpigotServer.netMinecraftServer("World").ifPresent((World) -> {
-                Constructor<?> witherConstructor = null;
+        craftWorldClass = SpigotServer.orgBukkitCraftbukkit("CraftWorld").orElse(null);
+        if (craftWorldClass == null) return;
+
+        Class<?> entityWither = SpigotServer.netMinecraftServer("EntityWither").orElse(null);
+        Class<?> world = SpigotServer.netMinecraftServer("World").orElse(null);
+        Class<?> spawnEntityLiving = SpigotServer.netMinecraftServer("PacketPlayOutSpawnEntityLiving").orElse(null);
+        Class<?> entityLiving = SpigotServer.netMinecraftServer("EntityLiving").orElse(null);
+        Class<?> packet = SpigotServer.netMinecraftServer("Packet").orElse(null);
+        Class<?> packetDestroy = SpigotServer.netMinecraftServer("PacketPlayOutEntityDestroy").orElse(null);
+        Class<?> dataWatcher = SpigotServer.netMinecraftServer("DataWatcher").orElse(null);
+        Class<?> packetMetadata = SpigotServer.netMinecraftServer("PacketPlayOutEntityMetadata").orElse(null);
+        Class<?> packetTeleport = SpigotServer.netMinecraftServer("PacketPlayOutEntityTeleport").orElse(null);
+        Class<?> entity = SpigotServer.netMinecraftServer("Entity").orElse(null);
+
+        if (ObjectUtils.areNullOrEmpty(false, entityWither, world, spawnEntityLiving,
+                entityLiving, packet, packetDestroy, dataWatcher, packetMetadata, packetTeleport,
+                entity)) return;
+
+        Constructor<?> witherConstructor = null;
+        try {
+            witherConstructor = entityWither.getConstructor(world);
+        } catch (NoSuchMethodException ignored) {}
+        if (witherConstructor == null) return;
+        SpigotBossBar.witherConstructor = witherConstructor;
+
+        Constructor<?> entityLivingConstructor = null;
+        try {
+            entityLivingConstructor = spawnEntityLiving.getConstructor(entityLiving);
+        } catch (NoSuchMethodException ignored) {}
+        if (entityLivingConstructor == null) return;
+        SpigotBossBar.entityLivingConstructor = entityLivingConstructor;
+
+        Constructor<?> destroyConstructor = null;
+        try {
+            destroyConstructor = packetDestroy.getConstructor(int[].class);
+        } catch (NoSuchMethodException ignored) {}
+        if (destroyConstructor == null) return;
+        packetPlayOutEntityDestroy = destroyConstructor;
+
+        Constructor<?> packetPlayMetadataConstructor = null;
+        try {
+            packetPlayMetadataConstructor = packetMetadata.getConstructor(int.class, dataWatcher, boolean.class);
+        } catch (NoSuchMethodException ignored) {}
+        if (packetPlayMetadataConstructor == null) return;
+        packetPlayOutMetadata = packetPlayMetadataConstructor;
+
+        Constructor<?> teleportConstructor = null;
+        try {
+            teleportConstructor = packetTeleport.getConstructor(entity);
+        } catch (NoSuchMethodException ignored) {}
+        if (teleportConstructor == null) return;
+        packetTeleportConstructor = teleportConstructor;
+
+        Method getWorldHandle = null;
+        try {
+            getWorldHandle = craftWorldClass.getMethod("getHandle");
+        } catch (NoSuchMethodException ignored) {}
+        if (getWorldHandle == null) return;
+        craftWorldHandle = getWorldHandle;
+
+        Method setLocationMethod = null;
+        try {
+            setLocationMethod = entityWither.getMethod("setLocation", double.class, double.class, double.class, float.class, float.class);
+        } catch (NoSuchMethodException ignored) {}
+        if (setLocationMethod == null) return;
+        witherSetLocation = setLocationMethod;
+
+        Method setInvisibleMethod = null;
+        try {
+            setInvisibleMethod = entityWither.getMethod("setInvisible", boolean.class);
+        } catch (NoSuchMethodException ignored) {}
+        if (setInvisibleMethod == null) return;
+        witherSetInvisible = setInvisibleMethod;
+
+        Method setCustomNameMethod = null;
+        try {
+            setCustomNameMethod = entityWither.getMethod("setCustomNameVisible", boolean.class);
+        } catch (NoSuchMethodException ignored) {}
+        if (setCustomNameMethod == null) return;
+        witherSetCustomNameVisible = setCustomNameMethod;
+
+        Method getIdMethod = null;
+        try {
+            getIdMethod = entityWither.getMethod("getId");
+        } catch (NoSuchMethodException ignored) {}
+        if (getIdMethod == null) return;
+        witherGetId = getIdMethod;
+
+        Method setProgress = null;
+        try {
+            setProgress = entityWither.getMethod("setProgress", double.class);
+        } catch (Throwable ex) {
+            try {
+                setProgress = entityWither.getMethod("setProgress", float.class);
+            } catch (Throwable ex2) {
+                useHealth = true;
                 try {
-                    witherConstructor = EntityWither.getConstructor(World);
-                } catch (NoSuchMethodException ignored) {}
-                if (witherConstructor == null) return;
-
-                SpigotBossBar.witherConstructor = witherConstructor;
-
-                SpigotServer.netMinecraftServer("PacketPlayOutSpawnEntityLiving").ifPresent((PacketPlayOutSpawnEntityLiving) ->
-                        SpigotServer.netMinecraftServer("EntityLiving").ifPresent((EntityLiving) -> {
-                    Constructor<?> entityLivingConstructor = null;
+                    setProgress = entityWither.getMethod("setHealth", double.class);
+                } catch (Throwable ex3) {
                     try {
-                        entityLivingConstructor = PacketPlayOutSpawnEntityLiving.getConstructor(EntityLiving);
+                        setProgress = entityWither.getMethod("setHealth", float.class);
                     } catch (NoSuchMethodException ignored) {}
-                    if (entityLivingConstructor == null) return;
+                }
+            }
+        }
+        if (setProgress == null) return;
 
-                    SpigotBossBar.entityLivingConstructor = entityLivingConstructor;
-                    SpigotServer.orgBukkitCraftbukkit("entity.CraftPlayer").ifPresent((CraftPlayer) -> {
-                        craftPlayerClass = CraftPlayer;
-                        SpigotServer.netMinecraftServer("Packet").ifPresent((Packet) ->
-                                SpigotServer.netMinecraftServer("PlayerConnection").ifPresent((PlayerConnection) -> {
-                            playerConnectionClass = PlayerConnection;
-                            SpigotServer.netMinecraftServer("PacketPlayOutEntityDestroy").ifPresent((PacketPlayOutEntityDestroy) -> {
-                                Constructor<?> destroyConstructor = null;
-                                try {
-                                    destroyConstructor = PacketPlayOutEntityDestroy.getConstructor(int[].class);
-                                } catch (NoSuchMethodException ignored) {}
-                                if (destroyConstructor == null) return;
-
-                                packetPlayOutEntityDestroy = destroyConstructor;
-
-                                SpigotServer.netMinecraftServer("DataWatcher").ifPresent((DataWatcher) ->
-                                        SpigotServer.netMinecraftServer("PacketPlayOutEntityMetadata").ifPresent((PacketPlayOutEntityMetadata) -> {
-                                    Constructor<?> packetPlayMetadataConstructor = null;
-                                    try {
-                                        packetPlayMetadataConstructor = PacketPlayOutEntityMetadata.getConstructor(int.class, DataWatcher, boolean.class);
-                                    } catch (NoSuchMethodException ignored) {}
-                                    if (packetPlayMetadataConstructor == null) return;
-
-                                    packetPlayOutMetadata = packetPlayMetadataConstructor;
-
-                                    SpigotServer.netMinecraftServer("PacketPlayOutEntityTeleport").ifPresent((PacketPlayOutEntityTeleport) ->
-                                            SpigotServer.netMinecraftServer("Entity").ifPresent((Entity) -> {
-                                        Constructor<?> teleportConstructor = null;
-                                        try {
-                                            teleportConstructor = PacketPlayOutEntityTeleport.getConstructor(Entity);
-                                        } catch (NoSuchMethodException ignored) {}
-                                        if (teleportConstructor == null) return;
-
-                                        packetTeleportConstructor = teleportConstructor;
-
-                                        Method getWorldHandle = null;
-                                        try {
-                                            getWorldHandle = CraftWorld.getMethod("getHandle");
-                                        } catch (NoSuchMethodException ignored) {}
-                                        if (getWorldHandle == null) return;
-
-                                        craftWorldHandle = getWorldHandle;
-
-                                        Method getPlayerHandle = null;
-                                        try {
-                                            getPlayerHandle = CraftPlayer.getMethod("getHandle");
-                                        } catch (NoSuchMethodException ignored) {}
-                                        if (getPlayerHandle == null) return;
-
-                                        craftPlayerHandle = getPlayerHandle;
-
-                                        Method sendPacketMethod = null;
-                                        try {
-                                            sendPacketMethod = playerConnectionClass.getMethod("sendPacket", Packet);
-                                        } catch (NoSuchMethodException ignored) {}
-                                        if (sendPacketMethod == null) return;
-
-                                        packetConnectionSend = sendPacketMethod;
-
-                                        Method setLocationMethod = null;
-                                        try {
-                                            setLocationMethod = EntityWither.getMethod("setLocation", double.class, double.class, double.class, float.class, float.class);
-                                        } catch (NoSuchMethodException ignored) {}
-                                        if (setLocationMethod == null) return;
-
-                                        witherSetLocation = setLocationMethod;
-
-                                        Method setInvisibleMethod = null;
-                                        try {
-                                            setInvisibleMethod = EntityWither.getMethod("setInvisible", boolean.class);
-                                        } catch (NoSuchMethodException ignored) {}
-                                        if (setInvisibleMethod == null) return;
-
-                                        witherSetInvisible = setInvisibleMethod;
-
-                                        Method setCustomNameMethod = null;
-                                        try {
-                                            setCustomNameMethod = EntityWither.getMethod("setCustomNameVisible", boolean.class);
-                                        } catch (NoSuchMethodException ignored) {}
-                                        if (setCustomNameMethod == null) return;
-
-                                        witherSetCustomNameVisible = setCustomNameMethod;
-
-                                        Method getIdMethod = null;
-                                        try {
-                                            getIdMethod = EntityWither.getMethod("getId");
-                                        } catch (NoSuchMethodException ignored) {}
-                                        if (getIdMethod == null) return;
-
-                                        witherGetId = getIdMethod;
-
-                                        try {
-                                            witherSetProgress = EntityWither.getMethod("setProgress", double.class);
-                                        } catch (Throwable ex) {
-                                            try {
-                                                witherSetProgress = EntityWither.getMethod("setProgress", float.class);
-                                            } catch (Throwable ex2) {
-                                                useHealth = true;
-                                                try {
-                                                    witherSetProgress = EntityWither.getMethod("setHealth", double.class);
-                                                } catch (Throwable ex3) {
-                                                    try {
-                                                        witherSetProgress = EntityWither.getMethod("setHealth", float.class);
-                                                        packetCompatible = true;
-                                                    } catch (NoSuchMethodException ignored) {}
-                                                }
-                                            }
-                                        }
-                                    }));
-                                }));
-                            });
-                        }));
-                    });
-                }));
-            }));
-        });
+        witherSetProgress = setProgress;
+        packetCompatible = true;
     }
 
     /**
