@@ -37,6 +37,11 @@
             <artifactId>KarmaAPI-Core</artifactId>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>es.karmadev</groupId>
+            <artifactId>KarmaAPI-Minecraft</artifactId>
+            <scope>compile</scope>
+        </dependency>
 
         <dependency>
             <groupId>com.github.YeetManLord</groupId>

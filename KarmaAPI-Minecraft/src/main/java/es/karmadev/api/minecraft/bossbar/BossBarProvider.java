@@ -4,18 +4,17 @@ import es.karmadev.api.minecraft.bossbar.component.BarColor;
 import es.karmadev.api.minecraft.bossbar.component.BarFlag;
 import es.karmadev.api.minecraft.bossbar.component.BarProgress;
 import es.karmadev.api.minecraft.bossbar.component.BarType;
+import es.karmadev.api.minecraft.client.GlobalPlayer;
 
-import java.util.BitSet;
-import java.util.Collection;
+import java.util.*;
 
 /**
  * BossBar message provider
- * @param <Player> the player type
  */
 @SuppressWarnings("unused")
-public abstract class BossBarProvider<Player> {
+public abstract class BossBarProvider {
 
-    protected final BitSet flagSet = new BitSet(3);
+    protected final EnumSet<BarFlag> flagSet = EnumSet.noneOf(BarFlag.class);
 
     /**
      * Get the boss bar ID
@@ -32,7 +31,7 @@ public abstract class BossBarProvider<Player> {
      * @throws UnsupportedOperationException if the boss bar doesn't support
      * color change
      */
-    public abstract BossBarProvider<Player> color(final BarColor color) throws UnsupportedOperationException;
+    public abstract BossBarProvider color(final BarColor color) throws UnsupportedOperationException;
 
     /**
      * Set the boss bar type
@@ -42,7 +41,7 @@ public abstract class BossBarProvider<Player> {
      * @throws UnsupportedOperationException if the boss bar doesn't support
      * type change
      */
-    public abstract BossBarProvider<Player> type(final BarType type) throws UnsupportedOperationException;
+    public abstract BossBarProvider type(final BarType type) throws UnsupportedOperationException;
 
     /**
      * Set the boss bar progress type
@@ -52,7 +51,7 @@ public abstract class BossBarProvider<Player> {
      * @throws UnsupportedOperationException if the boss bar doesn't support
      * progress change
      */
-    public abstract BossBarProvider<Player> progress(final BarProgress progress) throws UnsupportedOperationException;
+    public abstract BossBarProvider progress(final BarProgress progress) throws UnsupportedOperationException;
 
     /**
      * Set the boss bar flags
@@ -60,11 +59,8 @@ public abstract class BossBarProvider<Player> {
      * @param flags the flags to add
      * @return the modified boss bar
      */
-    public final BossBarProvider<Player> setFlags(final BarFlag... flags) {
-        for (BarFlag flag : flags) {
-            flagSet.set(flag.ordinal(), true);
-        }
-
+    public final BossBarProvider setFlags(final BarFlag... flags) {
+        Collections.addAll(flagSet, flags);
         return this;
     }
 
@@ -74,11 +70,8 @@ public abstract class BossBarProvider<Player> {
      * @param flags the flags to remove
      * @return the modified boss bar
      */
-    public final BossBarProvider<Player> removeFlags(final BarFlag... flags) {
-        for (BarFlag flag : flags) {
-            flagSet.set(flag.ordinal(), false);
-        }
-
+    public final BossBarProvider removeFlags(final BarFlag... flags) {
+        Arrays.asList(flags).forEach(flagSet::remove);
         return this;
     }
 
@@ -88,7 +81,7 @@ public abstract class BossBarProvider<Player> {
      * @param time the new display time
      * @return the modified boss bar
      */
-    public abstract BossBarProvider<Player> displayTime(final double time);
+    public abstract BossBarProvider displayTime(final double time);
 
     /**
      * Set the boss bar progress manually
@@ -108,9 +101,7 @@ public abstract class BossBarProvider<Player> {
      * @param players the players to send the boss bar
      *                to
      */
-    public void send(final Collection<Player> players) {
-        for (Player player : players) send(player);
-    }
+    public abstract void send(final Collection<GlobalPlayer> players);
 
     /**
      * Send the boss bar to the players
@@ -118,16 +109,14 @@ public abstract class BossBarProvider<Player> {
      * @param players the players to send the boss bar
      *                to
      */
-    public void send(final Player[] players) {
-        for (Player player : players) send(player);
-    }
+    public abstract void send(final GlobalPlayer[] players);
 
     /**
      * Send the boss bar to the player
      *
      * @param player the player to send the actionbar to
      */
-    public abstract void send(final Player player);
+    public abstract void send(final GlobalPlayer player);
 
     /**
      * Update the boss bar text
@@ -203,6 +192,6 @@ public abstract class BossBarProvider<Player> {
      * @return if the boss bar has the flag
      */
     public boolean hasFlag(final BarFlag flag) {
-        return flagSet.get(flag.ordinal());
+        return flagSet.contains(flag);
     }
 }

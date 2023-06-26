@@ -93,6 +93,23 @@ public class ObjectUtils {
     }
 
     /**
+     * Check if any of the values matches with
+     * the value to check
+     *
+     * @param value1 the value to check
+     * @param values the values
+     * @return if any of the values matches with
+     * the value to check
+     */
+    public static boolean equalsMultiple(final Object value1, final Object... values) {
+        for (Object val : values) {
+            if (equalsIgnoreCase(value1, val)) return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Check if the objects equals ignoring
      * specific conditions. For example, this will ignore
      * strings uppercase/lowercase

@@ -220,6 +220,11 @@
                 <artifactId>KarmaAPI-Core</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>es.karmadev</groupId>
+                <artifactId>KarmaAPI-Minecraft</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <dependency>
                 <groupId>org.spigotmc</groupId>
