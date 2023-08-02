@@ -90,7 +90,6 @@ public class AsyncTaskExecutor implements TaskRunner {
         TIME_LEFT.set(Math.min(newTimeLeft, limit) - interval);
 
         UPDATE_TL.set(false);
-        System.out.println("New time left: " + TIME_LEFT.get());
     }
 
     /**
