@@ -1,15 +1,13 @@
 package es.karmadev.api.core;
 
-import es.karmadev.api.JavaVirtualMachine;
 import es.karmadev.api.core.source.APISource;
 import es.karmadev.api.core.source.SourceManager;
 import es.karmadev.api.core.source.exception.UnknownProviderException;
 import es.karmadev.api.file.util.PathUtilities;
-import es.karmadev.api.file.util.StreamUtils;
 import es.karmadev.api.logger.log.UnboundedLogger;
 import es.karmadev.api.logger.log.console.LogLevel;
 import es.karmadev.api.security.LockedProperties;
-import es.karmadev.api.version.Version;
+import es.karmadev.api.web.WebDownloader;
 import es.karmadev.api.web.url.URLUtilities;
 
 import java.io.IOException;
@@ -21,10 +19,7 @@ import java.net.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.CodeSource;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.ProtectionDomain;
+import java.security.*;
 import java.util.*;
 import java.util.function.Supplier;
 import java.util.jar.JarEntry;
@@ -101,7 +96,7 @@ public class KarmaAPI {
         URI uri = location.toURI();
         Path source = Paths.get(uri);
 
-        Path workingDirectory = source.getParent();
+        Path workingDirectory = source.getParent().resolve("KarmaAPI");
         Path thirdparty = workingDirectory.resolve("thirdparty");
         Path runtime = thirdparty.resolve("runtime");
         Path library = thirdparty.resolve("library");
@@ -114,23 +109,58 @@ public class KarmaAPI {
         Path schemaValidator = library.resolve("SchemaValidator.jar"); //Done
         Path snakeYaml = library.resolve("SnakeYaml.jar"); //Done
 
-        Map<Path, String> checkClasses = new HashMap<>();
-        checkClasses.put(burningWave, "es.karmadev.api.shaded.burningwave.core.Strings");
-        checkClasses.put(jvmDriver, "io.github.toolfactory.jvm.Driver");
-        checkClasses.put(schemaValidator, "es.karmadev.api.shaded.jsonschema.main.JsonSchema");
-        checkClasses.put(snakeYaml, "es.karmadev.api.shaded.snakeyaml.Yaml");
-
-        String downloadURL = properties.getProperty("download_server", "https://karmadev.es/download/");
-        String checksumURL = properties.getProperty("checksum_server", "https://karmadev.es/download/");
-
+        String downloadURL = properties.getProperty("download_server", "https://reddo.es/repository/karma/");
         URL downloadRoot = URLUtilities.fromString(downloadURL);
-        URL checksumRoot = URLUtilities.fromString(checksumURL);
+        assert downloadRoot != null;
 
-        Version jvmVersion = JavaVirtualMachine.jvmVersion();
-        int mayor = jvmVersion.getMayor();
-        int minor = jvmVersion.getMinor();
-
-        if (mayor == 1) mayor = minor;
+        if (!Files.exists(jvmDriver)) {
+            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "JVMDriver.jar"));
+            try {
+                downloader.download(jvmDriver);
+            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if (!Files.exists(burningWave)) {
+            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "BurningWave.jar"));
+            try {
+                downloader.download(burningWave);
+            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if (!Files.exists(lz4)) {
+            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "LZ4.jar"));
+            try {
+                downloader.download(lz4);
+            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if (!Files.exists(zstd)) {
+            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "ZSTD.jar"));
+            try {
+                downloader.download(zstd);
+            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if (!Files.exists(schemaValidator)) {
+            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "SchemaValidator.jar"));
+            try {
+                downloader.download(schemaValidator);
+            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if (!Files.exists(snakeYaml)) {
+            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "SnakeYaml.jar"));
+            try {
+                downloader.download(snakeYaml);
+            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
+                throw new RuntimeException(e);
+            }
+        }
 
         URLClassLoader tmp = null;
         try {
@@ -141,91 +171,38 @@ public class KarmaAPI {
         } catch (ClassCastException | UnknownProviderException ignored) {}
         if (tmp == null) tmp = (URLClassLoader) Thread.currentThread().getContextClassLoader();
 
-        unbounded.send(LogLevel.INFO, "Setting up for jvm: {0}", jvmVersion);
-        if (mayor >= 9) {
-            validateChecksum(downloadRoot, checksumRoot, checkClasses, jvmDriver, burningWave); //We make sure that burningwave and jvm driver gets downloaded first
-            try {
-                URL[] urls = {
-                        new URL("jar:file:" + burningWave + "!/"),
-                        new URL("jar:file:" + jvmDriver + "!/")};
+        try {
+            URL[] urls = {
+                    new URL("jar:file:" + burningWave + "!/"),
+                    new URL("jar:file:" + jvmDriver + "!/")};
 
-                URLClassLoader cl = new URLClassLoader(urls, tmp);
-                Class<?> loader = cl.loadClass("org.burningwave.core.assembler.StaticComponentContainer");
+            URLClassLoader cl = new URLClassLoader(urls, tmp);
+            Class<?> loader = cl.loadClass("org.burningwave.core.assembler.StaticComponentContainer");
 
-                Field modules = loader.getDeclaredField("Modules");
-                Object module = modules.get(null);
+            Field modules = loader.getDeclaredField("Modules");
+            Object module = modules.get(null);
+            if (module != null) {
                 Class<?> modClass = module.getClass();
 
                 Method exportAllToAll = modClass.getDeclaredMethod("exportAllToAll");
                 exportAllToAll.setAccessible(true);
 
                 exportAllToAll.invoke(module);
-            } catch (ClassNotFoundException |
-                     NoSuchFieldException |
-                     IllegalAccessException |
-                     NoSuchMethodException |
-                     InvocationTargetException |
-                     IOException ex) {
-                unbounded.send(ex, "Failed to inject BurningWave");
+                unbounded.send(LogLevel.SUCCESS, "Successfully injected with BurningWave");
             }
+        } catch (ClassNotFoundException |
+                 NoSuchFieldException |
+                 IllegalAccessException |
+                 NoSuchMethodException |
+                 InvocationTargetException |
+                 IOException ex) {
+            unbounded.send(ex, "Failed to inject BurningWave");
         }
 
-        validateChecksum(downloadRoot, checksumRoot, checkClasses, lz4, zstd, schemaValidator, snakeYaml);
         inject(lz4, tmp);
         inject(zstd, tmp);
         inject(schemaValidator, tmp);
         inject(snakeYaml, tmp);
-    }
-
-    private static void validateChecksum(final URL downloadURL, final URL checksumURL, final Map<Path, String> checks, final Path... files) {
-        boolean download = true;
-        UnboundedLogger unbounded = new UnboundedLogger();
-
-        Map<URL, Path> filesToDownload = new HashMap<>();
-        for (Path file : files) {
-            if (checks.containsKey(file)) {
-                String checkClass = checks.get(file);
-                try {
-                    /*We don't want our application to download
-                    a dependency if another application already has
-                    it. It's a waste of time and disk usage
-                     */
-                    Class.forName(checkClass);
-                    continue;
-                } catch (ClassNotFoundException ignored) {}
-            }
-
-            String name = file.getFileName().toString();
-            byte[] fileBytes = PathUtilities.readBytes(file);
-            String sha = hash(fileBytes);
-
-            URL check = URLUtilities.append(checksumURL, "?file=" + name + "&sha=" + sha);
-
-            String response = URLUtilities.get(check);
-            boolean valid = Boolean.parseBoolean(response);
-
-            if (!valid) {
-                unbounded.send(LogLevel.WARNING, "Preparing to {0} dependency: {1}", (Files.exists(file) ? "update" : "download"), name);
-                filesToDownload.put(URLUtilities.append(downloadURL, "?file=" + name), file);
-            }
-        }
-
-        for (URL url : filesToDownload.keySet()) {
-            Path file = filesToDownload.get(url);
-            String name = file.getFileName().toString();
-
-            unbounded.send(LogLevel.WARNING, "{0} dependency: {1} from {2}", (Files.exists(file) ? "Updating" : "Downloading"), name, url);
-
-            boolean update = Files.exists(file);
-            try (InputStream resource = url.openStream()) {
-                byte[] streamBytes = StreamUtils.read(resource);
-                PathUtilities.write(file, streamBytes);
-
-                unbounded.send(LogLevel.WARNING, "{0} dependency: {1}", (update ? "Updated" : "Downloaded"), name);
-            } catch (IOException ex) {
-                unbounded.send(ex, "An error occurred while {0} dependency: {1}", (update ? "updating" : "downloading"), name);
-            }
-        }
     }
 
     /**

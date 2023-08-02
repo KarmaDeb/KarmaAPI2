@@ -4,6 +4,7 @@ import es.karmadev.api.schedule.runner.event.TaskEvent;
 import es.karmadev.api.schedule.runner.event.TaskRunnerEvent;
 
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -18,6 +19,20 @@ public interface TaskRunner {
      * @return the task ID
      */
     long id();
+
+    /**
+     * Force the task runner time left
+     *
+     * @param newTimeLeft the new runner time left
+     */
+    void forceTimeLeft(final long newTimeLeft);
+
+    /**
+     * Force the task runner max time
+     *
+     * @param newMaxTime the new runner max time
+     */
+    void forceMaxTime(final long newMaxTime);
 
     /**
      * Set if the task repeats infinitely
@@ -106,6 +121,22 @@ public interface TaskRunner {
      * @return the task working unit
      */
     TimeUnit workingUnit();
+
+    /**
+     * Add an event listener for this task
+     *
+     * @param event the event
+     * @return the task runner
+     */
+    TaskRunnerEvent<Consumer<Long>> onAny(final BiConsumer<TaskEvent, Long> event);
+
+    /**
+     * Add an event listener for this task
+     *
+     * @param event the event
+     * @return the task runner
+     */
+    TaskRunnerEvent<Runnable> onAny(final Consumer<TaskEvent> event);
 
     /**
      * Add an event listener for this task

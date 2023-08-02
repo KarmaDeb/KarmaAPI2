@@ -1,14 +1,23 @@
 package es.karmadev.api.logger;
 
 import es.karmadev.api.core.source.APISource;
-import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.logger.log.console.LogLevel;
+
+import java.util.function.Function;
 
 /**
  * Karma console logger
  */
 @SuppressWarnings("unused")
 public interface SourceLogger {
+
+    /**
+     * Override the log function
+     *
+     * @param function the new log function
+     * @return the modified logger
+     */
+    SourceLogger overrideLogFunction(final Function<String, Void> function);
 
     /**
      * Send a message to the console

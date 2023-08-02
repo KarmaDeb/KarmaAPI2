@@ -35,7 +35,7 @@ public final class SourceManager {
     public static void register(final APISource source) throws AlreadyRegisteredException {
         if (sources.stream().noneMatch(compare(source))) {
             sources.add(source);
-            if (principal == null) principal = source.name();
+            if (principal == null) principal = source.sourceName();
             return;
         }
 
@@ -92,11 +92,11 @@ public final class SourceManager {
     }
 
     private static Predicate<APISource> compare(final APISource source) {
-        String name = source.name();
+        String name = source.sourceName();
         String clazz = source.getClass().getCanonicalName();
 
         return registered -> {
-            String registeredName = registered.name();
+            String registeredName = registered.sourceName();
             String registeredClazz = registered.getClass().getCanonicalName();
 
             return registeredName.equals(name) || registeredClazz.equals(clazz);
@@ -105,7 +105,7 @@ public final class SourceManager {
 
     private static Predicate<APISource> compare(final String name) {
         return registered -> {
-            String registeredName = registered.name();
+            String registeredName = registered.sourceName();
             String registeredClazz = registered.getClass().getCanonicalName();
 
             return registeredName.equals(name) || registeredClazz.equals(name);

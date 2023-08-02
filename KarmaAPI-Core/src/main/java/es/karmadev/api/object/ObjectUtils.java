@@ -1,5 +1,8 @@
 package es.karmadev.api.object;
 
+import org.jetbrains.annotations.NotNull;
+
+import javax.annotation.Nullable;
 import java.util.function.Consumer;
 
 /**
@@ -7,6 +10,19 @@ import java.util.function.Consumer;
  */
 @SuppressWarnings("unused")
 public class ObjectUtils {
+
+    /**
+     * Return the instance or the fallback
+     * value if the instance is null
+     *
+     * @param instance the instance
+     * @param fallback the fallback value
+     * @return the value
+     * @param <T> the value type
+     */
+    public static <T> T returnOrElse(final @Nullable T instance, final @NotNull T fallback) {
+        return (instance != null ? instance : fallback);
+    }
 
     /**
      * Check if the objects equals ignoring

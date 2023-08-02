@@ -2,7 +2,6 @@ package es.karmadev.api.core.source;
 
 import es.karmadev.api.core.DefaultRuntime;
 import es.karmadev.api.core.ExceptionCollector;
-import es.karmadev.api.core.source.exception.AlreadyRegisteredException;
 import es.karmadev.api.core.source.runtime.SourceRuntime;
 import es.karmadev.api.file.util.NamedStream;
 import es.karmadev.api.file.util.PathUtilities;
@@ -12,7 +11,6 @@ import es.karmadev.api.logger.log.UnboundedLogger;
 import es.karmadev.api.object.ObjectUtils;
 import es.karmadev.api.schedule.task.TaskScheduler;
 import es.karmadev.api.schedule.task.scheduler.BalancedScheduler;
-import es.karmadev.api.security.PermissionManager;
 import es.karmadev.api.strings.StringFilter;
 import es.karmadev.api.version.Version;
 import org.jetbrains.annotations.NotNull;
@@ -159,7 +157,7 @@ public abstract class KarmaSource implements APISource {
      * @return the source name
      */
     @Override
-    public final @NotNull String name() {
+    public final @NotNull String sourceName() {
         return name;
     }
 
@@ -169,7 +167,7 @@ public abstract class KarmaSource implements APISource {
      * @return the source version
      */
     @Override
-    public final @NotNull Version version() {
+    public final @NotNull Version sourceVersion() {
         return version;
     }
 
@@ -179,7 +177,7 @@ public abstract class KarmaSource implements APISource {
      * @return the source description
      */
     @Override
-    public final @NotNull String description() {
+    public final @NotNull String sourceDescription() {
         return description;
     }
 
@@ -189,7 +187,7 @@ public abstract class KarmaSource implements APISource {
      * @return the source authors
      */
     @Override
-    public final @NotNull String[] authors() {
+    public final @NotNull String[] sourceAuthors() {
         return authors;
     }
 

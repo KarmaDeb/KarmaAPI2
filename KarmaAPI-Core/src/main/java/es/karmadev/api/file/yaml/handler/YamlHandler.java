@@ -2,6 +2,7 @@ package es.karmadev.api.file.yaml.handler;
 
 import es.karmadev.api.file.util.StreamUtils;
 import es.karmadev.api.file.yaml.YamlFileHandler;
+import es.karmadev.api.strings.StringUtils;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.BufferedReader;
@@ -35,6 +36,17 @@ public class YamlHandler implements ResourceLoader {
      */
     public static YamlFileHandler create(final Path file) {
         return new SimpleYamlHandler(file, new ConcurrentHashMap<>());
+    }
+
+    /**
+     * Create a yaml file
+     *
+     * @param file the yaml file
+     * @param reader the yaml reader
+     * @return a new yaml file
+     */
+    public static YamlFileHandler create(final Path file, final YamlReader reader) {
+        return new SimpleYamlHandler(file, new ConcurrentHashMap<>(), reader);
     }
 
     /**
@@ -127,6 +139,19 @@ public class YamlHandler implements ResourceLoader {
 
             return new SimpleYamlHandler(file, data, source);
         }
+    }
+
+    /**
+     * Load a yaml file
+     *
+     * @param file the yaml file
+     * @param handle the yaml source
+     * @return the yaml file handler
+     * @throws IOException if there's a problem reading the yaml source
+     */
+    public static YamlFileHandler load(final Path file, final InputStream handle) throws IOException {
+        YamlFileHandler handler = load(handle);
+        return handler.saveTo(file);
     }
 
     /**

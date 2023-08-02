@@ -1,13 +1,9 @@
 package es.karmadev.api.database.model;
 
-import es.karmadev.api.core.KarmaAPI;
 import es.karmadev.api.core.KarmaKore;
 import es.karmadev.api.core.source.APISource;
-import es.karmadev.api.core.source.KarmaSource;
-import es.karmadev.api.core.source.runtime.SourceRuntime;
 import es.karmadev.api.database.DatabaseEngine;
 import es.karmadev.api.database.model.json.JsonConnection;
-import es.karmadev.api.logger.log.console.LogLevel;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -21,12 +17,9 @@ public final class JsonDatabase implements DatabaseEngine {
 
     /**
      * Initialize the json database
-     *
-     * @throws IllegalStateException if the database fails to create
-     * @throws SecurityException if the database is tried to be created
      * out of the API
      */
-    public JsonDatabase() throws IllegalStateException, SecurityException {
+    /*public JsonDatabase() {
         APISource kore = KarmaKore.INSTANCE();
         if (kore == null) throw new IllegalStateException("Cannot create a json database without main kore");
 
@@ -54,7 +47,7 @@ public final class JsonDatabase implements DatabaseEngine {
         } catch (ClassNotFoundException ex) {
             throw new IllegalStateException(ex);
         }
-    }
+    }*/
 
     /**
      * Get if the engine is protected
@@ -97,7 +90,7 @@ public final class JsonDatabase implements DatabaseEngine {
         } else {
             file = file.resolve(name + ".json");
         }
-
+        
         return new JsonConnection(file, null, null);
     }
 }

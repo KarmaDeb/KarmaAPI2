@@ -214,7 +214,6 @@ public class SpigotTitle implements SpigotPacket {
         task.set(plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
             //if the last tick doesn't match the current tick, it means that we've sent the title again
             if (sendTick == 0 || lastTick.get() != sendTick) {
-                System.out.println("Cancelling title");
                 Bukkit.getServer().getScheduler().cancelTask(task.get().getTaskId());
                 return;
             }

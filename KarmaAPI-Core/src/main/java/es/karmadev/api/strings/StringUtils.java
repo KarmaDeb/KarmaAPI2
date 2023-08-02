@@ -389,6 +389,7 @@ public class StringUtils {
      * @return the resolved object
      */
     public static Optional<Object> load(final String instance) {
+        if (instance == null) return Optional.empty();
         Object loaded = null;
 
         try {
@@ -398,7 +399,9 @@ public class StringUtils {
             } catch (IOException | ClassNotFoundException ex) {
                 ExceptionCollector.catchException(StringUtils.class, ex);
             }
-        } catch (IllegalArgumentException ignored) {}
+        } catch (IllegalArgumentException ex) {
+            ExceptionCollector.catchException(StringUtils.class, ex);
+        }
 
         return Optional.ofNullable(loaded);
     }
@@ -412,6 +415,7 @@ public class StringUtils {
      */
     @SuppressWarnings("unchecked")
     public static <T> @Nullable T loadAndCast(final String instance) {
+        if (instance == null) return null;
         T loaded = null;
 
         try {
@@ -421,7 +425,9 @@ public class StringUtils {
             } catch (IOException | ClassNotFoundException | ClassCastException ex) {
                 ExceptionCollector.catchException(StringUtils.class, ex);
             }
-        } catch (IllegalArgumentException ignored) {}
+        } catch (IllegalArgumentException ex) {
+            ExceptionCollector.catchException(StringUtils.class, ex);
+        }
 
         return loaded;
     }

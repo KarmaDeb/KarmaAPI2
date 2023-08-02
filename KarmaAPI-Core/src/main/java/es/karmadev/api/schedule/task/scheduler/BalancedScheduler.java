@@ -7,6 +7,7 @@ import es.karmadev.api.core.source.APISource;
 import es.karmadev.api.core.source.runtime.SourceRuntime;
 import es.karmadev.api.logger.SourceLogger;
 import es.karmadev.api.logger.log.console.LogLevel;
+import es.karmadev.api.schedule.runner.async.AsyncTaskExecutor;
 import es.karmadev.api.schedule.task.ScheduledTask;
 import es.karmadev.api.schedule.task.TaskScheduler;
 import org.jetbrains.annotations.Nullable;
@@ -99,11 +100,11 @@ public class BalancedScheduler implements TaskScheduler {
 
         Set<Future<?>> queued = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-        ScheduledThreadPoolExecutor scheduler = new ScheduledThreadPoolExecutor(Math.max(1, threads / 2));
-        scheduler.scheduleAtFixedRate(() -> {
+        //ScheduledThreadPoolExecutor scheduler = new ScheduledThreadPoolExecutor(Math.max(1, threads / 2));
+        AsyncTaskExecutor.EXECUTOR.scheduleAtFixedRate(() -> {
             if (!taskQue.isEmpty()) {
                 if (globalSemaphore.tryAcquire() && !systemOverloaded.get()) {
-                    Future<?> task = scheduler.submit(() -> {
+                    Future<?> task = CompletableFuture.runAsync(() -> {
                         Task next = taskQue.peek();
                         if (next != null) {
                             Semaphore subSemaphore = clazzSemaphores.computeIfAbsent(next.owner(), (p) -> new Semaphore(perClass));
@@ -131,7 +132,7 @@ public class BalancedScheduler implements TaskScheduler {
             }
         }, 0, period, TimeUnit.MILLISECONDS);
 
-        scheduler.scheduleAtFixedRate(() -> {
+        AsyncTaskExecutor.EXECUTOR.scheduleAtFixedRate(() -> {
             int tasks = taskQue.size();
             double load = Math.abs(Math.max(0, JavaVirtualMachine.systemLoad()));
 

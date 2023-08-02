@@ -47,7 +47,7 @@ public class URLUtilities {
      * @param urls the URL
      * @return the first valid URL
      */
-    public static Optional<URL> getOptional(final CharSequence... urls) {
+    public static Optional<URL> getOptional(final String... urls) {
         URL validURL = null;
 
         for (CharSequence url : urls) {

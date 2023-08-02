@@ -13,17 +13,19 @@ import es.karmadev.api.database.model.json.JsonConnection;
 import es.karmadev.api.file.util.NamedStream;
 import es.karmadev.api.file.util.PathUtilities;
 import es.karmadev.api.file.util.StreamUtils;
+import es.karmadev.api.logger.LogManager;
 import es.karmadev.api.logger.SourceLogger;
 import es.karmadev.api.logger.log.UnboundedLogger;
 import es.karmadev.api.logger.log.console.LogLevel;
 import es.karmadev.api.object.ObjectUtils;
-import es.karmadev.api.schedule.task.TaskScheduler;
 import es.karmadev.api.strings.StringFilter;
 import es.karmadev.api.strings.StringUtils;
 import es.karmadev.api.strings.placeholder.PlaceholderEngine;
 import es.karmadev.api.strings.placeholder.engine.SimpleEngine;
 import es.karmadev.api.strings.placeholder.engine.SimplePlaceholder;
 import es.karmadev.api.version.Version;
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -33,6 +35,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.security.CodeSource;
@@ -50,7 +53,7 @@ public abstract class KarmaPlugin extends JavaPlugin implements APISource {
     private static boolean principalSet = false;
     private static boolean securityWarning = false;
 
-    private final UnboundedLogger logger;
+    private final SourceLogger logger;
     private String pluginIdentifier = StringUtils.shuffle(StringUtils.generateSplit(18, '\0'), UUID.randomUUID().toString().replaceAll("-", ""));
 
     private final Map<CoreModule, Path> modules = new ConcurrentHashMap<>();
@@ -67,7 +70,11 @@ public abstract class KarmaPlugin extends JavaPlugin implements APISource {
     public KarmaPlugin(final boolean registerPrincipal) throws NoSuchFieldException, IllegalAccessException, AlreadyRegisteredException {
         setNaggable(false); //PaperMC naggable warnings bypass
         SourceManager.register(this);
-        logger = new UnboundedLogger();
+        logger = LogManager.getLogger(this).overrideLogFunction((string) -> {
+            Bukkit.getServer().getConsoleSender().sendMessage(ChatColor.translateAlternateColorCodes('&', string));
+            return null;
+        });
+
         saveIdentifier();
 
         if (registerPrincipal && principalSet) return; //We will simply ignore the register principal task if we already have a principal source
@@ -75,10 +82,18 @@ public abstract class KarmaPlugin extends JavaPlugin implements APISource {
             Class<SourceManager> managerClass = SourceManager.class;
             Field principalField = managerClass.getDeclaredField("principal");
             principalField.setAccessible(true);
-            principalField.set(managerClass, name());
+            principalField.set(managerClass, sourceName());
             principalField.setAccessible(false);
 
             principalSet = true;
+        }
+
+        if (registerPrincipal) {
+            try {
+                KarmaAPI.setup();
+            } catch (URISyntaxException ex) {
+                throw new RuntimeException();
+            }
         }
 
         runtime = new DefaultRuntime(this);
@@ -104,7 +119,7 @@ public abstract class KarmaPlugin extends JavaPlugin implements APISource {
 
     @Override
     public final void onEnable() {
-        logger.bind(this);
+        schedulers.put("async", new SpigotTaskScheduler());
         enable();
     }
 
@@ -130,7 +145,7 @@ public abstract class KarmaPlugin extends JavaPlugin implements APISource {
      * @return the source name
      */
     @Override
-    public final @NotNull String name() {
+    public final @NotNull String sourceName() {
         return getName();
     }
 
@@ -140,7 +155,7 @@ public abstract class KarmaPlugin extends JavaPlugin implements APISource {
      * @return the source version
      */
     @Override
-    public final @NotNull Version version() {
+    public final @NotNull Version sourceVersion() {
         return Version.parse(getDescription().getVersion());
     }
 
@@ -150,7 +165,7 @@ public abstract class KarmaPlugin extends JavaPlugin implements APISource {
      * @return the source description
      */
     @Override
-    public final @NotNull String description() {
+    public final @NotNull String sourceDescription() {
         String rawDescription = getDescription().getDescription();
         if (ObjectUtils.isNullOrEmpty(rawDescription)) return "KarmaPlugin implementation for " + getName();
         assert rawDescription != null;
@@ -164,7 +179,7 @@ public abstract class KarmaPlugin extends JavaPlugin implements APISource {
      * @return the source authors
      */
     @Override
-    public final @NotNull String[] authors() {
+    public final @NotNull String[] sourceAuthors() {
         return getDescription().getAuthors().toArray(new String[0]);
     }
 
@@ -239,7 +254,7 @@ public abstract class KarmaPlugin extends JavaPlugin implements APISource {
      * @return the source update URI
      */
     @Override
-    public @Nullable URI updateURI() {
+    public @Nullable URI sourceUpdateURI() {
         return null;
     }
 
@@ -275,7 +290,7 @@ public abstract class KarmaPlugin extends JavaPlugin implements APISource {
      * @return the task scheduler
      */
     @Override
-    public final @NotNull TaskScheduler scheduler(final String name) {
+    public final @NotNull SpigotTaskScheduler scheduler(final String name) {
         return schedulers.computeIfAbsent(name, (s) -> new SpigotTaskScheduler(100, this, 10, 5));
     }
 

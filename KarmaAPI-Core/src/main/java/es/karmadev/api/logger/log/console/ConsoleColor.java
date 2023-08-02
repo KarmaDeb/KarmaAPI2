@@ -6,6 +6,7 @@ import lombok.Getter;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -107,6 +108,8 @@ public enum ConsoleColor {
     @Getter
     private final char code;
     @Getter
+    private final char colorCode;
+    @Getter
     private final String unixCode;
     @Getter
     private final String winCode;
@@ -133,7 +136,10 @@ public enum ConsoleColor {
      * @param win the windows code
      */
     ConsoleColor(final char code, final String unix, final String win) {
+        String os = System.getProperty("os.name").toLowerCase();
+
         this.code = code;
+        this.colorCode = (os.contains("windows") ? '\u001B' : '\033');
         unixCode = unix;
         winCode = win;
     }
@@ -155,6 +161,20 @@ public enum ConsoleColor {
      */
     public String toColorCode(final char id) {
         return String.valueOf(id) + code;
+    }
+
+    /**
+     * Get the code
+     *
+     * @return the OS code
+     */
+    public String toOsCode() {
+        String os = System.getProperty("os.name").toLowerCase();
+        if (os.contains("windows")) {
+            return (forceOtherOs ? unixCodes.get(code) : winCodes.get(code));
+        } else {
+            return  (forceOtherOs ? winCodes.get(code) : unixCodes.get(code));
+        }
     }
 
     /**
@@ -182,6 +202,38 @@ public enum ConsoleColor {
     }
 
     /**
+     * Parse colors of the array
+     *
+     * @param messages the array
+     * @return the parsed collection
+     */
+    public static String[] parse(final String... messages) {
+        String[] newArray = new String[messages.length];
+        for (int i = 0; i < newArray.length; i++) {
+            newArray[i] = parse(messages[i]);
+        }
+
+        return newArray;
+    }
+
+    /**
+     * Parse colors of the collection
+     *
+     * @param collection the collection to parse
+     * @param collectionSupplier the collection object supplier
+     * @return the parsed collection
+     * @param <T> the collection object
+     */
+    public static <T extends Collection<String>> T parse(final T collection, final Supplier<T> collectionSupplier) {
+        T array = collectionSupplier.get();
+        for (String element : collection) {
+            array.add(parse(element));
+        }
+
+        return array;
+    }
+
+    /**
      * Parse colors of the string
      *
      * @param message the message
@@ -191,12 +243,47 @@ public enum ConsoleColor {
         String os = System.getProperty("os.name").toLowerCase();
         String str = message.replace("§", "&") + "&r";
 
-        Pattern pattern = Pattern.compile("&[0-9a-flrnom]");
-        Map<String, String> replacements = new HashMap<>();
+        //Pattern pattern = Pattern.compile("&[0-9a-flrnom]");
+        //Map<String, String> replacements = new HashMap<>();
 
-        Matcher matcher = pattern.matcher(str);
+        //Matcher matcher = pattern.matcher(str);
 
-        while (matcher.find()) {
+        StringBuilder builder = new StringBuilder();
+        boolean ignoreNext = false;
+        for (int i = 0; i < str.length(); i++) {
+            char character = str.charAt(i);
+            String append = null;
+
+            if (character == '&') {
+                if (!ignoreNext) {
+                    char next = '\0';
+                    boolean hasNext = false;
+                    if (i + 1 < str.length()) {
+                        next = str.charAt(i + 1);
+                        hasNext = true;
+                    }
+
+                    if (hasNext) {
+                        if (codes.containsKey(next)) {
+                            ConsoleColor color = codes.get(next);
+                            append = color.toOsCode();
+                            i++;
+                        }
+                    }
+                }
+
+                ignoreNext = false;
+            }
+            if (character == ignoreCharacter) {
+                ignoreNext = true;
+                append = ""; //append nothing
+            }
+            if (append == null) append = String.valueOf(character);
+
+            builder.append(append);
+        }
+
+        /*while (matcher.find()) {
             int pre = Math.max(matcher.start() - 1, 0);
             int start = matcher.start();
             int end = matcher.end();
@@ -220,7 +307,7 @@ public enum ConsoleColor {
                 osCode = (forceOtherOs ? winCodes.get(code) : unixCodes.get(code));
             }
 
-            replacements.put(part, osCode);
+
         }
 
         for (String key : replacements.keySet()) {
@@ -228,7 +315,8 @@ public enum ConsoleColor {
             str = str.replace(key, value);
         }
 
-        return str;
+        return str;*/
+        return builder.toString();
     }
 
     /**

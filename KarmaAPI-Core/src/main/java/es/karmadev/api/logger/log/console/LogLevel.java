@@ -14,31 +14,31 @@ public enum LogLevel {
     /**
      * Non important debug message
      */
-    DEBUG("DEBUG", "&7[DEBUG] {0}:&f {1}", Level.INFO),
+    DEBUG("DEBUG", "&7[DEBUG] {0}&7:&f {1}", Level.INFO),
     /**
      * Important debug message
      */
-    DEBUG_SEVERE("SEVERE DEBUG", "&7[SEVERE DEBUG] {0}:&f {1}", Level.INFO),
+    DEBUG_SEVERE("SEVERE DEBUG", "&7[SEVERE DEBUG] {0}&7:&f {1}", Level.INFO),
     /**
      * Success message
      */
-    SUCCESS("SUCCESS", "&7[SUCCESS] {0}:&f {1}", Level.FINE),
+    SUCCESS("SUCCESS", "&7[SUCCESS] {0}&7:&f {1}", Level.FINE),
     /**
      * Informative message
      */
-    INFO("INFO", "&7[INFO] {0}:&f {1}", Level.INFO),
+    INFO("INFO", "&7[INFO] {0}&7:&f {1}", Level.INFO),
     /**
      * Warning message
      */
-    WARNING("WARNING", "&7[WARNING] {0}:&f {1}", Level.WARNING),
+    WARNING("WARNING", "&7[WARNING] {0}&7:&f {1}", Level.WARNING),
     /**
      * Severe message
      */
-    SEVERE("SEVERE", "&7[SEVERE] {0}:&f {1}", Level.SEVERE),
+    SEVERE("SEVERE", "&7[SEVERE] {0}&7:&f {1}", Level.SEVERE),
     /**
      * Error message
      */
-    ERROR("ERROR", "&7[ERROR] {0}:&f {1}", Level.SEVERE);
+    ERROR("ERROR", "&7[ERROR] {0}&7:&f {1}", Level.SEVERE);
 
     @Getter
     private final String raw;

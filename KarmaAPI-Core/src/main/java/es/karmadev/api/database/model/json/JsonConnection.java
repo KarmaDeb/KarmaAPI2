@@ -1,6 +1,8 @@
 package es.karmadev.api.database.model.json;
 
 import com.google.gson.*;
+import com.google.gson.reflect.TypeToken;
+import es.karmadev.api.core.KarmaKore;
 import es.karmadev.api.database.DatabaseConnection;
 import es.karmadev.api.database.result.QueryResult;
 import es.karmadev.api.file.util.PathUtilities;
@@ -39,6 +41,9 @@ public class JsonConnection implements DatabaseConnection {
         }
 
         database = tmpObject;
+        if (!database.has("types") || !database.get("types").isJsonObject()) {
+            database.add("types", new JsonObject());
+        }
     }
 
     /**
@@ -421,6 +426,26 @@ public class JsonConnection implements DatabaseConnection {
     }
 
     /**
+     * Get a map
+     *
+     * @param key the map key
+     * @return the map
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getMap(final String key) {
+        if (!database.has(key)) return null;
+        JsonElement element = database.get(key);
+        if (element == null) return null;
+
+        if (getType(key).equals("map")) {
+            Gson gson = new GsonBuilder().create();
+            return (Map<String, Object>) gson.fromJson(element, Map.class);
+        }
+
+        return null;
+    }
+
+    /**
      * Get a string
      *
      * @param key the string key
@@ -580,6 +605,16 @@ public class JsonConnection implements DatabaseConnection {
         }
 
         return "null";
+    }
+
+    /**
+     * Get if the key is set
+     *
+     * @param key the key
+     * @return if the key is set
+     */
+    public boolean isSet(final String key) {
+        return database.has(key);
     }
 
     /**

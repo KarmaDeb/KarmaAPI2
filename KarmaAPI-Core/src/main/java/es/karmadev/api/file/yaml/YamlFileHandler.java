@@ -16,6 +16,34 @@ import java.util.Map;
 public interface YamlFileHandler {
 
     /**
+     * Get the yaml file raw data
+     *
+     * @return the yaml file raw data
+     */
+    Map<String, Object> rawData();
+
+    /**
+     * Import data from the other file handler
+     *
+     * @param other the other file handler
+     * @param replaceExisting replace the current data with
+     *                        the other yaml data
+     */
+    void importFrom(final YamlFileHandler other, final boolean replaceExisting);
+
+    /**
+     * Validate the current file
+     */
+    void validate();
+
+    /**
+     * Reload the current file handle
+     *
+     * @return if the file was able to be reloaded
+     */
+    boolean reload();
+
+    /**
      * Compare the objects
      *
      * @param path the path to the value

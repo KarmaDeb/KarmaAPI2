@@ -14,12 +14,12 @@ public class LogManager {
     private final static Map<APISource, SourceLogger> consoleLoggers = new ConcurrentHashMap<>();
 
     /**
-     * Get the console logger of a source
+     * Create a new logger
      *
-     * @param source the source
-     * @return the source console logger
+     * @param owner the logger owner
+     * @return the new logger
      */
-    public static SourceLogger getLogger(final APISource source) {
-        return consoleLoggers.computeIfAbsent(source, (logger) -> new BoundedLogger(source));
+    public static SourceLogger getLogger(final APISource owner) {
+        return consoleLoggers.computeIfAbsent(owner, (logger) -> new BoundedLogger(owner));
     }
 }

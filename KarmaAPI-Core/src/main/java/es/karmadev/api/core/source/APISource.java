@@ -31,35 +31,35 @@ public interface APISource {
      *
      * @return the source name
      */
-    @NotNull String name();
+    @NotNull String sourceName();
 
     /**
      * Get the source version
      *
      * @return the source version
      */
-    @NotNull Version version();
+    @NotNull Version sourceVersion();
 
     /**
      * Get the source description
      *
      * @return the source description
      */
-    @NotNull String description();
+    @NotNull String sourceDescription();
 
     /**
      * Get the source authors
      *
      * @return the source authors
      */
-    @NotNull String[] authors();
+    @NotNull String[] sourceAuthors();
 
     /**
      * Get the source update URI
      *
      * @return the source update URI
      */
-    @Nullable URI updateURI();
+    @Nullable URI sourceUpdateURI();
 
     /**
      * Get the source runtime

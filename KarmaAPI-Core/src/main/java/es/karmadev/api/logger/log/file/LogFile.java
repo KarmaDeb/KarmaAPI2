@@ -4,7 +4,6 @@ import es.karmadev.api.JavaVirtualMachine;
 import es.karmadev.api.MemoryUnit;
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.core.source.APISource;
-import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.file.util.PathUtilities;
 import es.karmadev.api.file.util.StreamUtils;
 import es.karmadev.api.logger.log.console.LogLevel;
@@ -12,6 +11,7 @@ import es.karmadev.api.logger.log.file.component.LogQueue;
 import es.karmadev.api.logger.log.file.component.QuePair;
 import es.karmadev.api.logger.log.file.component.header.HeaderLine;
 import es.karmadev.api.logger.log.file.component.header.LogHeader;
+import es.karmadev.api.schedule.runner.async.AsyncTaskExecutor;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,7 +25,6 @@ import java.time.ZonedDateTime;
 import java.time.format.TextStyle;
 import java.util.Arrays;
 import java.util.Locale;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -80,15 +79,15 @@ public class LogFile {
         header.add(new HeaderLine(() -> "API Date: 27-03-2023 19:20:40"));
         header.add(new HeaderLine().lineBreak(false));
         header.add(new HeaderLine("# Source information"));
-        header.add(new HeaderLine(() -> "Name: " + source.name()));
-        header.add(new HeaderLine(() -> "Version: " + source.version()));
-        header.add(new HeaderLine(() -> "Description: " + source.description()));
+        header.add(new HeaderLine(() -> "Name: " + source.sourceName()));
+        header.add(new HeaderLine(() -> "Version: " + source.sourceVersion()));
+        header.add(new HeaderLine(() -> "Description: " + source.sourceDescription()));
 
         Path fl = logFile();
         rebuildHeader(fl);
 
-        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
-        executor.scheduleAtFixedRate(() -> {
+        //ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
+        AsyncTaskExecutor.EXECUTOR.scheduleAtFixedRate(() -> {
             if (queue.hasItems() && !writing.get()) {
                 writing.set(true);
                 Path logFile = logFile();

@@ -119,7 +119,7 @@ public class VersionChecker {
      * @throws ProcessingException if the version data is not valid
      */
     private void checkOnline() throws MalformedURLException, IOException, ProcessingException {
-        URI uri = source.updateURI();
+        URI uri = source.sourceUpdateURI();
         if (uri == null) return;
 
         String rawUrl = uri.toString();
@@ -214,7 +214,7 @@ public class VersionChecker {
      * @return the version changelog
      */
     public String[] getChangelog() {
-        return getChangelog(version != null ? version : source.version());
+        return getChangelog(version != null ? version : source.sourceVersion());
     }
 
     /**
@@ -269,7 +269,7 @@ public class VersionChecker {
     public BuildStatus compareWith(final Version version) {
         if (version == null) return BuildStatus.OUTDATED;
 
-        Version current = source.version();
+        Version current = source.sourceVersion();
         return version.compareTo(current) >= 0 ? BuildStatus.UPDATED : BuildStatus.OUTDATED;
     }
 }

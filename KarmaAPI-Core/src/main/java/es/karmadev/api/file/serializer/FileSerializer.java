@@ -8,7 +8,6 @@ import es.karmadev.api.MemoryUnit;
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.core.KarmaKore;
 import es.karmadev.api.core.source.APISource;
-import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.file.serializer.serialized.SerializedDictionary;
 import es.karmadev.api.file.serializer.serialized.SerializedFile;
 import es.karmadev.api.file.util.PathUtilities;

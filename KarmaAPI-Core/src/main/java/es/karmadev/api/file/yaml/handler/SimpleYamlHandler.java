@@ -1,5 +1,6 @@
 package es.karmadev.api.file.yaml.handler;
 
+import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.file.RawType;
 import es.karmadev.api.file.yaml.YamlFileHandler;
 import org.jetbrains.annotations.Nullable;
@@ -24,11 +25,11 @@ class SimpleYamlHandler implements YamlFileHandler {
     /**
      * Yaml data
      */
-    private final Map<String, Object> data;
+    private Map<String, Object> data;
     /**
      * Yaml source
      */
-    private final YamlReader source;
+    private YamlReader source;
 
     /**
      * Initialize the yaml handler
@@ -60,6 +61,81 @@ class SimpleYamlHandler implements YamlFileHandler {
         this.file = file;
         this.data = data;
         this.source = source;
+    }
+
+    /**
+     * Get the yaml file raw data
+     *
+     * @return the yaml file raw data
+     */
+    @Override
+    public Map<String, Object> rawData() {
+        return new HashMap<>(data);
+    }
+
+    /**
+     * Import data from the other file handler
+     *
+     * @param other           the other file handler
+     * @param replaceExisting replace the current data with
+     *                        the other yaml data
+     */
+    @Override
+    public void importFrom(final YamlFileHandler other, final boolean replaceExisting) {
+        Map<String, Object> data = other.rawData();
+        if (replaceExisting) {
+            this.data = data;
+        } else {
+            for (String key : other.getKeys(true)) {
+                if (this.isSet(key)) {
+                    this.save(key, other.get(key));
+                }
+            }
+        }
+    }
+
+    /**
+     * Validate the current file
+     */
+    @Override
+    public void validate() {
+        if (source == null) return;
+        try {
+            YamlFileHandler handler = source.toHandler();
+            for (String key : handler.getKeys(true)) {
+                if (!isSet(key)) {
+                    save(key, handler.get(key));
+                } else {
+                    if (!compareValue(key, handler.get(key))) {
+                        save(key, handler.get(key));
+                    }
+                }
+            }
+
+            save();
+        } catch (IOException ex) {
+            ExceptionCollector.catchException(YamlHandler.class, ex);
+        }
+    }
+
+    /**
+     * Reload the current file handle
+     *
+     * @return if the file was able to be reloaded
+     */
+    @Override
+    public boolean reload() {
+        if (file == null) return false; //We cannot reload a virtual yaml file
+        try {
+            SimpleYamlHandler sym = (SimpleYamlHandler) YamlHandler.load(file);
+            data = sym.data;
+            source = sym.source;
+
+            return true;
+        } catch (IOException ex) {
+            ExceptionCollector.catchException(YamlHandler.class, ex);
+            return false;
+        }
     }
 
     /**

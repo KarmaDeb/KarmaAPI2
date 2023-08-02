@@ -8,6 +8,7 @@ import es.karmadev.api.logger.log.console.LogLevel;
 import es.karmadev.api.logger.log.file.LogFile;
 
 import java.util.Arrays;
+import java.util.function.Function;
 
 /**
  * KarmaAPI bounded logger
@@ -20,6 +21,7 @@ public class BoundedLogger implements SourceLogger {
     private final APISource source;
     private final LogFile log;
     private boolean logToConsole;
+    private Function<String, Void> logFunction;
 
     /**
      * Initialize the console
@@ -29,6 +31,18 @@ public class BoundedLogger implements SourceLogger {
     public BoundedLogger(final APISource owner) {
         this.source = owner;
         log = new LogFile(source);
+    }
+
+    /**
+     * Override the log function
+     *
+     * @param function the new log function
+     * @return the modified logger
+     */
+    @Override
+    public BoundedLogger overrideLogFunction(final Function<String, Void> function) {
+        this.logFunction = function;
+        return this;
     }
 
     /**
@@ -60,7 +74,12 @@ public class BoundedLogger implements SourceLogger {
     @Override
     public void send(final LogLevel level, final String message, final Object... replaces) {
         if (config.isLevelEnabled(level)) {
-            String finalMessage = buildMessage(level, message, replaces);
+            String finalMessage = buildMessage(level, source.sourceName(), message, replaces);
+            if (logFunction != null) {
+                logFunction.apply(finalMessage);
+                return;
+            }
+
             System.out.println(ConsoleColor.parse(finalMessage));
         }
     }
@@ -76,9 +95,15 @@ public class BoundedLogger implements SourceLogger {
     public void send(final Throwable error, final String message, final Object... replaces) {
         if (config.isLevelEnabled(LogLevel.ERROR)) {
             StackTraceElement[] elements = error.getStackTrace();
-            String finalMessage = buildMessage(LogLevel.ERROR, message, replaces);
+            String finalMessage = buildMessage(LogLevel.ERROR, source.sourceName(), message, replaces);
 
-            System.out.println(ConsoleColor.parse(finalMessage + " &7(&b " + error.fillInStackTrace() + " &8|&b " + error.getLocalizedMessage() + " &7)"));
+            String msg = finalMessage + " &7(&b " + error.fillInStackTrace() + " &8|&b " + error.getLocalizedMessage() + " &7)";
+            if (logFunction != null) {
+                logFunction.apply(msg);
+            } else {
+                System.out.println(ConsoleColor.parse(msg));
+            }
+
             for (StackTraceElement element : elements) {
                 String clazz = element.getClassName();
                 String method = element.getMethodName();
@@ -86,10 +111,20 @@ public class BoundedLogger implements SourceLogger {
                 int line = element.getLineNumber();
 
                 if (file == null) {
-                    System.out.printf(ConsoleColor.parse("\t\t\t&c%s&8&c&f#&7%s&8 (&cat line &b%d&8)%n"), clazz, method, line);
+                    String eMsg = String.format("\t\t\t&c%s&8&c&f#&7%s&8 (&cat line &b%d&8)%n", clazz, method, line);
+                    if (logFunction != null) {
+                        logFunction.apply(eMsg);
+                    } else {
+                        System.out.println(ConsoleColor.parse(eMsg));
+                    }
                 } else {
                     file = file.replace(".java", "");
-                    System.out.printf(ConsoleColor.parse("\t\t\t&c%s&f#&7%s&8 (&cat &7%s&f:&b%d&8)%n"), clazz, method, file, line);
+                    String eMsg = String.format("\t\t\t&c%s&f#&7%s&8 (&cat &7%s&f:&b%d&8)%n", clazz, method, file, line);
+                    if (logFunction != null) {
+                        logFunction.apply(eMsg);
+                    } else {
+                        System.out.println(ConsoleColor.parse(eMsg));
+                    }
                 }
             }
         }
@@ -114,7 +149,12 @@ public class BoundedLogger implements SourceLogger {
             }
         }
 
-        String finalMessage = buildMessage(null, message, replaces);
+        String finalMessage = buildMessage(null, source.sourceName(), message, replaces);
+        if (logFunction != null) {
+            logFunction.apply(finalMessage);
+            return;
+        }
+
         System.out.println(ConsoleColor.parse(finalMessage));
     }
 
@@ -191,8 +231,8 @@ public class BoundedLogger implements SourceLogger {
      * @param replaces the message replaces
      * @return the message
      */
-    private String buildMessage(final LogLevel level, final String message, final Object... replaces) {
-        String prefix = config.getPrefix(level).replace("{0}", source.name());
+    private String buildMessage(final LogLevel level, final String name, final String message, final Object... replaces) {
+        String prefix = config.getPrefix(level).replace("{0}", name);
 
         String finalMessage = parseReplaces(message, replaces);
         return prefix.replace("{1}", finalMessage);

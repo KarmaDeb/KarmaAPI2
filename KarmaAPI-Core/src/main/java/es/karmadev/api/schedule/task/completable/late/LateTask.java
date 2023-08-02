@@ -4,6 +4,8 @@ import es.karmadev.api.schedule.task.completable.CompletedTask;
 import es.karmadev.api.schedule.task.completable.TaskCompletor;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;

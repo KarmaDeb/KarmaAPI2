@@ -1,8 +1,5 @@
 package es.karmadev.api.spigot.server;
 
-import es.karmadev.api.core.KarmaKore;
-import es.karmadev.api.core.KarmaPlugin;
-import es.karmadev.api.core.source.APISource;
 import es.karmadev.api.version.Version;
 import org.bukkit.Bukkit;
 import org.bukkit.Server;

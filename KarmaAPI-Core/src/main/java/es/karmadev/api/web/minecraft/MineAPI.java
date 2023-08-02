@@ -6,6 +6,7 @@ import es.karmadev.api.core.source.APISource;
 import es.karmadev.api.file.util.PathUtilities;
 import es.karmadev.api.logger.log.console.LogLevel;
 import es.karmadev.api.object.ObjectUtils;
+import es.karmadev.api.schedule.runner.async.AsyncTaskExecutor;
 import es.karmadev.api.schedule.task.completable.TaskCompletor;
 import es.karmadev.api.schedule.task.completable.late.LateTask;
 import es.karmadev.api.web.minecraft.response.data.*;
@@ -27,7 +28,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -38,8 +38,6 @@ public class MineAPI {
 
     private static long threadIndex = 0;
     private final static APISource source = KarmaKore.INSTANCE();
-    private final static ScheduledThreadPoolExecutor service = new ScheduledThreadPoolExecutor(10, r ->
-            new Thread(r, "mine_api_executor-" + threadIndex++));
     private final static Gson gson = new GsonBuilder().create();
     public final static int VERY_SMALL = 64;
     public final static int SMALL = 128;
@@ -48,11 +46,6 @@ public class MineAPI {
     public final static int DEFAULT = 1024;
     public static long CACHE_LIFETIME = TimeUnit.DAYS.toMillis(3);
 
-    static {
-        service.setKeepAliveTime(1, TimeUnit.SECONDS);
-        service.setMaximumPoolSize(15);
-    }
-
     /**
      * Try to push the nick data
      *
@@ -60,16 +53,8 @@ public class MineAPI {
      * @return the response
      */
     public static TaskCompletor<OKARequest> publish(final String nick) {
-        if (service.getPoolSize() + 1 >= service.getMaximumPoolSize()) {
-            service.setMaximumPoolSize(service.getMaximumPoolSize() + 5);
-        } else {
-            if (service.getPoolSize() + 5 < service.getMaximumPoolSize()) {
-                service.setMaximumPoolSize(Math.max(service.getMaximumPoolSize() - 5, 15));
-            }
-        }
-
         TaskCompletor<OKARequest> task = new LateTask<>();
-        service.schedule(() -> {
+        AsyncTaskExecutor.EXECUTOR.schedule(() -> {
             OKARequest request = runMethod("push", nick);
             task.complete(request);
         }, 0, TimeUnit.SECONDS);
@@ -118,16 +103,8 @@ public class MineAPI {
      * @return the user information
      */
     public static TaskCompletor<OKARequest> fetch(final UUID id) {
-        if (service.getPoolSize() + 1 >= service.getMaximumPoolSize()) {
-            service.setMaximumPoolSize(service.getMaximumPoolSize() + 5);
-        } else {
-            if (service.getPoolSize() + 5 < service.getMaximumPoolSize()) {
-                service.setMaximumPoolSize(Math.max(service.getMaximumPoolSize() - 5, 15));
-            }
-        }
-
         TaskCompletor<OKARequest> task = new LateTask<>();
-        service.schedule(() -> {
+        AsyncTaskExecutor.EXECUTOR.schedule(() -> {
             OKARequest request = runMethod("fetch", id.toString());
             task.complete(request);
         }, 0, TimeUnit.SECONDS);
@@ -153,16 +130,8 @@ public class MineAPI {
      * @return the head image or null if none
      */
     public static TaskCompletor<OKAHeadRequest> fetchHead(final String name) {
-        if (service.getPoolSize() + 1 >= service.getMaximumPoolSize()) {
-            service.setMaximumPoolSize(service.getMaximumPoolSize() + 5);
-        } else {
-            if (service.getPoolSize() + 5 < service.getMaximumPoolSize()) {
-                service.setMaximumPoolSize(Math.max(service.getMaximumPoolSize() - 5, 15));
-            }
-        }
-
         TaskCompletor<OKAHeadRequest> task = new LateTask<>();
-        service.schedule(() -> {
+        AsyncTaskExecutor.EXECUTOR.schedule(() -> {
             OKAHeadRequest request = fetchHeadAndWait(name, DEFAULT);
             task.complete(request);
         }, 0, TimeUnit.SECONDS);
@@ -188,16 +157,8 @@ public class MineAPI {
      * @return the head image or null if none
      */
     public static TaskCompletor<OKAHeadRequest> fetchHead(final String name, final int request_size) {
-        if (service.getPoolSize() + 1 >= service.getMaximumPoolSize()) {
-            service.setMaximumPoolSize(service.getMaximumPoolSize() + 5);
-        } else {
-            if (service.getPoolSize() + 5 < service.getMaximumPoolSize()) {
-                service.setMaximumPoolSize(Math.max(service.getMaximumPoolSize() - 5, 15));
-            }
-        }
-
         TaskCompletor<OKAHeadRequest> task = new LateTask<>();
-        service.schedule(() -> {
+        AsyncTaskExecutor.EXECUTOR.schedule(() -> {
             OKAHeadRequest request = fetchHeadAndWait(name, request_size);
             task.complete(request);
         }, 0, TimeUnit.SECONDS);
@@ -265,16 +226,8 @@ public class MineAPI {
      * @param port the server port
      */
     public static TaskCompletor<OKAServerRequest> fetchServer(final String address, final int port) {
-        if (service.getPoolSize() + 1 >= service.getMaximumPoolSize()) {
-            service.setMaximumPoolSize(service.getMaximumPoolSize() + 5);
-        } else {
-            if (service.getPoolSize() + 5 < service.getMaximumPoolSize()) {
-                service.setMaximumPoolSize(Math.max(service.getMaximumPoolSize() - 5, 15));
-            }
-        }
-
         TaskCompletor<OKAServerRequest> task = new LateTask<>();
-        service.schedule(() -> {
+        AsyncTaskExecutor.EXECUTOR.schedule(() -> {
             OKAServerRequest request = fetchServerAndWait(address, port);
             task.complete(request);
         }, 0, TimeUnit.SECONDS);
@@ -288,16 +241,8 @@ public class MineAPI {
      * @param address the server address
      */
     public static TaskCompletor<OKAServerRequest> fetchServer(final String address) {
-        if (service.getPoolSize() + 1 >= service.getMaximumPoolSize()) {
-            service.setMaximumPoolSize(service.getMaximumPoolSize() + 5);
-        } else {
-            if (service.getPoolSize() + 5 < service.getMaximumPoolSize()) {
-                service.setMaximumPoolSize(Math.max(service.getMaximumPoolSize() - 5, 15));
-            }
-        }
-
         TaskCompletor<OKAServerRequest> task = new LateTask<>();
-        service.schedule(() -> {
+        AsyncTaskExecutor.EXECUTOR.schedule(() -> {
             OKAServerRequest request = fetchServerAndWait(address, 25565);
             task.complete(request);
         }, 0, TimeUnit.SECONDS);
@@ -416,16 +361,8 @@ public class MineAPI {
      * @return the API size
      */
     public static TaskCompletor<Long> size() {
-        if (service.getPoolSize() + 1 >= service.getMaximumPoolSize()) {
-            service.setMaximumPoolSize(service.getMaximumPoolSize() + 5);
-        } else {
-            if (service.getPoolSize() + 5 < service.getMaximumPoolSize()) {
-                service.setMaximumPoolSize(Math.max(service.getMaximumPoolSize() - 5, 15));
-            }
-        }
-
         TaskCompletor<Long> task = new LateTask<>();
-        service.schedule(() -> {
+        AsyncTaskExecutor.EXECUTOR.schedule(() -> {
             long amount = sizeAndWait();
             task.complete(amount);
         }, 0, TimeUnit.SECONDS);
@@ -475,16 +412,8 @@ public class MineAPI {
      * @return the API pages
      */
     public static TaskCompletor<Long> pages() {
-        if (service.getPoolSize() + 1 >= service.getMaximumPoolSize()) {
-            service.setMaximumPoolSize(service.getMaximumPoolSize() + 5);
-        } else {
-            if (service.getPoolSize() + 5 < service.getMaximumPoolSize()) {
-                service.setMaximumPoolSize(Math.max(service.getMaximumPoolSize() - 5, 15));
-            }
-        }
-
         TaskCompletor<Long> task = new LateTask<>();
-        service.schedule(() -> {
+        AsyncTaskExecutor.EXECUTOR.schedule(() -> {
             long amount = pagesAndWait();
             task.complete(amount);
         }, 0, TimeUnit.SECONDS);
@@ -560,16 +489,8 @@ public class MineAPI {
      * @return the information
      */
     public static TaskCompletor<MultiOKARequest> fetchAll(final long page) {
-        if (service.getPoolSize() + 1 >= service.getMaximumPoolSize()) {
-            service.setMaximumPoolSize(service.getMaximumPoolSize() + 5);
-        } else {
-            if (service.getPoolSize() + 5 < service.getMaximumPoolSize()) {
-                service.setMaximumPoolSize(Math.max(service.getMaximumPoolSize() - 5, 15));
-            }
-        }
-
         LateTask<MultiOKARequest> task = new LateTask<>();
-        service.schedule(() -> {
+        AsyncTaskExecutor.EXECUTOR.schedule(() -> {
             MultiOKARequest request = fetchAllAndWait(page);
             task.complete(request);
         }, 0, TimeUnit.SECONDS);

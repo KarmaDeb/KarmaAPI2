@@ -13,6 +13,7 @@
         <module>KarmaAPI-Spigot</module>
         <module>KarmaAPIHologram</module>
         <module>KarmaAPI-Minecraft</module>
+        <module>PluginSpigot</module>
     </modules>
 
     <properties>
@@ -152,12 +153,20 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- Reflection -->
+            <dependency>
+                <groupId>com.github.YeetManLord</groupId>
+                <artifactId>ReflectionAPI</artifactId>
+                <version>1.0.4</version>
+                <scope>compile</scope>
+            </dependency>
+
             <!-- SnakeYAML -->
             <dependency>
                 <groupId>org.yaml</groupId>
                 <artifactId>snakeyaml</artifactId>
                 <version>2.0</version>
-                <scope>provided</scope>
+                <scope>compile</scope>
             </dependency>
 
             <dependency>
@@ -229,7 +238,21 @@
             <dependency>
                 <groupId>org.spigotmc</groupId>
                 <artifactId>spigot-api</artifactId>
-                <version>1.19.4-R0.1-SNAPSHOT</version>
+                <version>1.20-R0.1-SNAPSHOT</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>net.md-5</groupId>
+                <artifactId>bungeecord-api</artifactId>
+                <version>1.20-R0.1-SNAPSHOT</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <!-- Don't try to compile without compiling [clean, install] BungeeCord first! -->
+            <dependency>
+                <groupId>net.md-5</groupId>
+                <artifactId>bungeecord-proxy</artifactId>
+                <version>1.20-R0.1-SNAPSHOT</version>
                 <scope>provided</scope>
             </dependency>
         </dependencies>

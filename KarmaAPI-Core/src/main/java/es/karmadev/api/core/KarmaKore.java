@@ -32,6 +32,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Field;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Map;
 import java.util.UUID;
@@ -53,7 +54,7 @@ public final class KarmaKore extends KarmaSource {
      * @throws AlreadyRegisteredException if the core has been
      * already initialized previously
      */
-    private KarmaKore() throws AlreadyRegisteredException {
+    public KarmaKore() throws AlreadyRegisteredException {
         super("KarmaSource",
                 Version.parse(KarmaAPI.VERSION, KarmaAPI.BUILD),
                 "KarmaAPI is an API that helps in the development of java applications",
@@ -138,6 +139,12 @@ public final class KarmaKore extends KarmaSource {
 
             }
         });
+
+        try {
+            KarmaAPI.setup();
+        } catch (URISyntaxException ex) {
+            throw new RuntimeException();
+        }
     }
 
     /**
@@ -249,7 +256,7 @@ public final class KarmaKore extends KarmaSource {
      * @return the source update URI
      */
     @Override
-    public @Nullable URI updateURI() {
+    public @Nullable URI sourceUpdateURI() {
         return null;
     }
 

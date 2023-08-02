@@ -32,9 +32,8 @@ public class YamlReader {
      * Create a new yaml reader
      *
      * @param stream the stream to read from
-     * @throws IOException if the stream fails to read
      */
-    public YamlReader(final InputStream stream) throws IOException {
+    public YamlReader(final InputStream stream) {
         raw = StreamUtils.streamToString(stream).getBytes(StandardCharsets.UTF_8);
     }
 
@@ -82,20 +81,21 @@ public class YamlReader {
                 rawBuilder.append(getComments("", key));
 
                 Node value = tuple.getValueNode();
-                if (value instanceof MappingNode) {
+                if (value instanceof MappingNode) { //A section
                     rawBuilder.append(key.getValue()).append(":").append(getInlineComments(key)).append("\n");
 
                     MappingNode map = (MappingNode) value;
                     rawBuilder.append(mapString((placeholders ? key.getValue() + "." : null), 1, map, null));
                 } else {
-                    if (value instanceof SequenceNode) {
+                    if (value instanceof SequenceNode) { //An array
                         SequenceNode sequence = (SequenceNode) value;
+
                         if (placeholders) {
                             rawBuilder.append(key.getValue()).append(": ${").append(key.getValue()).append("}\n");
                         } else {
                             rawBuilder.append(mapStringSequence(null, 0, key, sequence, null));
                         }
-                    } else {
+                    } else { //A string
                         ScalarNode scalarValue = (ScalarNode) value;
                         String stringValue = scalarValue.getValue();
                         Tag tag = scalarValue.getTag();
@@ -144,20 +144,6 @@ public class YamlReader {
      * the yaml
      */
     public String dump(final YamlFileHandler file) throws IOException {
-        /*YamlFileHandler defaults = file.defaults();
-        if (defaults == null) {
-            DumperOptions options = new DumperOptions();
-            options.setLineBreak(DumperOptions.LineBreak.getPlatformLineBreak());
-            options.setPrettyFlow(true);
-            options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-            options.setAllowUnicode(true);
-            options.setProcessComments(true);
-            options.setIndent(2);
-
-            Yaml yaml = new Yaml(options);
-            return yaml.dump(file.raw());
-        }*/
-
         InputStream resource = StreamUtils.create(raw);
         try (InputStreamReader isr = new InputStreamReader(resource, StandardCharsets.UTF_8)) {
             LoaderOptions options = new LoaderOptions();
@@ -256,9 +242,10 @@ public class YamlReader {
 
             rawBuilder.append(getComments(tabs, subKey));
 
-            if (subValue instanceof ScalarNode) {
+            if (subValue instanceof ScalarNode) { //A raw value
                 ScalarNode scalarSubValue = (ScalarNode) subValue;
                 String value = (handler == null ? scalarSubValue.getValue() : String.valueOf(handler.get(path + subKey.getValue())));
+
                 if (handler != null) {
                     Object v = handler.get(path);
                     if (v == null) value = scalarSubValue.getValue();
@@ -316,8 +303,9 @@ public class YamlReader {
         if (originalNodes.isEmpty() || (handler != null && handler.getList(path).isEmpty())) {
             return builder.append(tabs)
                     .append(key.getValue()).append(": ")
-                    .append("[]").append(getInlineComments(sequence));
+                    .append("[]").append(getInlineComments(sequence)).append("\n");
         }
+
         if (handler == null || handler.get(path) == null) {
             originalNodes.forEach((node) -> {
                 ScalarNode scalar = (ScalarNode) node;
@@ -352,7 +340,7 @@ public class YamlReader {
             builder.append(tabs)
                     .append(key.getValue()).append(": ")
                     .append(sequenceBuilder.substring(0, Math.max(0, sequenceBuilder.length() - 2)))
-                    .append("]").append(getInlineComments(sequence));
+                    .append("]").append(getInlineComments(sequence)).append("\n");
         } else {
             sequenceBuilder.append("\n");
             for (String value : nodes) {
@@ -361,7 +349,7 @@ public class YamlReader {
 
             builder.append(tabs)
                     .append(key.getValue()).append(": ")
-                    .append(sequenceBuilder.substring(0, Math.max(0, sequenceBuilder.length() - 1)));
+                    .append(sequenceBuilder.substring(0, Math.max(0, sequenceBuilder.length() - 1))).append("\n");
         }
 
         return builder;

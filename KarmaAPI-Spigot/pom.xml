@@ -46,8 +46,6 @@
         <dependency>
             <groupId>com.github.YeetManLord</groupId>
             <artifactId>ReflectionAPI</artifactId>
-            <version>1.0.5</version>
-            <scope>compile</scope>
         </dependency>
 
         <dependency>

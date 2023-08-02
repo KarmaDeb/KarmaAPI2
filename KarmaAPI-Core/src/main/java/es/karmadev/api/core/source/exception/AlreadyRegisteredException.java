@@ -1,7 +1,6 @@
 package es.karmadev.api.core.source.exception;
 
 import es.karmadev.api.core.source.APISource;
-import es.karmadev.api.core.source.KarmaSource;
 
 import java.util.Arrays;
 
@@ -20,6 +19,6 @@ public class AlreadyRegisteredException extends Exception {
      *               tried to register
      */
     public AlreadyRegisteredException(final APISource source) {
-        super("Cannot register source " + source.name() + " [" + Arrays.asList(source.authors()) + "] because it is or another source with the same name is already registered");
+        super("Cannot register source " + source.sourceName() + " [" + Arrays.asList(source.sourceAuthors()) + "] because it is or another source with the same name is already registered");
     }
 }

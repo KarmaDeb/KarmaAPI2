@@ -4,10 +4,9 @@ import es.karmadev.api.JavaVirtualMachine;
 import es.karmadev.api.MemoryUnit;
 import es.karmadev.api.core.KarmaKore;
 import es.karmadev.api.core.KarmaPlugin;
-import es.karmadev.api.core.source.APISource;
-import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.logger.SourceLogger;
 import es.karmadev.api.logger.log.console.LogLevel;
+import es.karmadev.api.schedule.runner.async.AsyncTaskExecutor;
 import es.karmadev.api.schedule.task.TaskScheduler;
 import org.jetbrains.annotations.Nullable;
 
@@ -81,10 +80,10 @@ public class SpigotTaskScheduler implements TaskScheduler {
      */
     public SpigotTaskScheduler(final int capacity, final KarmaPlugin source, final int simultaneous, final int perClass) {
         QUEUE_CAPACITY = Math.max(1, capacity);
-        this.schedulerSource = (source != null ? source : (KarmaPlugin) ((APISource) KarmaKore.INSTANCE()));
+        this.schedulerSource = (source != null ? source : (KarmaPlugin) KarmaKore.INSTANCE());
         globalSemaphore = new Semaphore(Math.max(2, simultaneous));
 
-        if (source == null) throw new RuntimeException("Failed to create AsynchronousScheduler because the source is not valid");
+        if (schedulerSource == null) throw new RuntimeException("Failed to create AsynchronousScheduler because the source is not valid");
 
         int threads = JavaVirtualMachine.cores();
         long memory = JavaVirtualMachine.allocatedMemory(MemoryUnit.GIGABYTES);
@@ -93,16 +92,16 @@ public class SpigotTaskScheduler implements TaskScheduler {
         double rs = (double) memory / threads;
         long period = Math.round(rs * 1000);
 
-        SourceLogger logger = source.logger();
+        SourceLogger logger = schedulerSource.logger();
         logger.send(LogLevel.INFO, "Using a period of {0} for the spigot scheduler", period);
 
         Set<Future<?>> queued = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-        ScheduledThreadPoolExecutor scheduler = new ScheduledThreadPoolExecutor(Math.max(1, threads / 2));
-        scheduler.scheduleAtFixedRate(() -> {
+        //ScheduledThreadPoolExecutor scheduler = new ScheduledThreadPoolExecutor(Math.max(1, threads / 2));
+        AsyncTaskExecutor.EXECUTOR.scheduleAtFixedRate(() -> {
             if (!taskQue.isEmpty()) {
                 if (globalSemaphore.tryAcquire() && !systemOverloaded.get()) {
-                    Future<?> task = scheduler.submit(() -> {
+                    Future<?> task = CompletableFuture.runAsync(() -> {
                         SpigotTask next = taskQue.peek();
                         if (next != null) {
                             Semaphore subSemaphore = clazzSemaphores.computeIfAbsent(next.owner(), (p) -> new Semaphore(perClass));
@@ -119,9 +118,10 @@ public class SpigotTaskScheduler implements TaskScheduler {
                                 if (next.isSynchronous()) {
                                     schedulerSource.getServer().getScheduler().runTask(schedulerSource, next);
                                 } else {
-                                    next.run();
+                                    schedulerSource.getServer().getScheduler().runTaskAsynchronously(schedulerSource, next);
                                 }
                                 completedTasks.addAndGet(1);
+
                                 globalSemaphore.release();
                                 subSemaphore.release();
                             }
@@ -129,12 +129,13 @@ public class SpigotTaskScheduler implements TaskScheduler {
                             globalSemaphore.release();
                         }
                     });
+
                     queued.add(task);
                 }
             }
         }, 0, period, TimeUnit.MILLISECONDS);
 
-        scheduler.scheduleAtFixedRate(() -> {
+        AsyncTaskExecutor.EXECUTOR.scheduleAtFixedRate(() -> {
             int tasks = taskQue.size();
             double load = Math.abs(Math.max(0, JavaVirtualMachine.systemLoad()));
 
@@ -181,7 +182,10 @@ public class SpigotTaskScheduler implements TaskScheduler {
      */
     @Override
     public SpigotTask schedule(final Runnable task) {
-        return null;
+        SpigotTask sTask = new SpigotTask(task, SpigotTaskScheduler.class);
+        taskQue.add(sTask);
+
+        return sTask;
     }
 
     /**
@@ -192,7 +196,15 @@ public class SpigotTaskScheduler implements TaskScheduler {
      */
     @Override
     public @Nullable SpigotTask getTask(final int id) {
-        return null;
+        SpigotTask task = null;
+        for (SpigotTask queuedTask : taskQue) {
+            if (queuedTask.id() == id) {
+                task = queuedTask;
+                break;
+            }
+        }
+
+        return task;
     }
 
     /**
@@ -201,8 +213,8 @@ public class SpigotTaskScheduler implements TaskScheduler {
      * @return the scheduler source
      */
     @Override
-    public KarmaSource getSource() {
-        return null;
+    public KarmaPlugin getSource() {
+        return schedulerSource;
     }
 
     /**
@@ -212,7 +224,7 @@ public class SpigotTaskScheduler implements TaskScheduler {
      */
     @Override
     public int size() {
-        return 0;
+        return taskQue.size();
     }
 
     /**
@@ -223,7 +235,7 @@ public class SpigotTaskScheduler implements TaskScheduler {
      */
     @Override
     public int overloadSize() {
-        return 0;
+        return overloadQueue.size();
     }
 
     /**
@@ -233,7 +245,7 @@ public class SpigotTaskScheduler implements TaskScheduler {
      */
     @Override
     public boolean paused() {
-        return false;
+        return schedulerOverloaded.get();
     }
 
     /**
@@ -244,7 +256,7 @@ public class SpigotTaskScheduler implements TaskScheduler {
      */
     @Override
     public boolean overloaded() {
-        return false;
+        return systemOverloaded.get();
     }
 
     /**
@@ -254,7 +266,7 @@ public class SpigotTaskScheduler implements TaskScheduler {
      */
     @Override
     public int completed() {
-        return 0;
+        return completedTasks.get();
     }
 
     /**
@@ -264,6 +276,6 @@ public class SpigotTaskScheduler implements TaskScheduler {
      */
     @Override
     public int cancelled() {
-        return 0;
+        return cancelledTasks.get();
     }
 }

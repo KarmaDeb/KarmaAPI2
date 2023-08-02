@@ -175,7 +175,7 @@ public class UpdateBuilder {
      * @return if the update file could be written
      */
     public boolean build() {
-        return build(source.workingDirectory().resolve("updates").resolve(source.name() + ".json"));
+        return build(source.workingDirectory().resolve("updates").resolve(source.sourceName() + ".json"));
     }
 
     /**
@@ -211,7 +211,7 @@ public class UpdateBuilder {
                 } catch (JsonSyntaxException ignored) {}
                 if (json == null) json = new JsonObject();
 
-                Version sourceVersion = source.version();
+                Version sourceVersion = source.sourceVersion();
 
                 JsonObject versionObject = new JsonObject();
                 JsonArray versions = new JsonArray();
