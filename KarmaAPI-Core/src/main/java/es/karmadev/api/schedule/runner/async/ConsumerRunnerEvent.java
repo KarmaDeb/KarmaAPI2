@@ -55,6 +55,6 @@ class ConsumerRunnerEvent implements TaskRunnerEvent<Consumer<Long>> {
      */
     @Override
     public boolean isHooked() {
-        return executor.events.contains(this);
+        return executor.taskEvents.contains(this);
     }
 }

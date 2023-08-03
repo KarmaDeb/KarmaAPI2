@@ -23,24 +23,24 @@ public class AsyncTaskExecutor implements TaskRunner {
 
     public final static ScheduledExecutorService EXECUTOR = Executors.newSingleThreadScheduledExecutor();
 
-    private final static AtomicLong GLOBAL_TASK = new AtomicLong(0);
-    private final static Map<Long, AsyncTaskExecutor> tasks = new ConcurrentHashMap<>();
+    private final static AtomicLong globalTask = new AtomicLong(0);
+    private final static Map<Long, AsyncTaskExecutor> taskInstances = new ConcurrentHashMap<>();
 
-    private final AtomicLong TIME_LEFT = new AtomicLong(1);
-    private final AtomicLong ELAPSED = new AtomicLong(1);
-    private final AtomicLong TASK_ID = new AtomicLong(GLOBAL_TASK.incrementAndGet());
-    private final AtomicBoolean UPDATE_TL = new AtomicBoolean(true);
-    private final AtomicBoolean REPEATING = new AtomicBoolean(false);
+    private final AtomicLong timeLeft = new AtomicLong(1);
+    private final AtomicLong elapsedTime = new AtomicLong(1);
+    private final AtomicLong currentId = new AtomicLong(globalTask.incrementAndGet());
+    private final AtomicBoolean updateTL = new AtomicBoolean(true);
+    private final AtomicBoolean isRepeating = new AtomicBoolean(false);
     //private final AtomicReference<ScheduledThreadPoolExecutor> EXECUTOR = new AtomicReference<>();
-    private final AtomicReference<TaskStatus> STATUS = new AtomicReference<>(TaskStatus.STOPPED);
-    private final AtomicReference<TaskStatus> LAST_STATUS = new AtomicReference<>(TaskStatus.STOPPED);
-    protected final List<TaskRunnerEvent<?>> events = new CopyOnWriteArrayList<>();
+    private final AtomicReference<TaskStatus> taskStatus = new AtomicReference<>(TaskStatus.STOPPED);
+    private final AtomicReference<TaskStatus> lastTaskStatus = new AtomicReference<>(TaskStatus.STOPPED);
+    protected final List<TaskRunnerEvent<?>> taskEvents = new CopyOnWriteArrayList<>();
 
     private final long interval;
     private long limit;
     private final TimeUnit workingUnit;
 
-    private TaskEvent CONTEXT_EVENT = TaskEvent.START;
+    private TaskEvent currentContext = TaskEvent.START;
 
     /**
      * Create a new asynchronous task scheduler
@@ -63,10 +63,10 @@ public class AsyncTaskExecutor implements TaskRunner {
         this.interval = interval;
         this.limit = limit;
         this.workingUnit = workingUnit;
-        ELAPSED.set(interval);
-        TIME_LEFT.set(limit - interval);
+        elapsedTime.set(interval);
+        timeLeft.set(limit - interval);
 
-        tasks.put(TASK_ID.get(), this);
+        taskInstances.put(currentId.get(), this);
     }
 
     /**
@@ -76,7 +76,7 @@ public class AsyncTaskExecutor implements TaskRunner {
      */
     @Override
     public long id() {
-        return TASK_ID.get();
+        return currentId.get();
     }
 
     /**
@@ -86,10 +86,10 @@ public class AsyncTaskExecutor implements TaskRunner {
      */
     @Override
     public void forceTimeLeft(final long newTimeLeft) {
-        ELAPSED.set(Math.max(limit - Math.min(limit, newTimeLeft), 1));
-        TIME_LEFT.set(Math.min(newTimeLeft, limit) - interval);
+        elapsedTime.set(Math.max(limit - Math.min(limit, newTimeLeft), 1));
+        timeLeft.set(Math.min(newTimeLeft, limit) - interval);
 
-        UPDATE_TL.set(false);
+        updateTL.set(false);
     }
 
     /**
@@ -103,11 +103,11 @@ public class AsyncTaskExecutor implements TaskRunner {
         this.limit = newMaxTime;
 
         if (limit > oldLimit) {
-            ELAPSED.set(ELAPSED.get() + (limit - oldLimit)); //Add the difference to the elapsed time
+            elapsedTime.set(elapsedTime.get() + (limit - oldLimit)); //Add the difference to the elapsed time
         } else {
-            ELAPSED.set(1);
-            TIME_LEFT.set(newMaxTime - 1); //Is like if we restarted the timer with a lower value
-            UPDATE_TL.set(false);
+            elapsedTime.set(1);
+            timeLeft.set(newMaxTime - 1); //Is like if we restarted the timer with a lower value
+            updateTL.set(false);
         }
     }
 
@@ -118,142 +118,84 @@ public class AsyncTaskExecutor implements TaskRunner {
      */
     @Override
     public void setRepeating(final boolean status) {
-        REPEATING.compareAndSet(!status, status);
+        isRepeating.compareAndSet(!status, status);
     }
 
     /**
      * Start the task
      */
     @Override
-    @SuppressWarnings("unchecked")
     public void start() {
-        if (STATUS.get().equals(TaskStatus.STOPPED)) {
-            STATUS.set(TaskStatus.RUNNING);
+        if (!status().equals(TaskStatus.STOPPED)) return;
+        setStatus(TaskStatus.RUNNING, false);
 
-            AtomicReference<ScheduledFuture<?>> future = new AtomicReference<>();
-            future.set(EXECUTOR.scheduleAtFixedRate(() -> {
-                if (STATUS.get().equals(TaskStatus.STOPPED)) return;
+        AtomicReference<ScheduledFuture<?>> future = new AtomicReference<>();
+        future.set(EXECUTOR.scheduleAtFixedRate(() -> {
+            if (status().equals(TaskStatus.STOPPED)) return;
 
-                if (STATUS.get().equals(TaskStatus.RUNNING) || STATUS.get().equals(TaskStatus.RESUMING)) {
-                    if (STATUS.get().equals(TaskStatus.RESUMING)) {
-                        CONTEXT_EVENT = TaskEvent.RESUME;
-                        events.stream().filter((e) -> e.trigger() == null || e.trigger().equals(TaskEvent.RESUME)).forEachOrdered((event) -> {
-                            Object runner = event.get();
-                            if (runner instanceof Consumer) {
-                                ((Consumer<Long>) runner).accept(ELAPSED.getAndAdd(interval));
-                            }
-                            if (runner instanceof Runnable) {
-                                ((Runnable) runner).run();
-                            }
-                        });
+            if (status().equals(TaskStatus.RUNNING)) {
+                long timeLeft = this.timeLeft.get();
 
-                        STATUS.set(TaskStatus.RUNNING);
-                        LAST_STATUS.set(TaskStatus.RESUMING);
-                    }
+                currentContext = TaskEvent.TICK;
+                executeEvents(true);
 
-                    long timeLeft = TIME_LEFT.get();
+                if (timeLeft == 0) {
+                    if (!isRepeating.get()) {
+                        future.get().cancel(true);
+                        setStatus(TaskStatus.STOPPED, false);
+                        //taskStatus.set(TaskStatus.STOPPED);
 
-                    CONTEXT_EVENT = TaskEvent.TICK;
-                    events.stream().filter((e) -> e.trigger() == null || e.trigger().equals(TaskEvent.TICK)).forEachOrdered((event) -> {
-                        Object runner = event.get();
-                        if (runner instanceof Consumer) {
-                            ((Consumer<Long>) runner).accept(ELAPSED.getAndAdd(interval));
-                        }
-                        if (runner instanceof Runnable) {
-                            ((Runnable) runner).run();
-                        }
-                    });
-                    if (timeLeft == 0) {
-                        if (!REPEATING.get()) {
-                            future.get().cancel(true);
-                            STATUS.set(TaskStatus.STOPPED);
-
-                            CONTEXT_EVENT = TaskEvent.END;
-                            events.stream().filter((e) -> e.trigger() == null || e.trigger().equals(TaskEvent.END)).forEachOrdered((event) -> {
-                                Object runner = event.get();
-                                if (runner instanceof Consumer) {
-                                    ((Consumer<Long>) runner).accept(ELAPSED.get());
-                                }
-                                if (runner instanceof Runnable) {
-                                    ((Runnable) runner).run();
-                                }
-                            });
-                        } else {
-                            TIME_LEFT.set(this.limit - this.interval);
-
-                            CONTEXT_EVENT = TaskEvent.RESTART;
-                            events.stream().filter((e) -> e.trigger() == null || e.trigger().equals(TaskEvent.RESTART)).forEachOrdered((event) -> {
-                                Object runner = event.get();
-                                if (runner instanceof Consumer) {
-                                    ((Consumer<Long>) runner).accept(ELAPSED.get());
-                                }
-                                if (runner instanceof Runnable) {
-                                    ((Runnable) runner).run();
-                                }
-                            });
-                        }
-
-                        ELAPSED.set(this.interval);
+                        currentContext = TaskEvent.END;
+                        executeEvents(false);
                     } else {
-                        if (UPDATE_TL.get()) {
-                            TIME_LEFT.set(timeLeft - this.interval);
-                        }
+                        this.timeLeft.set(this.limit - this.interval);
 
-                        UPDATE_TL.set(true);
+                        currentContext = TaskEvent.RESTART;
+                        executeEvents(false);
                     }
-                } else {
-                    if (LAST_STATUS.get().equals(TaskStatus.RUNNING) && STATUS.get().equals(TaskStatus.PAUSED)) {
-                        LAST_STATUS.set(TaskStatus.PAUSED);
 
-                        CONTEXT_EVENT = TaskEvent.PAUSE;
-                        events.stream().filter((e) -> e.trigger() == null || e.trigger().equals(TaskEvent.PAUSE)).forEachOrdered((event) -> {
-                            Object runner = event.get();
-                            if (runner instanceof Consumer) {
-                                ((Consumer<Long>) runner).accept(ELAPSED.get());
-                            }
-                            if (runner instanceof Runnable) {
-                                ((Runnable) runner).run();
-                            }
-                        });
-                    }
+                    elapsedTime.set(this.interval);
                 }
-            }, 0, interval, workingUnit));
 
-            CONTEXT_EVENT = TaskEvent.START;
-            events.stream().filter((e) -> e.trigger() == null || e.trigger().equals(TaskEvent.START)).forEachOrdered((event) -> {
-                Object runner = event.get();
-                if (runner instanceof Consumer) {
-                    ((Consumer<Long>) runner).accept(ELAPSED.get());
+                if (updateTL.get()) {
+                    this.timeLeft.set(timeLeft - this.interval);
                 }
-                if (runner instanceof Runnable) {
-                    ((Runnable) runner).run();
-                }
-            });
-        }
+                updateTL.set(true);
+
+                return;
+            }
+
+            if (status().equals(TaskStatus.RESUMING)) {
+                currentContext = TaskEvent.RESUME;
+
+                executeEvents(true);
+                setStatus(TaskStatus.RUNNING, true);
+            }
+
+            if (lastTaskStatus.get().equals(TaskStatus.RUNNING) && status().equals(TaskStatus.PAUSED)) {
+                lastTaskStatus.set(TaskStatus.PAUSED);
+
+                currentContext = TaskEvent.PAUSE;
+                executeEvents(false);
+            }
+        }, 0, interval, workingUnit));
+
+        currentContext = TaskEvent.START;
+        executeEvents(false);
     }
 
     /**
      * Stops the task completely.
      */
     @Override
-    @SuppressWarnings("unchecked")
     public void stop() {
-        if (!STATUS.get().equals(TaskStatus.STOPPED)) {
-            //EXECUTOR.get().shutdown();
-            STATUS.set(TaskStatus.STOPPED);
-            LAST_STATUS.set(TaskStatus.STOPPED);
+        if (taskStatus.get().equals(TaskStatus.STOPPED)) return;
 
-            CONTEXT_EVENT = TaskEvent.STOP;
-            events.stream().filter((e) -> e.trigger() == null || e.trigger().equals(TaskEvent.STOP)).forEachOrdered((event) -> {
-                Object runner = event.get();
-                if (runner instanceof Consumer) {
-                    ((Consumer<Long>) runner).accept(ELAPSED.get());
-                }
-                if (runner instanceof Runnable) {
-                    ((Runnable) runner).run();
-                }
-            });
-        }
+        taskStatus.set(TaskStatus.STOPPED);
+        lastTaskStatus.set(TaskStatus.STOPPED);
+
+        currentContext = TaskEvent.STOP;
+        executeEvents(false);
     }
 
     /**
@@ -262,10 +204,8 @@ public class AsyncTaskExecutor implements TaskRunner {
      */
     @Override
     public void pause() {
-        if (STATUS.get().equals(TaskStatus.RUNNING)) {
-            STATUS.set(TaskStatus.PAUSED);
-            LAST_STATUS.set(TaskStatus.RUNNING);
-        }
+        if (status().equals(TaskStatus.RUNNING))
+            setStatus(TaskStatus.PAUSED, true);;
     }
 
     /**
@@ -273,10 +213,8 @@ public class AsyncTaskExecutor implements TaskRunner {
      */
     @Override
     public void resume() {
-        if (STATUS.get().equals(TaskStatus.PAUSED)) {
-            STATUS.set(TaskStatus.RESUMING);
-            LAST_STATUS.set(TaskStatus.PAUSED);
-        }
+        if (taskStatus.get().equals(TaskStatus.PAUSED))
+            setStatus(TaskStatus.RESUMING, true);
     }
 
     /**
@@ -287,7 +225,7 @@ public class AsyncTaskExecutor implements TaskRunner {
      */
     @Override
     public boolean repeating() {
-        return false;
+        return isRepeating.get();
     }
 
     /**
@@ -297,7 +235,7 @@ public class AsyncTaskExecutor implements TaskRunner {
      */
     @Override
     public TaskStatus status() {
-        return STATUS.get();
+        return taskStatus.get();
     }
 
     /**
@@ -322,7 +260,7 @@ public class AsyncTaskExecutor implements TaskRunner {
      */
     @Override
     public long timeLeft(final TimeUnit unit) {
-        return unit.convert(TIME_LEFT.get(), workingUnit);
+        return unit.convert(timeLeft.get(), workingUnit);
     }
 
     /**
@@ -344,9 +282,9 @@ public class AsyncTaskExecutor implements TaskRunner {
     @Override
     public TaskRunnerEvent<Consumer<Long>> onAny(final BiConsumer<TaskEvent, Long> event) {
         ConsumerRunnerEvent runnerEvent = new ConsumerRunnerEvent(this, null, (time) -> {
-            event.accept(CONTEXT_EVENT, time);
+            event.accept(currentContext, time);
         });
-        events.add(runnerEvent);
+        taskEvents.add(runnerEvent);
         return runnerEvent;
     }
 
@@ -358,8 +296,8 @@ public class AsyncTaskExecutor implements TaskRunner {
      */
     @Override
     public TaskRunnerEvent<Runnable> onAny(final Consumer<TaskEvent> event) {
-        RunnableRunnerEvent runnerEvent = new RunnableRunnerEvent(this, null, () -> event.accept(CONTEXT_EVENT));
-        events.add(runnerEvent);
+        RunnableRunnerEvent runnerEvent = new RunnableRunnerEvent(this, null, () -> event.accept(currentContext));
+        taskEvents.add(runnerEvent);
         return runnerEvent;
     }
 
@@ -373,7 +311,7 @@ public class AsyncTaskExecutor implements TaskRunner {
     @Override
     public TaskRunnerEvent<Consumer<Long>> on(final TaskEvent event, final Consumer<Long> tick) {
         ConsumerRunnerEvent runnerEvent = new ConsumerRunnerEvent(this, event, tick);
-        events.add(runnerEvent);
+        taskEvents.add(runnerEvent);
         return runnerEvent;
     }
 
@@ -387,7 +325,7 @@ public class AsyncTaskExecutor implements TaskRunner {
     @Override
     public TaskRunnerEvent<Runnable> on(final TaskEvent event, final Runnable action) {
         RunnableRunnerEvent runnerEvent = new RunnableRunnerEvent(this, event, action);
-        events.add(runnerEvent);
+        taskEvents.add(runnerEvent);
         return runnerEvent;
     }
 
@@ -398,7 +336,7 @@ public class AsyncTaskExecutor implements TaskRunner {
      */
     @Override
     public void off(final TaskRunnerEvent<?> event) {
-        events.remove(event);
+        taskEvents.remove(event);
     }
 
     /**
@@ -409,6 +347,34 @@ public class AsyncTaskExecutor implements TaskRunner {
      */
     @Nullable
     public static AsyncTaskExecutor getExecutor(final long id) {
-        return tasks.getOrDefault(id, null);
+        return taskInstances.get(id);
+    }
+
+    /**
+     * Update the task status
+     *
+     * @param newStatus the new task status
+     * @param updatePrevious update the previous task
+     */
+    private void setStatus(final TaskStatus newStatus, final boolean updatePrevious) {
+        TaskStatus previous = lastTaskStatus.get();
+        taskStatus.set(newStatus);
+        if (updatePrevious)
+            lastTaskStatus.set(previous);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void executeEvents(final boolean add) {
+        long elapsed = (add ? elapsedTime.getAndAdd(interval) : elapsedTime.get());
+        taskEvents.stream().filter((e) -> e.trigger() == null || e.trigger().equals(currentContext)).forEachOrdered((event) -> {
+            Object runner = event.get();
+            if (runner instanceof Consumer) {
+                ((Consumer<Long>) runner).accept(elapsed);
+            }
+
+            if (runner instanceof Runnable) {
+                ((Runnable) runner).run();
+            }
+        });
     }
 }

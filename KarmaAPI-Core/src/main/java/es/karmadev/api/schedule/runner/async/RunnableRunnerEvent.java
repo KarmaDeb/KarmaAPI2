@@ -53,6 +53,6 @@ class RunnableRunnerEvent implements TaskRunnerEvent<Runnable> {
      */
     @Override
     public boolean isHooked() {
-        return executor.events.contains(this);
+        return executor.taskEvents.contains(this);
     }
 }
