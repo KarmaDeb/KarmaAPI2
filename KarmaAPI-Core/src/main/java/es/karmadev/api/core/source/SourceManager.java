@@ -16,7 +16,8 @@ import java.util.function.Predicate;
 public final class SourceManager {
 
     private static String principal;
-    private final static Set<APISource> sources = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final static Set<APISource> sources = ConcurrentHashMap.newKeySet();
+    private final static Set<String> protectedSources = ConcurrentHashMap.newKeySet();
 
     /**
      * Initialize the source managers
@@ -33,8 +34,21 @@ public final class SourceManager {
      * @throws AlreadyRegisteredException if the source is already registered
      */
     public static void register(final APISource source) throws AlreadyRegisteredException {
+        register(source, false);
+    }
+
+    /**
+     * Register the source
+     *
+     * @param source the source
+     * @param protect protect the source from being removed
+     * @throws AlreadyRegisteredException if the source is already registered
+     */
+    public static void register(final APISource source, final boolean protect) throws AlreadyRegisteredException {
         if (sources.stream().noneMatch(compare(source))) {
             sources.add(source);
+            if (protect) protectedSources.add(source.sourceName());
+
             if (principal == null) principal = source.sourceName();
             return;
         }
@@ -64,6 +78,21 @@ public final class SourceManager {
     }
 
     /**
+     * Get a provider by its class unsafely
+     *
+     * @param clazz the provider class
+     * @return the provider
+     * @param <A> the provider type
+     */
+    public static <A extends APISource> A getUnsafeProvider(final Class<A> clazz) {
+        try {
+            return getProvider(clazz);
+        } catch (UnknownProviderException ignored) {}
+
+        return null;
+    }
+
+    /**
      * Get a provider by its name
      *
      * @param name the provider name
@@ -80,6 +109,19 @@ public final class SourceManager {
     }
 
     /**
+     * Get a provider unsafely
+     *
+     * @param name the provider name
+     * @return the provider
+     */
+    public static APISource getUnsafeProvider(final String name) {
+        try {
+            return getProvider(name);
+        } catch (UnknownProviderException ignored) {}
+        return null;
+    }
+
+    /**
      * Get the principal source provider
      *
      * @return the principal source provider
@@ -89,6 +131,28 @@ public final class SourceManager {
     public static APISource getPrincipal() throws UnknownProviderException {
         if (principal == null) return null;
         return getProvider(principal);
+    }
+
+    /**
+     * Get the principal source provider unsafely
+     *
+     * @return the principal source provider
+     */
+    public static APISource getUnsafePrincipal() {
+        if (principal == null) return null;
+        return getUnsafeProvider(principal);
+    }
+
+    /**
+     * Remove a source provider
+     *
+     * @param src the source to remove
+     */
+    public static void remove(final APISource src) {
+        if (protectedSources.stream().anyMatch(src.sourceName()::equalsIgnoreCase)) return; //Prevent from removing protected sources
+
+        Optional<APISource> existing = sources.stream().filter(compare(src)).findAny();
+        existing.ifPresent(sources::remove);
     }
 
     private static Predicate<APISource> compare(final APISource source) {

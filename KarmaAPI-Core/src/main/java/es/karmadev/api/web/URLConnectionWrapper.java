@@ -1,6 +1,7 @@
 package es.karmadev.api.web;
 
 import es.karmadev.api.web.request.RequestData;
+import lombok.Getter;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -20,10 +21,19 @@ import java.util.Map;
 /**
  *  URL connection wrapper
  */
+@Getter
 @SuppressWarnings("unused")
 public class URLConnectionWrapper extends URLConnection implements AutoCloseable {
 
+    /**
+     * -- GETTER --
+     *  Get the unsecure connection
+     */
     private final HttpURLConnection unsecureConnection;
+    /**
+     * -- GETTER --
+     *  Get the secure connection
+     */
     private final HttpsURLConnection secureConnection;
 
     /**
@@ -1344,24 +1354,6 @@ public class URLConnectionWrapper extends URLConnection implements AutoCloseable
      */
     public boolean isSecure() {
         return secureConnection != null;
-    }
-
-    /**
-     * Get the unsecure connection
-     *
-     * @return the unsecure connection
-     */
-    public HttpURLConnection getUnsecureConnection() {
-        return unsecureConnection;
-    }
-
-    /**
-     * Get the secure connection
-     *
-     * @return the secure connection
-     */
-    public HttpsURLConnection getSecureConnection() {
-        return secureConnection;
     }
 
     /**

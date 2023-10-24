@@ -6,8 +6,8 @@ import es.karmadev.api.core.source.runtime.SourceRuntime;
 import es.karmadev.api.file.util.NamedStream;
 import es.karmadev.api.file.util.PathUtilities;
 import es.karmadev.api.file.util.StreamUtils;
+import es.karmadev.api.logger.LogManager;
 import es.karmadev.api.logger.SourceLogger;
-import es.karmadev.api.logger.log.UnboundedLogger;
 import es.karmadev.api.object.ObjectUtils;
 import es.karmadev.api.schedule.task.TaskScheduler;
 import es.karmadev.api.schedule.task.scheduler.BalancedScheduler;
@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
@@ -75,10 +76,10 @@ public abstract class KarmaSource implements APISource {
         this.version = version;
         this.description = description;
         this.authors = authors;
-        directory = dir;
-        console = (logger != null ? logger : new UnboundedLogger());
+        directory = (dir != null ? dir : Paths.get("./" + name));
+        console = (logger != null ? logger : LogManager.getLogger(this));
 
-        Runtime.getRuntime().addShutdownHook(new Thread(this::kill));
+        //Runtime.getRuntime().addShutdownHook(new Thread(this::kill));
         sourceSchedulers.put("async", new BalancedScheduler(100, this, 10, 1));
     }
 

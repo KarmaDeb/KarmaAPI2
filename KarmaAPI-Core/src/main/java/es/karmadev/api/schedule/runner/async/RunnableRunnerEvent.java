@@ -6,11 +6,11 @@ import es.karmadev.api.schedule.runner.event.TaskRunnerEvent;
 
 class RunnableRunnerEvent implements TaskRunnerEvent<Runnable> {
 
-    private final AsyncTaskExecutor executor;
+    private final TaskRunner<? extends Number> executor;
     private final TaskEvent event;
     private final Runnable action;
 
-    public RunnableRunnerEvent(final AsyncTaskExecutor executor, final TaskEvent event, final Runnable action) {
+    public RunnableRunnerEvent(final TaskRunner<? extends Number> executor, final TaskEvent event, final Runnable action) {
         this.executor = executor;
         this.event = event;
         this.action = action;
@@ -22,7 +22,7 @@ class RunnableRunnerEvent implements TaskRunnerEvent<Runnable> {
      * @return the task
      */
     @Override
-    public TaskRunner task() {
+    public TaskRunner<? extends Number> task() {
         return executor;
     }
 
@@ -44,15 +44,5 @@ class RunnableRunnerEvent implements TaskRunnerEvent<Runnable> {
     @Override
     public Runnable get() {
         return action;
-    }
-
-    /**
-     * Get if the event is hooked
-     *
-     * @return if the event is hooked
-     */
-    @Override
-    public boolean isHooked() {
-        return executor.taskEvents.contains(this);
     }
 }

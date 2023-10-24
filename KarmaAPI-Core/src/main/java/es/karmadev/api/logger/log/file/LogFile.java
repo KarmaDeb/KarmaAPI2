@@ -6,6 +6,7 @@ import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.core.source.APISource;
 import es.karmadev.api.file.util.PathUtilities;
 import es.karmadev.api.file.util.StreamUtils;
+import es.karmadev.api.logger.log.console.ConsoleColor;
 import es.karmadev.api.logger.log.console.LogLevel;
 import es.karmadev.api.logger.log.file.component.LogQueue;
 import es.karmadev.api.logger.log.file.component.QuePair;
@@ -120,7 +121,7 @@ public class LogFile {
                     writing.set(false);
                 }
             }
-        }, 0, 1, TimeUnit.SECONDS);
+        }, 0, 1, TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -130,7 +131,7 @@ public class LogFile {
      * @param line the line to log
      */
     public void append(final LogLevel level, final String line) {
-        this.append(level, null, line);
+        this.append(level, null, ConsoleColor.strip(line));
     }
 
     /**
@@ -141,7 +142,7 @@ public class LogFile {
      * @param line the line to log
      */
     public void append(final LogLevel level, final Throwable error, final String line) {
-        queue.append(level, line);
+        queue.append(level, ConsoleColor.strip(line));
         if (error != null) queue.append(level, error);
     }
 
@@ -199,7 +200,9 @@ public class LogFile {
 
     private String buildErrorMessage(final Throwable throwable) {
         Throwable[] suppressed = throwable.getSuppressed();
-        StringBuilder builder = new StringBuilder(throwable.fillInStackTrace().toString()).append("\n");
+        Throwable cause = throwable.getCause();
+
+        StringBuilder builder = new StringBuilder(throwable.getClass().getCanonicalName()).append(": ").append(throwable.getMessage()).append("\n");
         StackTraceElement[] elements = throwable.getStackTrace();
         for (int i = 0; i < elements.length; i++) {
             StackTraceElement element = elements[i];
@@ -219,9 +222,14 @@ public class LogFile {
             builder.append(raw).append((i == elements.length - 1 ? "" : "\n"));
         }
 
+        if (cause != null) {
+            String raw = buildErrorMessage(cause);
+            builder.append("\n").append("Caused by: ").append(raw);
+        }
+
         for (Throwable sub : suppressed) {
             String raw = buildErrorMessage(sub);
-            builder.append("\n").append("-- INVOLVED,SUPPRESSED --").append("\n").append(raw);
+            builder.append("\n").append("Suppressed: ").append("\n").append(raw);
         }
 
         return builder.toString();

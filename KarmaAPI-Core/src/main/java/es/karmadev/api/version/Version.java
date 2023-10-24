@@ -156,66 +156,15 @@ public class Version implements Comparable<Version> {
      * @return the parsed version
      */
     public static Version parse(final String raw) {
-        int mayor = 0;
-        int minor = 0;
-        int patch = 0;
-
-        String p1;
-        String p2 = null;
-        String p3 = null;
+        String version = raw;
         String build = null;
-
-        if (raw.contains(".")) {
-            String[] vData = raw.split("\\.");
-            switch (vData.length) {
-                case 1:
-                    p1 = vData[0];
-                    if (p1.contains("-")) {
-                        String[] pData = p1.split("-");
-                        build = p1.replaceFirst(p1 + "-", "");
-                        p1 = p1.replace("-" + build, "");
-                    }
-                    break;
-                case 2:
-                    p1 = vData[0];
-                    p2 = raw.replaceFirst(p1 + "\\.", "");
-                    if (p2.contains("-")) {
-                        build = p2.replaceFirst(p2 + "-", "");
-                        p2 = p2.replace("-" + build, "");
-                    }
-                    break;
-                case 3:
-                default:
-                    p1 = vData[0];
-                    p2 = vData[1];
-                    p3 = raw.replaceFirst(p1 + "\\." + p2 + "\\.", "");
-                    if (p3.contains("-")) {
-                        build = p3.replaceFirst(p3 + "-", "");
-                        p3 = p3.replace("-" + build, "");
-                    }
-                    break;
-            }
-        } else {
-            p1 = raw;
+        if (raw.contains("-")) {
+            String[] data = raw.split("-");
+            version = data[0];
+            build = raw.substring(version.length() + 1);
         }
 
-        try {
-            mayor = Integer.parseInt(p1);
-        } catch (NumberFormatException ignored) {}
-        if (p2 != null) {
-            try {
-                minor = Integer.parseInt(p2);
-            } catch (NumberFormatException ignored) {
-            }
-        }
-        if (p3 != null) {
-            try {
-                minor = Integer.parseInt(p3);
-            } catch (NumberFormatException ignored) {
-            }
-        }
-
-        return Version.of(mayor, minor, patch, build);
+        return parse(version, build);
     }
 
     /**

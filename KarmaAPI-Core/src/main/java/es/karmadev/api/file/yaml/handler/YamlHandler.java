@@ -1,8 +1,8 @@
 package es.karmadev.api.file.yaml.handler;
 
+import es.karmadev.api.file.util.PathUtilities;
 import es.karmadev.api.file.util.StreamUtils;
 import es.karmadev.api.file.yaml.YamlFileHandler;
-import es.karmadev.api.strings.StringUtils;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.BufferedReader;
@@ -35,6 +35,10 @@ public class YamlHandler implements ResourceLoader {
      * @return a new empty yaml file
      */
     public static YamlFileHandler create(final Path file) {
+        if (!Files.exists(file)) {
+            PathUtilities.createPath(file);
+        }
+
         return new SimpleYamlHandler(file, new ConcurrentHashMap<>());
     }
 
@@ -46,6 +50,10 @@ public class YamlHandler implements ResourceLoader {
      * @return a new yaml file
      */
     public static YamlFileHandler create(final Path file, final YamlReader reader) {
+        if (!Files.exists(file)) {
+            PathUtilities.createPath(file);
+        }
+
         return new SimpleYamlHandler(file, new ConcurrentHashMap<>(), reader);
     }
 
@@ -110,6 +118,10 @@ public class YamlHandler implements ResourceLoader {
      * @throws IOException if there's a problem opening the file
      */
     public static YamlFileHandler load(final Path file) throws IOException {
+        if (!Files.exists(file)) {
+            PathUtilities.createPath(file);
+        }
+
         try (BufferedReader reader = Files.newBufferedReader(file)) {
             Yaml yaml = new Yaml();
             Map<String, Object> data = yaml.load(reader);
@@ -128,6 +140,14 @@ public class YamlHandler implements ResourceLoader {
      * @throws IOException if there's a problem opening the file
      */
     public static YamlFileHandler load(final Path file, final YamlReader source) throws IOException {
+        if (!Files.exists(file)) {
+            System.out.println("Does not exists");
+            PathUtilities.createPath(file);
+            String raw = source.parse(false);
+
+            PathUtilities.write(file, raw);
+        }
+
         try (BufferedReader reader = Files.newBufferedReader(file)) {
             StringBuilder lineBuilder = new StringBuilder();
             String line;
@@ -150,6 +170,13 @@ public class YamlHandler implements ResourceLoader {
      * @throws IOException if there's a problem reading the yaml source
      */
     public static YamlFileHandler load(final Path file, final InputStream handle) throws IOException {
+        if (!Files.exists(file)) {
+            PathUtilities.createPath(file);
+
+            String raw = StreamUtils.streamToString(handle);
+            PathUtilities.write(file, raw);
+        }
+
         YamlFileHandler handler = load(handle);
         return handler.saveTo(file);
     }

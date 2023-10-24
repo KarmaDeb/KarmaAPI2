@@ -101,18 +101,21 @@ class SimpleYamlHandler implements YamlFileHandler {
     public void validate() {
         if (source == null) return;
         try {
+            boolean modifications = false;
             YamlFileHandler handler = source.toHandler();
             for (String key : handler.getKeys(true)) {
                 if (!isSet(key)) {
                     save(key, handler.get(key));
+                    modifications = true;
                 } else {
                     if (!compareValue(key, handler.get(key))) {
                         save(key, handler.get(key));
+                        modifications = true;
                     }
                 }
             }
 
-            save();
+            if (modifications) save();
         } catch (IOException ex) {
             ExceptionCollector.catchException(YamlHandler.class, ex);
         }
@@ -527,8 +530,8 @@ class SimpleYamlHandler implements YamlFileHandler {
      * @return the value or default value if
      * not found
      *
-     * @throws IOException if the unserialization fails
-     * @throws ClassNotFoundException if the unserialization loads a class which does not exist anymore
+     * @throws IOException if the serialization fails
+     * @throws ClassNotFoundException if the serialization loads a class which does not exist anymore
      */
     @Override
     public Object getSerialized(final String path, final Object def) throws IOException, ClassNotFoundException {
@@ -548,13 +551,15 @@ class SimpleYamlHandler implements YamlFileHandler {
     /**
      * Get a list
      *
-     * @param path the list path
+     * @param path   the list path
+     * @param ifNull the list if the path does not point
+     *               to a list or is not set
      * @return the list
      */
     @Override
-    public List<String> getList(final String path) {
-        Object value = get(path, null);
-        if (!(value instanceof List)) return new ArrayList<>();
+    public List<String> getList(final String path, final @Nullable List<String> ifNull) {
+        Object value = get(path, ifNull);
+        if (!(value instanceof List)) return ifNull;
 
         List<?> unknownList = (List<?>) value;
         List<String> result = new ArrayList<>();

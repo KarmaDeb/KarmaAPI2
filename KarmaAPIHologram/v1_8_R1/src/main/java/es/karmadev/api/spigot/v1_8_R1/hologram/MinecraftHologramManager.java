@@ -1,7 +1,7 @@
 package es.karmadev.api.spigot.v1_8_R1.hologram;
 
 import es.karmadev.api.core.ExceptionCollector;
-import es.karmadev.api.core.KarmaPlugin;
+import es.karmadev.api.spigot.core.KarmaPlugin;
 import es.karmadev.api.spigot.nms.common.hologram.util.ReflectionUtils;
 import es.karmadev.api.spigot.reflection.HologramManager;
 import es.karmadev.api.spigot.reflection.hologram.Hologram;

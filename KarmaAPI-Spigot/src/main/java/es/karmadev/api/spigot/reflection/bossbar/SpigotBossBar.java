@@ -2,7 +2,7 @@ package es.karmadev.api.spigot.reflection.bossbar;
 
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.core.KarmaKore;
-import es.karmadev.api.core.KarmaPlugin;
+import es.karmadev.api.spigot.core.KarmaPlugin;
 import es.karmadev.api.logger.log.console.ConsoleColor;
 import es.karmadev.api.minecraft.bossbar.BossBarProvider;
 import es.karmadev.api.minecraft.bossbar.component.BarColor;
@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class SpigotBossBar extends BossBarProvider {
 
     private final static Map<UUID, Queue<SpigotBossBar>> ques = new ConcurrentHashMap<>();
-    private final static Map<UUID, TaskRunner> runners = new ConcurrentHashMap<>();
+    private final static Map<UUID, TaskRunner<Long>> runners = new ConcurrentHashMap<>();
     private final static Map<UUID, Integer> displayBars = new ConcurrentHashMap<>();
 
     private static int globalId = 0;
@@ -49,7 +49,7 @@ public class SpigotBossBar extends BossBarProvider {
     private double livedTime = 0d;
     private boolean cancelled = false;
     private String content;
-    private TaskRunner barTimer;
+    private TaskRunner<Long> barTimer;
 
     private static boolean packetCompatible = false;
     private static boolean useHealth = false;
@@ -197,7 +197,7 @@ public class SpigotBossBar extends BossBarProvider {
         que.add(this);
         ques.put(player.getUUID(), que);
 
-        TaskRunner runner = runners.getOrDefault(player.getUUID(), null);
+        TaskRunner<Long> runner = runners.getOrDefault(player.getUUID(), null);
         if (runner == null) {
             runner = new AsyncTaskExecutor(1, TimeUnit.SECONDS);
             runner.setRepeating(true);
@@ -341,7 +341,7 @@ public class SpigotBossBar extends BossBarProvider {
                     }
                 }));
 
-                TaskRunner hpTimer = new AsyncTaskExecutor(1, TimeUnit.SECONDS);
+                TaskRunner<Long> hpTimer = new AsyncTaskExecutor(1, TimeUnit.SECONDS);
                 hpTimer.setRepeating(true);
 
                 hpTimer.on(TaskEvent.RESTART, () -> Bukkit.getServer().getScheduler().runTask(plugin, () -> {

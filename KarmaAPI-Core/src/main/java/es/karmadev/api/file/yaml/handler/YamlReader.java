@@ -26,7 +26,7 @@ import static org.yaml.snakeyaml.DumperOptions.FlowStyle;
 public class YamlReader {
 
     private final byte[] raw;
-    private final Map<String, Tag> tags = new ConcurrentHashMap<>();
+    //private final Map<String, Tag> tags = new ConcurrentHashMap<>();
 
     /**
      * Create a new yaml reader
@@ -69,9 +69,7 @@ public class YamlReader {
             MappingNode data = (MappingNode) yaml.compose(isr);
             List<CommentLine> blockComments = data.getBlockComments();
             if (blockComments != null) {
-                blockComments.forEach((comment) -> {
-                    rawBuilder.append(comment.getValue()).append("\n");
-                });
+                blockComments.forEach((comment) -> rawBuilder.append(comment.getValue()).append("\n"));
             }
 
             List<NodeTuple> tuples = data.getValue();
@@ -99,7 +97,7 @@ public class YamlReader {
                         ScalarNode scalarValue = (ScalarNode) value;
                         String stringValue = scalarValue.getValue();
                         Tag tag = scalarValue.getTag();
-                        tags.put(key.getValue(), tag);
+                        //tags.put(key.getValue(), tag);
                         String t = tag.getClassName();
                         if (t.equals("null") || t.equals("str")) {
                             if (stringValue.contains("'")) {
@@ -182,7 +180,7 @@ public class YamlReader {
                         if (v == null) stringValue = scalarValue.getValue();
 
                         Tag tag = scalarValue.getTag();
-                        tags.put(key.getValue(), tag);
+                        //tags.put(key.getValue(), tag);
                         String t = tag.getClassName();
                         if (t.equals("null") || t.equals("str")) {
                             if (stringValue.contains("'")) {
@@ -221,6 +219,7 @@ public class YamlReader {
     @SuppressWarnings("all")
     public void export(final File target) throws IOException {
         if (!target.exists()) target.createNewFile();
+
         String raw = parse(false);
         try (FileWriter writer = new FileWriter(target)) {
             writer.write(raw);
@@ -252,7 +251,7 @@ public class YamlReader {
                 }
 
                 Tag tag = scalarSubValue.getTag();
-                tags.put(path + subKey.getValue(), tag);
+                //tags.put(path + subKey.getValue(), tag);
                 String t = tag.getClassName();
                 if (t.equals("null") || t.equals("str")) {
                     if (value.contains("'")) {
@@ -300,7 +299,7 @@ public class YamlReader {
 
         List<String> nodes = new ArrayList<>();
         List<Node> originalNodes = sequence.getValue();
-        if (originalNodes.isEmpty() || (handler != null && handler.getList(path).isEmpty())) {
+        if (originalNodes.isEmpty() && (handler != null && handler.getList(path).isEmpty())) {
             return builder.append(tabs)
                     .append(key.getValue()).append(": ")
                     .append("[]").append(getInlineComments(sequence)).append("\n");
@@ -331,26 +330,14 @@ public class YamlReader {
         }
 
         StringBuilder sequenceBuilder = new StringBuilder();
-        if (sequence.getFlowStyle().equals(FlowStyle.FLOW)) {
-            sequenceBuilder.append("[");
-            for (String value : nodes) {
-                sequenceBuilder.append(value).append(", ");
-            }
-
-            builder.append(tabs)
-                    .append(key.getValue()).append(": ")
-                    .append(sequenceBuilder.substring(0, Math.max(0, sequenceBuilder.length() - 2)))
-                    .append("]").append(getInlineComments(sequence)).append("\n");
-        } else {
-            sequenceBuilder.append("\n");
-            for (String value : nodes) {
-                sequenceBuilder.append(tabs).append(" - ").append(value).append("\n");
-            }
-
-            builder.append(tabs)
-                    .append(key.getValue()).append(": ")
-                    .append(sequenceBuilder.substring(0, Math.max(0, sequenceBuilder.length() - 1))).append("\n");
+        sequenceBuilder.append("\n");
+        for (String value : nodes) {
+            sequenceBuilder.append(tabs).append(" - ").append(value).append("\n");
         }
+
+        builder.append(tabs)
+                .append(key.getValue()).append(": ")
+                .append(sequenceBuilder.substring(0, Math.max(0, sequenceBuilder.length() - 1))).append("\n");
 
         return builder;
     }

@@ -84,13 +84,20 @@ public final class JsonDatabase implements DatabaseEngine {
         Path file = source.workingDirectory().resolve("databases");
         if (name.contains(File.pathSeparator)) {
             String[] data = name.split(File.pathSeparator);
+            int index = 0;
             for (String str : data) {
+                if (index + 1 == data.length) {
+                    if (!str.endsWith(".json")) {
+                        str += ".json";
+                    }
+                }
+
                 file = file.resolve(str);
             }
         } else {
             file = file.resolve(name + ".json");
         }
-        
+
         return new JsonConnection(file, null, null);
     }
 }

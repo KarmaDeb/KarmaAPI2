@@ -6,13 +6,13 @@ import es.karmadev.api.schedule.runner.event.TaskRunnerEvent;
 
 import java.util.function.Consumer;
 
-class ConsumerRunnerEvent implements TaskRunnerEvent<Consumer<Long>> {
+class ConsumerRunnerEvent<T extends Number> implements TaskRunnerEvent<Consumer<T>> {
 
-    private final AsyncTaskExecutor executor;
+    private final TaskRunner<T> executor;
     private final TaskEvent event;
-    private final Consumer<Long> action;
+    private final Consumer<T> action;
 
-    public ConsumerRunnerEvent(final AsyncTaskExecutor executor, final TaskEvent event, final Consumer<Long> action) {
+    private ConsumerRunnerEvent(final TaskRunner<T> executor, final TaskEvent event, final Consumer<T> action) {
         this.executor = executor;
         this.event = event;
         this.action = action;
@@ -24,7 +24,7 @@ class ConsumerRunnerEvent implements TaskRunnerEvent<Consumer<Long>> {
      * @return the task
      */
     @Override
-    public TaskRunner task() {
+    public TaskRunner<? extends Number> task() {
         return executor;
     }
 
@@ -44,17 +44,20 @@ class ConsumerRunnerEvent implements TaskRunnerEvent<Consumer<Long>> {
      * @return the runner
      */
     @Override
-    public Consumer<Long> get() {
+    public Consumer<T> get() {
         return action;
     }
 
     /**
-     * Get if the event is hooked
+     * Create a runner event for the type
      *
-     * @return if the event is hooked
+     * @param executor the executor
+     * @param event the event
+     * @param action the action to perform
+     * @return the runner event
+     * @param <T> the type
      */
-    @Override
-    public boolean isHooked() {
-        return executor.taskEvents.contains(this);
+    public static <T extends Number> ConsumerRunnerEvent<T> forType(final TaskRunner<T> executor, final TaskEvent event, final Consumer<T> action) {
+        return new ConsumerRunnerEvent<>(executor, event, action);
     }
 }

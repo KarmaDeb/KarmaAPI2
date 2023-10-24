@@ -1,32 +1,34 @@
 package es.karmadev.api.spigot.tracker.stand;
 
-import es.karmadev.api.object.ObjectUtils;
-import es.karmadev.api.spigot.entity.trace.ray.PointRayTrace;
+import com.google.common.util.concurrent.AtomicDouble;
 import es.karmadev.api.spigot.entity.trace.RayDirection;
-import es.karmadev.api.spigot.entity.trace.ray.RayTrace;
+import es.karmadev.api.spigot.entity.trace.ray.ThreadRayTrace;
+import es.karmadev.api.spigot.entity.trace.ray.impl.AsyncRayTrace;
+import es.karmadev.api.spigot.entity.trace.ray.impl.SyncRayTrace;
 import es.karmadev.api.spigot.entity.trace.TraceOption;
-import es.karmadev.api.spigot.entity.trace.result.HitPosition;
 import es.karmadev.api.spigot.entity.trace.result.RayTraceResult;
 import es.karmadev.api.spigot.tracker.AutoTracker;
+import es.karmadev.api.spigot.tracker.ConstantProperty;
 import es.karmadev.api.spigot.tracker.TrackerEntity;
-import es.karmadev.api.spigot.tracker.event.TrackerHitTrackEvent;
-import es.karmadev.api.spigot.tracker.event.TrackerStartTrackEvent;
-import es.karmadev.api.spigot.tracker.event.TrackerStopTrackEvent;
-import es.karmadev.api.spigot.tracker.event.TrackerSwitchTrackEvent;
+import es.karmadev.api.spigot.tracker.event.*;
+import lombok.Getter;
 import org.bukkit.*;
-import org.bukkit.entity.ArmorStand;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.*;
+import org.bukkit.inventory.EntityEquipment;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.EulerAngle;
 import org.bukkit.util.Vector;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.Map;
+import java.lang.reflect.Field;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+
+import static es.karmadev.api.spigot.tracker.ConstantProperty.*;
 
 /**
  * Tracker armor stand
@@ -38,26 +40,46 @@ public class TrackerStand extends TrackerEntity {
     private final double y;
     private final double z;
 
-    private final AtomicReference<ArmorStand> stand = new AtomicReference<>();
-    private final AtomicReference<BukkitTask> rotTask = new AtomicReference<>();
-    private final AtomicReference<BukkitTask> trackTask = new AtomicReference<>();
-    private final AtomicReference<LivingEntity> target = new AtomicReference<>();
-    private final AtomicReference<LivingEntity> lastTarget = new AtomicReference<>();
-    private final AtomicReference<AutoTracker> tracker = new AtomicReference<>();
-    private final Map<String, Object> properties = new ConcurrentHashMap<>();
+    private ArmorStand stand;
+    private BukkitTask rotTask;
+    private BukkitTask trackTask;
+    private LivingEntity target;
+    private LivingEntity lastTarget;
+    private AutoTracker tracker;
 
-    public boolean PROPERTY_SMALL = false;
-    public boolean PROPERTY_BASE_PLATE = false;
-    public boolean PROPERTY_INVINCIBLE = true;
-    public boolean PROPERTY_INVISIBLE = false;
-    public boolean PROPERTY_SHOW_NAME = false;
-    public boolean PROPERTY_ARMS = false;
-    public boolean PROPERTY_TAKEOFF_ITEMS = false;
-    public boolean PROPERTY_TRACK_ALWAYS = false;
-    public boolean PROPERTY_TRACK_LOCK = true;
-    public double PROPERTY_TRACK_DISTANCE = 8d;
-    public double PROPERTY_TRACE_PRECISION = RayTrace.HIGH_PRECISION;
-    public String PROPERTY_NAME = "";
+    @Getter
+    private EulerAngle initialAngle;
+
+    private EulerAngle idleRotation;
+    private Consumer<Void> idleRotationEnd;
+
+    public final static ConstantProperty<Boolean> PROPERTY_SMALL = ConstantProperty.customProperty("tracker_small", false, Boolean.class);
+    public final static ConstantProperty<Boolean> PROPERTY_BASE_PLATE = ConstantProperty.customProperty("tracker_bsp", false, Boolean.class);
+    public final static ConstantProperty<Boolean> PROPERTY_INVINCIBLE = ConstantProperty.customProperty("tracker_invincible", true, Boolean.class);
+    public final static ConstantProperty<Boolean> PROPERTY_INVISIBLE = ConstantProperty.customProperty("tracker_invisible", false, Boolean.class);
+    public final static ConstantProperty<Boolean> PROPERTY_SHOW_NAME = ConstantProperty.customProperty("tracker_displayname", false, Boolean.class);
+    public final static ConstantProperty<Boolean> PROPERTY_SHOW_ARMS = ConstantProperty.customProperty("tracker_arms", false, Boolean.class);
+    public final static ConstantProperty<Boolean> PROPERTY_ITERABLE = ConstantProperty.customProperty("tracker_iterable", false, Boolean.class);
+    public final static ConstantProperty<String> PROPERTY_NAME = ConstantProperty.customProperty("tracker_name", "", String.class);
+    public final static ConstantProperty<ItemStack> PROPERTY_HELMET = ConstantProperty.customProperty("tracker_helmet", new ItemStack(Material.AIR), ItemStack.class);
+    public final static ConstantProperty<ItemStack> PROPERTY_CHESTPLATE = ConstantProperty.customProperty("tracker_chestplate", new ItemStack(Material.AIR), ItemStack.class);
+    public final static ConstantProperty<ItemStack> PROPERTY_LEGGINGS = ConstantProperty.customProperty("tracker_leggings", new ItemStack(Material.AIR), ItemStack.class);
+    public final static ConstantProperty<ItemStack> PROPERTY_BOOTS = ConstantProperty.customProperty("tracker_boots", new ItemStack(Material.AIR), ItemStack.class);
+
+    /**
+     * Precache the assignments
+     *
+     * @throws IllegalAccessException shouldn't be thrown
+     */
+    public static void precacheAssignments() throws IllegalAccessException {
+        Field[] fields = TrackerStand.class.getDeclaredFields();
+        for (Field field : fields) {
+            if (field.getType().equals(ConstantProperty.class)) {
+                ConstantProperty<?> property = (ConstantProperty<?>) field.get(TrackerStand.class);
+                property.assignTo(TrackerStand.class);
+            }
+        }
+    }
 
     /**
      * Create the tracker stand
@@ -74,6 +96,47 @@ public class TrackerStand extends TrackerEntity {
         this.x = x;
         this.y = y;
         this.z = z;
+
+        PROPERTY_SMALL.set(this, false);
+        PROPERTY_BASE_PLATE.set(this, false);
+        PROPERTY_INVINCIBLE.set(this, true);
+        PROPERTY_INVISIBLE.set(this, false);
+        PROPERTY_SHOW_NAME.set(this, false);
+        PROPERTY_SHOW_ARMS.set(this, false);
+        PROPERTY_ITERABLE.set(this, false);
+        PROPERTY_NAME.set(this, "");
+        PROPERTY_HELMET.set(this, null);
+        PROPERTY_CHESTPLATE.set(this, null);
+        PROPERTY_LEGGINGS.set(this, null);
+        PROPERTY_BOOTS.set(this, null);
+
+        TRACKER_RADIUS.set(this, 8d);
+        ROTATION_SMOOTHNESS.set(this, 0d);
+        ROTATION_FRAMES.set(this, 20d);
+        ALWAYS_TRACK.set(this, false);
+        TRACK_LOCK.set(this, true);
+        PRECISION.set(this, SyncRayTrace.HIGH_PRECISION);
+        TOLERANCE.set(this, 0.05);
+    }
+
+    /**
+     * Animate the tracker to rotate until the
+     * target angle
+     *
+     * @param targetAngle the target angle
+     */
+    public void setIdleAngle(final EulerAngle targetAngle, final Consumer<Void> onEnd) {
+        idleRotation = targetAngle;
+        idleRotationEnd = onEnd;
+    }
+
+    /**
+     * Set the tracker initial angle
+     *
+     * @param startPos the start angle
+     */
+    public void setInitialAngle(final EulerAngle startPos) {
+        initialAngle = startPos;
     }
 
     /**
@@ -117,50 +180,13 @@ public class TrackerStand extends TrackerEntity {
     }
 
     /**
-     * Set the tracker property
-     *
-     * @param key   the key
-     * @param value the value
-     */
-    @Override
-    public void setProperty(final String key, final Object value) {
-        if (properties.containsKey(key)) {
-            Object storedValue = properties.get(key);
-            if (storedValue.getClass().equals(value.getClass())) {
-                properties.put(key, value);
-                return;
-            }
-        }
-
-        properties.put(key, value);
-    }
-
-    /**
-     * Get a property
-     *
-     * @param key      the property key
-     * @param deffault the property default value
-     * @return the property value
-     */
-    @Override @SuppressWarnings("unchecked")
-    public <T> T getProperty(String key, T deffault) {
-        Object value = properties.getOrDefault(key, deffault);
-        try {
-            if (value == null) return deffault;
-            return (T) value;
-        } catch (ClassCastException ex) {
-            return deffault;
-        }
-    }
-
-    /**
      * Get track target
      *
      * @return the target
      */
     @Override
     public Optional<LivingEntity> getTarget() {
-        return Optional.ofNullable(target.get());
+        return Optional.ofNullable(target);
     }
 
     /**
@@ -170,7 +196,7 @@ public class TrackerStand extends TrackerEntity {
      */
     @Override
     public Optional<AutoTracker> getTracker() {
-        return Optional.ofNullable(tracker.get());
+        return Optional.ofNullable(tracker);
     }
 
     /**
@@ -181,7 +207,7 @@ public class TrackerStand extends TrackerEntity {
      */
     @Override
     public Entity getEntity() {
-        return stand.get();
+        return stand;
     }
 
     /**
@@ -192,12 +218,45 @@ public class TrackerStand extends TrackerEntity {
      * @return the raytrace
      */
     @Override
-    public Optional<PointRayTrace> createRayTrace(final LivingEntity target) {
-        PointRayTrace rayTrace = null;
-        ArmorStand stand = this.stand.get();
+    public Optional<SyncRayTrace> createRayTrace(final LivingEntity target) {
+        SyncRayTrace rayTrace = null;
         if (stand != null) {
             Location location  = stand.getLocation();
-            rayTrace = new RayTrace(location.clone(), target.getLocation().clone());
+            rayTrace = SyncRayTrace.createRayTrace(location, target);
+            rayTrace.setPrecision(PRECISION.get(this));
+            rayTrace.setTolerance(TOLERANCE.get(this));
+
+            if (location.getY() < target.getLocation().getY()) {
+                rayTrace.setDirection(RayDirection.DOWN_TO_UP); //From stand (down) bottom to entity bottom (up)
+            }
+
+            //rayTrace.setDirection(RayDirection.UP_TO_DOWN);
+        }
+
+        return Optional.ofNullable(rayTrace);
+    }
+
+    /**
+     * Create an asynchronous ray trace from this tracker
+     * to an entity
+     *
+     * @param target the entity
+     * @return the raytrace
+     */
+    @Override
+    public Optional<? extends ThreadRayTrace> createAsyncRayTrace(LivingEntity target) {
+        AsyncRayTrace rayTrace = null;
+        if (stand != null) {
+            Location location  = stand.getLocation();
+            rayTrace = AsyncRayTrace.createRayTrace(location, target);
+            rayTrace.setPrecision(PRECISION.get(this));
+            rayTrace.setTolerance(TOLERANCE.get(this));
+
+            if (location.getY() < target.getLocation().getY()) {
+                rayTrace.setDirection(RayDirection.DOWN_TO_UP); //From stand (down) bottom to entity bottom (up)
+            }
+
+            //rayTrace.setDirection(RayDirection.UP_TO_DOWN);
         }
 
         return Optional.ofNullable(rayTrace);
@@ -210,14 +269,14 @@ public class TrackerStand extends TrackerEntity {
      */
     @Override
     public Vector getDirection() {
-        ArmorStand stand = this.stand.get();
-        LivingEntity target = this.target.get();
+        ArmorStand stand = this.stand;
+        LivingEntity target = this.target;
         if (stand != null && target != null) {
-            Location start = stand.getLocation().clone();
-            Location end = target.getEyeLocation().clone();
+            Location start = stand.getEyeLocation().clone();
+            Location end = target.getLocation().clone();
 
-            boolean small = stand.isSmall();
-            start.add(0, (small ? 0.5 : 1.5), 0);
+            //boolean small = stand.isSmall();
+            //start.add(0, (small ? 0.5 : 1.5), 0);
             return end.toVector().subtract(start.toVector()).normalize();
         }
 
@@ -231,7 +290,7 @@ public class TrackerStand extends TrackerEntity {
      */
     @Override
     public void setTracker(final AutoTracker tracker) {
-        this.tracker.set(tracker); //Thread-safe
+        this.tracker = tracker;
     }
 
     /**
@@ -241,7 +300,7 @@ public class TrackerStand extends TrackerEntity {
      */
     @Override
     public void setTrackTarget(LivingEntity entity) {
-        LivingEntity old = this.target.get();
+        LivingEntity old = this.target;
         if (old != null) {
             if (entity != null) {
                 TrackerSwitchTrackEvent switchEvent = new TrackerSwitchTrackEvent(this, old, entity, TrackerSwitchTrackEvent.SwitchReason.FORCED);
@@ -254,7 +313,7 @@ public class TrackerStand extends TrackerEntity {
             Bukkit.getServer().getPluginManager().callEvent(event);
         }
 
-        this.target.set(entity); //Thread-safe
+        this.target = entity; //Thread-safe
     }
 
     /**
@@ -264,80 +323,135 @@ public class TrackerStand extends TrackerEntity {
      */
     @Override
     public void start(final long period) {
-        BukkitTask rotateTask = this.rotTask.get();
-        BukkitTask task = this.trackTask.get();
+        BukkitTask rotateTask = this.rotTask;
+        BukkitTask task = this.trackTask;
 
         if (task == null || !Bukkit.getServer().getScheduler().isCurrentlyRunning(task.getTaskId()) || rotateTask == null || !Bukkit.getServer().getScheduler().isCurrentlyRunning(rotateTask.getTaskId())) {
             stop();
 
-            ArmorStand tmpStand = this.stand.get();
+            ArmorStand tmpStand = this.stand;
             if (tmpStand != null && tmpStand.isValid()) tmpStand.remove();
 
             Location unknownPosition = new Location(world, 0, -64, 0);
             tmpStand = (ArmorStand) world.spawnEntity(unknownPosition, EntityType.ARMOR_STAND);
 
-            tmpStand.setSmall(PROPERTY_SMALL);
-            tmpStand.setBasePlate(PROPERTY_BASE_PLATE);
-            if (PROPERTY_INVINCIBLE) {
+            tmpStand.setSmall(PROPERTY_SMALL.get(this));
+            tmpStand.setBasePlate(PROPERTY_BASE_PLATE.get(this));
+            if (PROPERTY_INVINCIBLE.get(this)) {
                 tmpStand.setNoDamageTicks(Integer.MAX_VALUE);
             }
-            tmpStand.setVisible(!PROPERTY_INVISIBLE);
-            tmpStand.setCustomNameVisible(PROPERTY_SHOW_NAME && !ObjectUtils.isNullOrEmpty(PROPERTY_NAME));
-            tmpStand.setCustomName(ChatColor.translateAlternateColorCodes('&', PROPERTY_NAME));
-            tmpStand.setArms(PROPERTY_ARMS);
-            tmpStand.setCanPickupItems(PROPERTY_TAKEOFF_ITEMS);
+            tmpStand.setVisible(!PROPERTY_INVISIBLE.get(this));
+            tmpStand.setCustomNameVisible(PROPERTY_SHOW_NAME.get(this));
+            tmpStand.setCustomName(ChatColor.translateAlternateColorCodes('&', PROPERTY_NAME.get(this)));
+            tmpStand.setArms(PROPERTY_SHOW_ARMS.get(this));
+            tmpStand.setCanPickupItems(PROPERTY_ITERABLE.get(this));
+
+            if (initialAngle != null) {
+                tmpStand.setHeadPose(initialAngle);
+            } else {
+                initialAngle = tmpStand.getHeadPose();
+            }
 
             Location realLocation = new Location(world, x, y, z);
             tmpStand.teleport(realLocation);
 
-            this.stand.set(tmpStand);
+            EntityEquipment equipment = tmpStand.getEquipment();
+            if (equipment != null) {
+                ItemStack helmet = PROPERTY_HELMET.get(this);
+                ItemStack chestplate = PROPERTY_CHESTPLATE.get(this);
+                ItemStack leggings = PROPERTY_LEGGINGS.get(this);
+                ItemStack boots = PROPERTY_BOOTS.get(this);
+
+                equipment.setHelmet(helmet);
+                equipment.setChestplate(chestplate);
+                equipment.setLeggings(leggings);
+                equipment.setBoots(boots);
+            }
+
+            this.stand = tmpStand;
+            AtomicBoolean rotating = new AtomicBoolean();
+            AtomicBoolean lock = new AtomicBoolean();
+
+            AtomicReference<StandAnimator> animator = new AtomicReference<>();
             task = Bukkit.getServer().getScheduler().runTaskTimer(plugin, () -> {
-                AutoTracker auto = tracker.get();
+                AutoTracker auto = tracker;
                 if (auto != null) {
-                    LivingEntity[] entities = auto.track(this, PROPERTY_TRACK_DISTANCE);
-                    if (entities != null && entities.length > 0) {
-                        LivingEntity tracking = null;
-                        LivingEntity lastTarget = this.lastTarget.get();
+                    LivingEntity tracking = null;
+                    LivingEntity lastTarget = this.lastTarget;
 
-                        if (PROPERTY_TRACK_LOCK && lastTarget != null && lastTarget.isValid() && !lastTarget.isDead()) {
-                            PointRayTrace rt = createRayTrace(lastTarget).orElse(null);
+                    if (lastTarget != null && lastTarget.isValid() && !lastTarget.isDead()) {
+                        if (ALWAYS_TRACK.get(this)) { //We will always track the last target unless is not valid
+                            tracking = lastTarget; //We won't perform any raytrace, we are always tracking
+
+                            SyncRayTrace rt = createRayTrace(lastTarget).orElse(null);
                             if (rt != null) {
-                                RayTraceResult rts = rt.trace(PROPERTY_TRACK_DISTANCE, TraceOption.STOP_ON_SOLID_HIT);
+                                RayTraceResult rts = rt.trace(TRACKER_RADIUS.get(this));
 
-                                for (Entity e : rts.entities()) {
-                                    if (e.getUniqueId().equals(lastTarget.getUniqueId())) {
-                                        tracking = lastTarget;
-                                        break;
+                                TrackerTracksEvent tracksEvent = new TrackerTracksEvent(this, tracking, rts);
+                                Bukkit.getServer().getPluginManager().callEvent(tracksEvent);
+
+                                if (lock.get()) {
+                                    TrackerHitTrackEvent event = new TrackerHitTrackEvent(this, tracking, rts);
+                                    Bukkit.getServer().getPluginManager().callEvent(event);
+                                }
+                            }
+                        } else if (TRACK_LOCK.get(this)) { //Otherwise, if we just "lock" to target, we will try to track him
+                            SyncRayTrace rt = createRayTrace(lastTarget).orElse(null);
+                            if (rt != null) {
+                                rt.filterEntity(stand);
+                                if (stand.getLocation().getY() < lastTarget.getLocation().getY()) {
+                                    rt.setDirection(RayDirection.DOWN_TO_UP);
+                                }
+
+                                RayTraceResult rts = rt.trace(TRACKER_RADIUS.get(this));
+                                boolean hit = rts.getHitPosition(lastTarget).isPresent();
+
+                                if (hit) {
+                                    tracking = lastTarget;
+
+                                    TrackerTracksEvent tracksEvent = new TrackerTracksEvent(this, tracking, rts);
+                                    Bukkit.getServer().getPluginManager().callEvent(tracksEvent);
+
+                                    if (lock.get()) {
+                                        TrackerHitTrackEvent event = new TrackerHitTrackEvent(this, tracking, rts);
+                                        Bukkit.getServer().getPluginManager().callEvent(event);
                                     }
+                                } else {
+                                    TrackerStopTrackEvent event = new TrackerStopTrackEvent(this, tracking, TrackerStopTrackEvent.StopReason.NO_LONGER_VISIBLE);
+                                    Bukkit.getServer().getPluginManager().callEvent(event);
+
+                                    this.target = null;
+                                    this.lastTarget = null;
+                                    lock.set(false);
                                 }
                             }
                         }
-                        if (tracking == null) {
+                    }
+
+                    if (tracking == null) {
+                        lock.set(false);
+
+                        LivingEntity[] entities = auto.track(this, TRACKER_RADIUS.get(this));
+
+                        if (entities != null) {
                             for (LivingEntity entity : entities) {
                                 if (entity != null && entity.isValid()) {
-                                    PointRayTrace rt = createRayTrace(entity).orElse(null);
+                                    SyncRayTrace rt = createRayTrace(entity).orElse(null);
                                     if (rt != null) {
-                                        RayTraceResult rts = rt.trace(PROPERTY_TRACK_DISTANCE, TraceOption.STOP_ON_SOLID_HIT);
-
-                                        boolean hit = false;
-                                        for (Entity e : rts.entities()) {
-                                            if (e.getUniqueId().equals(entity.getUniqueId())) {
-                                                hit = true;
-                                                break;
-                                            }
+                                        rt.filterEntity(stand);
+                                        if (stand.getLocation().getY() < entity.getLocation().getY()) {
+                                            rt.setDirection(RayDirection.DOWN_TO_UP);
                                         }
 
-                                        if (hit || PROPERTY_TRACK_ALWAYS) {
-                                            tracking = entity;
-                                            if (lastTarget != null && !lastTarget.getUniqueId().equals(tracking.getUniqueId())) {
-                                                TrackerSwitchTrackEvent.SwitchReason reason = TrackerSwitchTrackEvent.SwitchReason.AUTO_TRACKER;
-                                                if (!lastTarget.isValid() || lastTarget.isDead()) {
-                                                    reason = TrackerSwitchTrackEvent.SwitchReason.NO_LONGER_ALIVE;
-                                                } else if (!PROPERTY_TRACK_ALWAYS) {
-                                                    reason = TrackerSwitchTrackEvent.SwitchReason.NO_LONGER_VISIBLE;
-                                                }
+                                        RayTraceResult rts = rt.trace(TRACKER_RADIUS.get(this), TraceOption.ROLLBACK_ON_HIT);
+                                        boolean hit = rts.getHitPosition(entity).isPresent();
 
-                                                TrackerSwitchTrackEvent event = new TrackerSwitchTrackEvent(this, tracking, lastTarget, reason);
+                                        if (hit || ALWAYS_TRACK.get(this)) {
+                                            this.target = entity;
+                                            tracking = entity;
+
+                                            if (lastTarget != null && !lastTarget.getUniqueId().equals(tracking.getUniqueId())) {
+                                                TrackerSwitchTrackEvent event = getTrackerSwitchTrackEvent(lastTarget, tracking);
                                                 Bukkit.getServer().getPluginManager().callEvent(event);
                                                 tracking = event.getNewEntity();
                                             } else {
@@ -346,97 +460,197 @@ public class TrackerStand extends TrackerEntity {
                                                     Bukkit.getServer().getPluginManager().callEvent(start);
                                                 }
                                             }
+
+                                            if (lock.get()) {
+                                                TrackerHitTrackEvent event = new TrackerHitTrackEvent(this, tracking, rts);
+                                                Bukkit.getServer().getPluginManager().callEvent(event);
+                                            }
                                         }
                                     }
                                 }
                             }
 
                             lastTarget = tracking;
-                            this.target.set(tracking);
-                            this.lastTarget.set(lastTarget);
+                            this.lastTarget = lastTarget;
+                            this.target = tracking;
                         }
                     }
                 }
             }, 0, period);
+
+            AtomicDouble lastY = new AtomicDouble(Double.MIN_VALUE);
             rotateTask = Bukkit.getServer().getScheduler().runTaskTimer(plugin, () -> {
-                LivingEntity tracking = this.target.get();
-                LivingEntity lastTarget = this.lastTarget.get();
-                ArmorStand stand = this.stand.get();
+                ArmorStand stand = this.stand;
 
-                if (tracking != null) {
-                    if (PROPERTY_TRACK_LOCK && lastTarget != null && lastTarget.isValid() && !lastTarget.isDead()) {
-                        tracking = lastTarget;
-                        //this.target.set(lastTarget);
+                if (stand != null && !stand.isDead() && stand.isValid()) {
+                    if (equipment != null) {
+                        ItemStack helmet = PROPERTY_HELMET.get(this);
+                        ItemStack chestplate = PROPERTY_CHESTPLATE.get(this);
+                        ItemStack leggings = PROPERTY_LEGGINGS.get(this);
+                        ItemStack boots = PROPERTY_BOOTS.get(this);
+
+                        equipment.setHelmet(helmet);
+                        equipment.setChestplate(chestplate);
+                        equipment.setLeggings(leggings);
+                        equipment.setBoots(boots);
                     }
 
-                    lastTarget = tracking;
+                    stand.setCustomNameVisible(PROPERTY_SHOW_NAME.get(this));
+                    stand.setCustomName(ChatColor.translateAlternateColorCodes('&', PROPERTY_NAME.get(this)));
+                }
 
-                    if (tracking.isDead() || !tracking.isValid()) {
-                        TrackerStopTrackEvent event = new TrackerStopTrackEvent(this, tracking, TrackerStopTrackEvent.StopReason.NO_LONGER_ALIVE);
-                        Bukkit.getServer().getPluginManager().callEvent(event);
-
-                        tracking = null;
-                    }
+                if (target != null) {
                     if (stand != null) {
-                        if (stand.isDead() || !stand.isValid()) tracking = null;
+                        if (stand.isDead() || !stand.isValid()) {
+                            target = null;
+                        }
                     }
 
-                    if (stand != null && tracking != null) {
-                        Location trackLocation = tracking.getEyeLocation().clone();
-                        Location standLocation = stand.getLocation().clone();
-                        standLocation.setY(standLocation.getY() + Math.max(1.5, tracking.getEyeHeight()));
+                    if (stand != null && target != null) {
+                        Location trackLocation = target.getEyeLocation().clone();
+                        Location standLocation = stand.getEyeLocation().clone();
+                        //standLocation.setY(standLocation.getY() + Math.max(1.5, tracking.getEyeHeight()));
 
-                        RayTrace prt = new RayTrace(standLocation, tracking);
-                        prt.setPrecision(PROPERTY_TRACE_PRECISION);
-                        prt.setDirection(RayDirection.UP_TO_DOWN);
+                        SyncRayTrace prt = createRayTrace(target).orElse(null);
+                        if (prt == null) return;
+
                         prt.filterEntity(stand);
-
-                        RayTraceResult rts = prt.trace(64, (PROPERTY_TRACK_ALWAYS ? new TraceOption[0]: new TraceOption[]{TraceOption.STOP_ON_SOLID_HIT}));
-                        boolean hit = false;
-                        for (Entity entity : rts.entities()) {
-                            if (entity.getUniqueId().equals(tracking.getUniqueId())) {
-                                hit = true;
-                                break;
-                            }
+                        if (stand.getLocation().getY() < target.getLocation().getY()) {
+                            prt.setDirection(RayDirection.DOWN_TO_UP);
                         }
 
-                        if (hit || PROPERTY_TRACK_ALWAYS) {
-                            HitPosition position = rts.getHitPosition(tracking).orElse(null);
-                            if (position != null || PROPERTY_TRACK_ALWAYS) {
-                                Vector vector = trackLocation.toVector().subtract(standLocation.toVector()).normalize();
+                        RayTraceResult rts = prt.trace(TRACKER_RADIUS.get(this), (ALWAYS_TRACK.get(this) ? new TraceOption[0] : new TraceOption[]{TraceOption.ROLLBACK_ON_HIT}));
+                        boolean hit = rts.getHitPosition(target).isPresent();
 
-                                double angle_x = vector.getY() * (-1);
-                                double x = vector.getX();
-                                double z = vector.getZ();
-                                double angle_y = 360F - Math.toDegrees(Math.atan2(x, z));
+                        if (hit || ALWAYS_TRACK.get(this)) {
+                            Vector vector = trackLocation.toVector().subtract(standLocation.toVector()).normalize();
 
-                                EulerAngle angle = new EulerAngle(angle_x, Math.toRadians(angle_y), 0);
-                                stand.setHeadPose(angle);
+                            double angleX = vector.getY() * (-1);
+                            double x = vector.getX();
+                            double z = vector.getZ();
+                            double angleY = 360F - Math.toDegrees(Math.atan2(x, z));
 
-                                TrackerHitTrackEvent event = new TrackerHitTrackEvent(this, tracking, rts);
-                                Bukkit.getServer().getPluginManager().callEvent(event);
+                            //EulerAngle currentAngle = stand.getHeadPose();
+                            EulerAngle targetAngle = new EulerAngle(angleX, Math.toRadians(angleY), 0);
+
+                            if (lock.get() || ROTATION_SMOOTHNESS.get(this) == 0) {
+                                //stand.setHeadPose(targetAngle);
+                                stand.setHeadPose(targetAngle);
+                            } else {
+                                if (angleHitsEntity(standLocation, target)) {
+                                    rotating.set(false);
+                                    animator.set(null);
+
+                                    lock.set(true);
+                                    return;
+                                }
+
+                                if (rotating.get()) {
+                                    StandAnimator existingAnimator = animator.get();
+                                    existingAnimator.setTarget(targetAngle);
+                                    existingAnimator.animate();
+
+                                    if (angleHitsEntity(standLocation, target)) {
+                                        rotating.set(false);
+                                        lock.set(true);
+
+                                        animator.set(null);
+                                    }
+
+                                    if (existingAnimator.finished() && rotating.get()) { //We couldn't track entity to time
+                                        rotating.set(false);
+                                        animator.set(null);
+                                    }
+
+                                    return;
+                                }
+
+                                rotating.set(true);
+                                animator.set(new StandAnimator(stand, targetAngle, ROTATION_SMOOTHNESS.get(this), ROTATION_FRAMES.get(this)));
                             }
-                        } else {
-                            TrackerStopTrackEvent event = new TrackerStopTrackEvent(this, tracking, TrackerStopTrackEvent.StopReason.NO_LONGER_VISIBLE);
-                            Bukkit.getServer().getPluginManager().callEvent(event);
                         }
                     }
 
-                    this.lastTarget.set(lastTarget);
-                    //this.target.set(target);
+                    //this.lastTarget = lastTarget;
+                } else {
+                    if (idleRotation != null && stand != null) {
+                        StandAnimator standAnimator = animator.get();
+                        if (standAnimator == null) {
+                            standAnimator = new StandAnimator(stand, idleRotation, ROTATION_SMOOTHNESS.get(this), ROTATION_FRAMES.get(this));
+                            animator.set(standAnimator);
+                        }
+
+                        standAnimator.animate();
+                        double currentY = stand.getHeadPose().getY();
+
+                        if (currentY == idleRotation.getY() || currentY == lastY.get()) {
+                            animator.set(null);
+
+                            if (idleRotationEnd != null) {
+                                Consumer<Void> instance = idleRotationEnd;
+                                idleRotationEnd = null;
+                                instance.accept(null);
+                            }
+                        }
+
+                        lastY.set(currentY);
+                    }
                 }
             }, 0, 0);
 
-            LivingEntity target = this.target.get();
             if (target != null) {
-                this.lastTarget.set(target);
+                this.lastTarget = target;
                 TrackerStartTrackEvent start = new TrackerStartTrackEvent(this, target);
                 Bukkit.getServer().getPluginManager().callEvent(start);
             }
 
-            this.rotTask.set(rotateTask);
-            this.trackTask.set(task);
+            this.rotTask = rotateTask;
+            this.trackTask = task;
         }
+    }
+
+    private boolean angleHitsEntity(final Location standLocation, final LivingEntity tracking) {
+        EulerAngle checkAngle = stand.getHeadPose();
+        Vector dirVector = getAngleVector(checkAngle);
+        SyncRayTrace rt = createRayTrace(tracking).orElse(null);
+        if (rt == null) return false;
+
+        rt.filterEntity(stand);
+        rt.setDirection(dirVector);
+
+        RayTraceResult subResult = rt.trace(target.getLocation().distance(standLocation) + 2d, TraceOption.STOP_ON_SOLID_BLOCK);
+        return subResult.getHitPosition(target).isPresent();
+    }
+
+    @NotNull
+    private Vector getAngleVector(EulerAngle tempAngle) {
+        double yawDegrees = tempAngle.getY();
+        double pitchDegrees = tempAngle.getX();
+
+        float yaw = (float) Math.toDegrees(yawDegrees);
+        float pitch = (float) Math.toDegrees(pitchDegrees);
+
+        Vector vector = new Vector();
+        vector.setY(-Math.sin(Math.toRadians(pitch)));
+
+        double xz = Math.cos(Math.toRadians(pitch));
+
+        vector.setX(-xz * Math.sin(Math.toRadians(yaw)));
+        vector.setZ(xz * Math.cos(Math.toRadians(yaw)));
+
+        return vector;
+    }
+
+    @NotNull
+    private TrackerSwitchTrackEvent getTrackerSwitchTrackEvent(LivingEntity lastTarget, LivingEntity tracking) {
+        TrackerSwitchTrackEvent.SwitchReason reason = TrackerSwitchTrackEvent.SwitchReason.AUTO_TRACKER;
+        if (!lastTarget.isValid() || lastTarget.isDead()) {
+            reason = TrackerSwitchTrackEvent.SwitchReason.NO_LONGER_ALIVE;
+        } else if (!ALWAYS_TRACK.get(this)) {
+            reason = TrackerSwitchTrackEvent.SwitchReason.NO_LONGER_VISIBLE;
+        }
+
+        return new TrackerSwitchTrackEvent(this, lastTarget, tracking, reason);
     }
 
     /**
@@ -444,16 +658,16 @@ public class TrackerStand extends TrackerEntity {
      */
     @Override
     public void stop() {
-        BukkitTask rotateTask = this.rotTask.get();
+        BukkitTask rotateTask = this.rotTask;
         if (rotateTask != null && !Bukkit.getServer().getScheduler().isCurrentlyRunning(rotateTask.getTaskId())) {
             rotateTask.cancel();
-            this.rotTask.set(null);
+            this.rotTask = null;
         }
 
-        BukkitTask task = this.trackTask.get();
+        BukkitTask task = this.trackTask;
         if (task != null && !Bukkit.getServer().getScheduler().isCurrentlyRunning(task.getTaskId())) {
             task.cancel();
-            this.trackTask.set(null);
+            this.trackTask = null;
         }
     }
 
@@ -463,10 +677,9 @@ public class TrackerStand extends TrackerEntity {
     @Override
     public void destroy() {
         stop();
-        ArmorStand stand = this.stand.get();
         if (stand != null && stand.isValid()) {
             stand.remove();
-            this.stand.set(null);
+            this.stand = null;
         }
     }
 
@@ -477,7 +690,7 @@ public class TrackerStand extends TrackerEntity {
      */
     @Override
     public boolean isStopped() {
-        return false;
+        return !isValid() || rotTask == null || rotTask.isCancelled() || trackTask == null || trackTask.isCancelled();
     }
 
     /**
@@ -487,6 +700,6 @@ public class TrackerStand extends TrackerEntity {
      */
     @Override
     public boolean isValid() {
-        return false;
+        return stand != null && !stand.isDead() && stand.isValid();
     }
 }

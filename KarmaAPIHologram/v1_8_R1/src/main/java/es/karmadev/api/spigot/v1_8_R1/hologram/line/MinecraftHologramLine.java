@@ -9,8 +9,10 @@ import es.karmadev.api.spigot.reflection.hologram.nms.MinecraftEntity;
 import es.karmadev.api.spigot.reflection.hologram.nms.entity.MinecraftSlime;
 import es.karmadev.api.spigot.v1_8_R1.hologram.MinecraftHologramManager;
 import es.karmadev.api.spigot.v1_8_R1.hologram.entity.HologramSlime;
+import lombok.Getter;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -24,6 +26,7 @@ public abstract class MinecraftHologramLine implements HologramLine, TouchableLi
     protected final Hologram parent;
     private final List<TouchHandler> HANDLER_LIST = new ArrayList<>();
 
+    @Getter
     protected MinecraftEntity entity;
     protected MinecraftSlime touchEntity;
     private boolean exists = false;
@@ -262,16 +265,6 @@ public abstract class MinecraftHologramLine implements HologramLine, TouchableLi
     }
 
     /**
-     * Get the entity that represents this
-     * line
-     *
-     * @return the entity line
-     */
-    public MinecraftEntity getEntity() {
-        return entity;
-    }
-
-    /**
      * Add a touch handler to the line
      *
      * @param handler the touch handler
@@ -315,7 +308,7 @@ public abstract class MinecraftHologramLine implements HologramLine, TouchableLi
      * @return an Iterator.
      */
     @Override
-    public Iterator<TouchHandler> iterator() {
+    public @NotNull Iterator<TouchHandler> iterator() {
         List<TouchHandler> handlers = new ArrayList<>();
 
         if (touchable) {

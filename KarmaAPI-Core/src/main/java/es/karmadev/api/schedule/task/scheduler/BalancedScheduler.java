@@ -96,7 +96,7 @@ public class BalancedScheduler implements TaskScheduler {
         long period = Math.round(rs * 1000);
 
         SourceLogger logger = source.logger();
-        logger.send(LogLevel.INFO, "Using a period of {0} for the asynchronous scheduler", period);
+        //logger.send(LogLevel.INFO, "Using a period of {0} for the asynchronous scheduler", period);
 
         Set<Future<?>> queued = Collections.newSetFromMap(new ConcurrentHashMap<>());
 

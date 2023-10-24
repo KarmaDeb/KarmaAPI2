@@ -14,14 +14,16 @@ import java.util.Map;
 public class RawBlockResult implements RawTraceResult<Location> {
 
     private final Map<Location, HitPosition> data = new LinkedHashMap<>();
+    private final Map<Location, Location[]> traces = new LinkedHashMap<>();
 
     /**
      * Initialize the raw block result
      *
      * @param data the raw data
      */
-    RawBlockResult(final Map<Block, HitPosition> data) {
+    RawBlockResult(final Map<Block, HitPosition> data, final Map<Block, Location[]> traces) {
         data.keySet().forEach((key) -> this.data.put(key.getLocation(), data.get(key)));
+        traces.keySet().forEach((key) -> this.traces.put(key.getLocation(), traces.get(key)));
     }
 
     /**
@@ -33,6 +35,16 @@ public class RawBlockResult implements RawTraceResult<Location> {
     @Override
     public void copyTo(final Map<Location, HitPosition> other) {
         other.putAll(data);
+    }
+
+    /**
+     * Get the trace result trace
+     *
+     * @return the trace result trace
+     */
+    @Override
+    public Map<Location, Location[]> trace() {
+        return new LinkedHashMap<>(traces);
     }
 
     /**
@@ -60,9 +72,10 @@ public class RawBlockResult implements RawTraceResult<Location> {
      * from the map
      *
      * @param data the data
+     * @param trace the trace
      * @return the raw block result
      */
-    public static RawBlockResult fromMap(final Map<Block, HitPosition> data) {
-        return new RawBlockResult(data);
+    public static RawBlockResult fromMap(final Map<Block, HitPosition> data, final Map<Block, Location[]> trace) {
+        return new RawBlockResult(data, trace);
     }
 }

@@ -32,8 +32,10 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * KarmaAPI minecraft online API
+ * @deprecated See {@code UUIDFetcher uuid-fetcher}
  */
 @SuppressWarnings({"DataFlowIssue", "unused"})
+@Deprecated
 public class MineAPI {
 
     private static long threadIndex = 0;
@@ -183,7 +185,7 @@ public class MineAPI {
         }
 
         URL modified = URLUtilities.append(url, "?display=json");
-        String okaResponse = URLUtilities.get(modified, new HeadEntry("Source-Identifier", source.identifier()));
+        String okaResponse = URLUtilities.get(modified, HeadEntry.valueOf("Source-Identifier", source.identifier()));
         try {
             JsonObject object = gson.fromJson(okaResponse, JsonObject.class);
             if (object.has("message") && object.has("code")) {
@@ -266,7 +268,7 @@ public class MineAPI {
         }
 
         URL modified = URLUtilities.append(url, "?display=json");
-        String okaResponse = URLUtilities.get(modified, new HeadEntry("Source-Identifier", source.identifier()));
+        String okaResponse = URLUtilities.get(modified, HeadEntry.valueOf("Source-Identifier", source.identifier()));
         try {
             JsonObject object = gson.fromJson(okaResponse, JsonObject.class);
             if (object.has("message") && object.has("code")) {
@@ -334,7 +336,7 @@ public class MineAPI {
             return -1L;
         }
 
-        String okaResponse = URLUtilities.get(url, new HeadEntry("Source-Identifier", source.identifier()));
+        String okaResponse = URLUtilities.get(url, HeadEntry.valueOf("Source-Identifier", source.identifier()));
         try {
             JsonObject object = gson.fromJson(okaResponse, JsonObject.class);
             if (object.has("message") && object.has("code")) {
@@ -384,7 +386,7 @@ public class MineAPI {
             return -1L;
         }
 
-        String okaResponse = URLUtilities.get(url, new HeadEntry("Source-Identifier", source.identifier()));
+        String okaResponse = URLUtilities.get(url, HeadEntry.valueOf("Source-Identifier", source.identifier()));
         try {
             JsonObject object = gson.fromJson(okaResponse, JsonObject.class);
             if (object.has("message") && object.has("code")) {
@@ -436,7 +438,7 @@ public class MineAPI {
             return MultiOKARequest.empty();
         }
 
-        String okaResponse = URLUtilities.get(url, new HeadEntry("Source-Identifier", source.identifier()));
+        String okaResponse = URLUtilities.get(url, HeadEntry.valueOf("Source-Identifier", source.identifier()));
         try {
             JsonObject multiObject = gson.fromJson(okaResponse, JsonObject.class);
             if (multiObject.has("message") && multiObject.has("code")) {
@@ -569,7 +571,7 @@ public class MineAPI {
             }
         }
 
-        String okaResponse = URLUtilities.get(url, new HeadEntry("Source-Identifier", source.identifier()));
+        String okaResponse = URLUtilities.get(url, HeadEntry.valueOf("Source-Identifier", source.identifier()));
         try {
             JsonObject object = gson.fromJson(okaResponse, JsonObject.class);
             if (method.equalsIgnoreCase("fetch")) {

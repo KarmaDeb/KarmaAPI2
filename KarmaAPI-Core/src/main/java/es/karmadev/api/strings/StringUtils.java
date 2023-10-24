@@ -364,13 +364,33 @@ public class StringUtils {
     }
 
     /**
+     * Serialize an object without knowing its
+     * type
+     *
+     * @param instance the object instance
+     * @return the serialized instance
+     */
+    public static String serializeUnsafe(final Object instance) {
+        try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream ous = new ObjectOutputStream(bos)) {
+            ous.writeObject(instance);
+            ous.flush();
+
+            return Base64.getEncoder().encodeToString(bos.toByteArray());
+        } catch (Throwable ex) {
+            ExceptionCollector.catchException(StringUtils.class, ex);
+            return "";
+        }
+    }
+
+    /**
      * Serialize an object into a text
      *
      * @param instance the object
      * @return the serialized instance
-     * @param <T> the object type
+     * @param <NativeObject> the object type
+     * @param <Object> the object to serialize
      */
-    public static <T extends Serializable> String serialize(final T instance) {
+    public static <NativeObject extends Serializable, Object extends NativeObject> String serialize(final Object instance) {
         try(ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutputStream ous = new ObjectOutputStream(bos)) {
             ous.writeObject(instance);
             ous.flush();

@@ -1,20 +1,20 @@
 package es.karmadev.api.version;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.fge.jsonschema.core.exceptions.ProcessingException;
-import com.github.fge.jsonschema.main.JsonSchema;
-import com.github.fge.jsonschema.main.JsonSchemaFactory;
 import com.google.gson.*;
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.file.util.PathUtilities;
 import es.karmadev.api.version.checker.VersionChecker;
+import org.everit.json.schema.Schema;
+import org.everit.json.schema.ValidationException;
+import org.everit.json.schema.loader.SchemaLoader;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -188,19 +188,10 @@ public class UpdateBuilder {
     public boolean build(final Path destination) {
         try (InputStream stream = VersionChecker.class.getResourceAsStream("/update.schema.json")) {
             if (stream != null) {
-                JsonSchemaFactory factory = JsonSchemaFactory.byDefault();
-                ObjectMapper mapper = new ObjectMapper();
-                JsonNode node = mapper.readTree(stream);
-                JsonSchema schema = factory.getJsonSchema(node);
+                JSONObject rawSchema = new JSONObject(stream);
+                Schema schema = SchemaLoader.load(rawSchema);
 
                 String raw = PathUtilities.read(destination);
-                JsonNode existing;
-                if (!raw.isEmpty()) {
-                    existing = mapper.readTree(raw);
-                    if (!schema.validate(existing).isSuccess()) {
-                        return false;
-                    }
-                }
 
                 Gson gson = new GsonBuilder().create();
                 JsonObject json = null;
@@ -239,6 +230,7 @@ public class UpdateBuilder {
                     }
                 }
 
+                versionObject.addProperty("date", Instant.now().toString());
                 versionObject.addProperty("build", String.valueOf(sourceVersion.getBuild()));
                 if (updateURLs.isEmpty()) {
                     versionObject.remove("update");
@@ -271,13 +263,103 @@ public class UpdateBuilder {
                     jsonString = simpleGson.toJson(json);
                 }
 
+                JSONObject toWrite = new JSONObject(jsonString);
+                try {
+                    schema.validate(toWrite);
+                } catch (ValidationException ex) {
+                    return false;
+                }
+
                 PathUtilities.createPath(destination);
                 return PathUtilities.write(destination, jsonString);
             }
-        } catch (IOException | ProcessingException ex) {
+        } catch (IOException ex) {
             ExceptionCollector.catchException(UpdateBuilder.class, ex);
         }
 
         return false;
+    }
+
+    /**
+     * Returns a string representation of the object. In general, the
+     * {@code toString} method returns a string that
+     * "textually represents" this object. The result should
+     * be a concise but informative representation that is easy for a
+     * person to read.
+     * It is recommended that all subclasses override this method.
+     * <p>
+     * The {@code toString} method for class {@code Object}
+     * returns a string consisting of the name of the class of which the
+     * object is an instance, the at-sign character `{@code @}', and
+     * the unsigned hexadecimal representation of the hash code of the
+     * object. In other words, this method returns a string equal to the
+     * value of:
+     * <blockquote>
+     * <pre>
+     * getClass().getName() + '@' + Integer.toHexString(hashCode())
+     * </pre></blockquote>
+     *
+     * @return a string representation of the object.
+     */
+    @Override
+    public String toString() {
+        try (InputStream stream = VersionChecker.class.getResourceAsStream("/update.schema.json")) {
+            if (stream != null) {
+                JSONObject rawSchema = new JSONObject(stream);
+                Schema schema = SchemaLoader.load(rawSchema);
+
+                JsonObject json = new JsonObject();
+                Version sourceVersion = source.sourceVersion();
+
+                JsonObject versionObject = new JsonObject();
+                JsonArray versions = new JsonArray();
+
+                versionObject.addProperty("date", Instant.now().toString());
+                versionObject.addProperty("build", String.valueOf(sourceVersion.getBuild()));
+                if (updateURLs.isEmpty()) {
+                    versionObject.remove("update");
+                } else {
+                    JsonArray updateElement = new JsonArray();
+                    updateURLs.forEach((url) -> updateElement.add(url.toString()));
+
+                    versionObject.add("update", updateElement);
+                }
+
+                JsonArray changelogElement = new JsonArray();
+                changelog.forEach((line) -> changelogElement.add(line.replace('&', '§')));
+
+                versionObject.add("changelog", changelogElement);
+                JsonObject parentObj = new JsonObject();
+                parentObj.add(sourceVersion.getMayor() + "." + sourceVersion.getMinor() + "." + sourceVersion.getPatch(), versionObject);
+
+                JsonArray newVersions = new JsonArray();
+                newVersions.add(parentObj);
+                for (JsonElement child : versions) newVersions.add(child);
+
+                json.add("versions", newVersions);
+
+                String jsonString;
+                try {
+                    Gson prettyGson = new GsonBuilder().setPrettyPrinting().create();
+                    jsonString = prettyGson.toJson(json);
+                } catch (Throwable ex) {
+                    Gson simpleGson = new GsonBuilder().create();
+                    jsonString = simpleGson.toJson(json);
+                }
+
+                JSONObject toWrite = new JSONObject(jsonString);
+                try {
+                    schema.validate(toWrite);
+                } catch (ValidationException ex) {
+                    return null;
+                }
+
+                return jsonString;
+            }
+        } catch (IOException ex) {
+            ExceptionCollector.catchException(UpdateBuilder.class, ex);
+        }
+
+        return null;
     }
 }

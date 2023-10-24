@@ -3,7 +3,6 @@ package es.karmadev.api.web.minecraft.response.data;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
-import es.karmadev.api.web.minecraft.UUIDType;
 import es.karmadev.api.web.minecraft.response.JsonContainer;
 import es.karmadev.api.web.minecraft.response.data.component.CapeComponent;
 import es.karmadev.api.web.minecraft.response.data.component.SkinComponent;
@@ -19,7 +18,7 @@ import java.util.UUID;
 /**
  * Online KarmaAPI request
  */
-@Builder
+@Builder @Deprecated
 public class OKARequest implements JsonContainer {
 
     @Nullable @Getter
@@ -71,12 +70,14 @@ public class OKARequest implements JsonContainer {
      *
      * @param type the uuid type
      * @return the uuid
+     * @deprecated no longer supported
      */
-    public UUID getUUID(final UUIDType type) {
+    @Deprecated
+    public UUID getUUID(final String type) {
         switch (type) {
-            case ONLINE:
+            case "ONLINE":
                 return online;
-            case OFFLINE:
+            case "OFFLINE":
             default:
                 return offline;
         }

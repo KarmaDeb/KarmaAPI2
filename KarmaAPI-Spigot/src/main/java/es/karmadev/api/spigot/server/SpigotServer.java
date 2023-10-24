@@ -1,6 +1,7 @@
 package es.karmadev.api.spigot.server;
 
 import es.karmadev.api.version.Version;
+import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
@@ -84,6 +85,11 @@ public class SpigotServer {
 
     private final static Server server = Bukkit.getServer();
 
+    /**
+     * -- GETTER --
+     *  Get the current tick
+     */
+    @Getter
     private static long currentTick = 0;
 
     /**
@@ -96,10 +102,7 @@ public class SpigotServer {
         if (currentTick == 0) {
             BukkitScheduler scheduler = Bukkit.getScheduler();
 
-            scheduler.runTaskTimer(owner, () -> {
-                currentTick++;
-            }, 0, 1);
-
+            scheduler.runTaskTimer(owner, () -> currentTick++, 0, 1);
             return true;
         }
 
@@ -211,6 +214,21 @@ public class SpigotServer {
     }
 
     /**
+     * Get if the server version is over the
+     * provided version
+     *
+     * @param other the version to check with
+     * @return if the server version is over
+     * the specified version
+     */
+    public static boolean isSameAs(final Version other) {
+        Version current = getVersion();
+        int comparator = current.compareTo(other);
+
+        return comparator == 0;
+    }
+
+    /**
      * Check if the current version is between the
      * specified versions
      *
@@ -219,7 +237,7 @@ public class SpigotServer {
      * @return if the version is between
      */
     public static boolean isBetween(final Version start, final Version end) {
-        return isOver(start) && isUnder(end);
+        return isSameAs(start) || isSameAs(end) || (isOver(start) && isUnder(end));
     }
 
     /**
@@ -233,15 +251,6 @@ public class SpigotServer {
         if (isOver(v1_20_1)) return VersionType.FUTURE;
 
         return VersionType.valueOf(version);
-    }
-
-    /**
-     * Get the current tick
-     *
-     * @return the current tick
-     */
-    public static long getCurrentTick() {
-        return currentTick;
     }
 
     /**
@@ -315,8 +324,8 @@ public class SpigotServer {
     public static Optional<Class<?>> netMinecraftServer(final String name, final String... route) {
         String version = server.getClass().getPackage().getName().replace(".", ",").split(",")[3];
         String classLocation = "net.minecraft.server";
-        if (getUpdate() < 19) { //When mojang stopped using net.minecraft.server.<version>
-            classLocation += "net.minecraft.server." + version;
+        if (isUnder(v1_19_X)) { //When mojang stopped using net.minecraft.server.<version>
+            classLocation += "." + version;
         }
 
         Class<?> instance = null;

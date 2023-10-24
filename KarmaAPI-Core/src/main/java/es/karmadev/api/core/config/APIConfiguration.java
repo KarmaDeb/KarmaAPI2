@@ -1,18 +1,17 @@
 package es.karmadev.api.core.config;
 
 import com.google.gson.*;
-import es.karmadev.api.core.KarmaKore;
-import es.karmadev.api.core.source.APISource;
+import es.karmadev.api.core.KarmaAPI;
 import es.karmadev.api.file.util.PathUtilities;
 import es.karmadev.api.file.util.StreamUtils;
 import es.karmadev.api.logger.log.console.LogLevel;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.nio.file.Paths;
 
 /**
  * KarmaAPI configuration
@@ -20,8 +19,6 @@ import java.util.logging.Logger;
 @SuppressWarnings("unused")
 public final class APIConfiguration {
 
-    private final static Logger logger = Logger.getLogger("KarmaSource - Configuration");
-    private final static APISource source = KarmaKore.INSTANCE();
     private static JsonObject settings;
 
     /**
@@ -31,20 +28,22 @@ public final class APIConfiguration {
      * configuration
      */
     public APIConfiguration() throws RuntimeException {
+        try {
+            KarmaAPI.setup();
+        } catch (URISyntaxException ex) {
+            throw new RuntimeException(ex);
+        }
+
         if (settings == null) {
-            if (source == null)
-                throw new RuntimeException("Cannot access API configuration because KarmaAPI source is null");
-            Path config = source.workingDirectory().resolve("settings.json");
+            Path workingDirectory = Paths.get("./KarmaAPI");
+            Path config = workingDirectory.resolve("settings.json");
             boolean write = !Files.exists(config);
 
             if (PathUtilities.createPath(config)) {
                 if (write) {
-                    if (PathUtilities.copy(PathUtilities.DEFAULT_LOADER, "karmaSettings.json", config)) {
-                        //source.logger().log(LogLevel.DEBUG, "Exported source settings.json");
-                        logger.log(Level.FINE, "Exported source settings.json");
-                    } else {
+                    if (!PathUtilities.copy(PathUtilities.DEFAULT_LOADER, "karmaSettings.json", config)) {
                         PathUtilities.destroy(config);
-                        throw new RuntimeException("Cannot access API configuration because configuration was unable to write");
+                        return;
                     }
                 }
 
@@ -53,19 +52,13 @@ public final class APIConfiguration {
                     String raw = StreamUtils.streamToString(stream);
                     JsonElement element = gson.fromJson(raw, JsonElement.class);
 
-                    if (!element.isJsonObject())
-                        throw new RuntimeException("Cannot access API configuration because configuration is invalid");
+                    if (!element.isJsonObject()) return;
 
-                    System.out.println("Initialized KarmaAPI configuration from: " + config);
-                    logger.log(Level.FINE, "Initialized KarmaAPI configuration from: {0}", config);
                     settings = element.getAsJsonObject();
-                    return;
                 } catch (IOException ex) {
                     throw new RuntimeException(ex);
                 }
             }
-
-            throw new RuntimeException("Cannot access API configuration because the configuration file failed to resolve");
         }
     }
 
@@ -76,7 +69,7 @@ public final class APIConfiguration {
      * @return the prefix
      */
     public String getPrefix(final LogLevel level) {
-        if (!settings.has("logger") || !settings.get("logger").isJsonObject()) {
+        if (settings == null || !settings.has("logger") || !settings.get("logger").isJsonObject()) {
             return (level != null ? level.getPrefix() : "&7[{0}]: &f{1}");
         }
 
@@ -133,7 +126,7 @@ public final class APIConfiguration {
      * @return if the level is enabled
      */
     public boolean isLevelEnabled(final LogLevel level) {
-        if (!settings.has("logger") || !settings.get("logger").isJsonObject()) {
+        if (settings == null || !settings.has("logger") || !settings.get("logger").isJsonObject()) {
             return true;
         }
 
@@ -158,7 +151,7 @@ public final class APIConfiguration {
      * thread
      */
     public boolean asyncConsoleLogger() {
-        if (!settings.has("logger") || !settings.get("logger").isJsonObject()) {
+        if (settings == null || !settings.has("logger") || !settings.get("logger").isJsonObject()) {
             return true;
         }
 
@@ -183,7 +176,7 @@ public final class APIConfiguration {
      * thread
      */
     public boolean asyncFileLogger() {
-        if (!settings.has("logger") || !settings.get("logger").isJsonObject()) {
+        if (settings == null || !settings.has("logger") || !settings.get("logger").isJsonObject()) {
             return true;
         }
 
@@ -209,7 +202,7 @@ public final class APIConfiguration {
      * must be 200
      */
     public boolean strictURLCodes() {
-        if (!settings.has("url") || !settings.get("url").isJsonObject()) {
+        if (settings == null || !settings.has("url") || !settings.get("url").isJsonObject()) {
             return false;
         }
 
@@ -228,7 +221,7 @@ public final class APIConfiguration {
      * @return the requests timeout
      */
     public int requestTimeout() {
-        if (!settings.has("url") || !settings.get("url").isJsonObject()) {
+        if (settings == null || !settings.has("url") || !settings.get("url").isJsonObject()) {
             return 5000;
         }
 
@@ -249,7 +242,7 @@ public final class APIConfiguration {
      * experimental features
      */
     public boolean enableExperimental() {
-        if (!settings.has("experimental") || !settings.get("experimental").isJsonPrimitive()) {
+        if (settings == null || !settings.has("experimental") || !settings.get("experimental").isJsonPrimitive()) {
             return false;
         }
 

@@ -1,6 +1,7 @@
 package es.karmadev.api.logger.log.console;
 
 import es.karmadev.api.core.KarmaKore;
+import es.karmadev.api.logger.log.BoundedLogger;
 import es.karmadev.api.strings.placeholder.PlaceholderEngine;
 import lombok.Getter;
 
@@ -243,12 +244,12 @@ public enum ConsoleColor {
         String os = System.getProperty("os.name").toLowerCase();
         String str = message.replace("§", "&") + "&r";
 
-        //Pattern pattern = Pattern.compile("&[0-9a-flrnom]");
-        //Map<String, String> replacements = new HashMap<>();
+        Pattern pattern = Pattern.compile("&[0-9a-flrnom]");
+        Map<String, String> replacements = new HashMap<>();
 
-        //Matcher matcher = pattern.matcher(str);
+        Matcher matcher = pattern.matcher(str);
 
-        StringBuilder builder = new StringBuilder();
+        /*StringBuilder builder = new StringBuilder();
         boolean ignoreNext = false;
         for (int i = 0; i < str.length(); i++) {
             char character = str.charAt(i);
@@ -281,9 +282,9 @@ public enum ConsoleColor {
             if (append == null) append = String.valueOf(character);
 
             builder.append(append);
-        }
+        }*/
 
-        /*while (matcher.find()) {
+        while (matcher.find()) {
             int pre = Math.max(matcher.start() - 1, 0);
             int start = matcher.start();
             int end = matcher.end();
@@ -307,7 +308,7 @@ public enum ConsoleColor {
                 osCode = (forceOtherOs ? winCodes.get(code) : unixCodes.get(code));
             }
 
-
+            replacements.put(part, osCode);
         }
 
         for (String key : replacements.keySet()) {
@@ -315,8 +316,8 @@ public enum ConsoleColor {
             str = str.replace(key, value);
         }
 
-        return str;*/
-        return builder.toString();
+        return str;
+        //return builder.toString();
     }
 
     /**

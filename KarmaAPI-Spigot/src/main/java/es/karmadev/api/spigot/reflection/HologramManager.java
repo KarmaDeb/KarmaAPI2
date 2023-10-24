@@ -1,6 +1,6 @@
 package es.karmadev.api.spigot.reflection;
 
-import es.karmadev.api.core.KarmaPlugin;
+import es.karmadev.api.spigot.core.KarmaPlugin;
 import es.karmadev.api.database.DatabaseEngine;
 import es.karmadev.api.database.DatabaseManager;
 import es.karmadev.api.database.model.JsonDatabase;

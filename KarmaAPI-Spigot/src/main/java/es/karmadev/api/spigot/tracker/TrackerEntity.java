@@ -1,6 +1,7 @@
 package es.karmadev.api.spigot.tracker;
 
-import es.karmadev.api.spigot.entity.trace.ray.PointRayTrace;
+import es.karmadev.api.spigot.entity.trace.ray.RayTrace;
+import es.karmadev.api.spigot.entity.trace.ray.ThreadRayTrace;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
@@ -8,15 +9,31 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.util.Vector;
 
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.function.Supplier;
 
 /**
  * Tracker entity
  */
 public abstract class TrackerEntity {
 
-    private static int globalId = 0;
-    protected final int id = ++globalId;
+    private static long globalId = 0;
+    private long id;
     protected final Plugin plugin;
+
+    {
+        //Generate an ID based on free IDs map
+        long expectedId = ++globalId;
+        while (entities.containsKey(expectedId)) {
+            expectedId = ++globalId;
+        }
+
+        id = expectedId;
+    }
+
+    private final ConcurrentMap<String, Object> properties = new ConcurrentHashMap<>();
+    private final static ConcurrentMap<Long, TrackerEntity> entities = new ConcurrentHashMap<>();
 
     /**
      * Initialize the tracker entity
@@ -25,6 +42,7 @@ public abstract class TrackerEntity {
      */
     public TrackerEntity(final Plugin plugin) {
         this.plugin = plugin;
+        TrackerEntity.entities.put(id, this);
     }
 
     /**
@@ -32,7 +50,7 @@ public abstract class TrackerEntity {
      *
      * @return the tracker ID
      */
-    public final int getId() {
+    public final long getId() {
         return id;
     }
 
@@ -79,7 +97,16 @@ public abstract class TrackerEntity {
      * @param key the key
      * @param value the value
      */
-    public abstract void setProperty(final String key, final Object value);
+    void setProperty(final String key, final Object value) {
+        if (key == null) return;
+
+        if (value == null) {
+            properties.remove(key);
+            return;
+        }
+
+        properties.put(key, value);
+    }
 
     /**
      * Get a property
@@ -89,7 +116,15 @@ public abstract class TrackerEntity {
      * @return the property value
      * @param <T> the property type
      */
-    public abstract <T> T getProperty(final String key, final T deffault);
+    @SuppressWarnings("unchecked")
+    <Type, T extends Type> T getProperty(final String key, final T deffault) {
+        Object value = properties.getOrDefault(key, deffault);
+        try {
+            return (T) value;
+        } catch (ClassCastException ex) {
+            return deffault;
+        }
+    }
 
     /**
      * Get track target
@@ -120,7 +155,16 @@ public abstract class TrackerEntity {
      * @param target the entity
      * @return the raytrace
      */
-    public abstract Optional<PointRayTrace> createRayTrace(final LivingEntity target);
+    public abstract Optional<? extends RayTrace> createRayTrace(final LivingEntity target);
+
+    /**
+     * Create an asynchronous ray trace from this tracker
+     * to an entity
+     *
+     * @param target the entity
+     * @return the raytrace
+     */
+    public abstract Optional<? extends ThreadRayTrace> createAsyncRayTrace(final LivingEntity target);
 
     /**
      * Get the current track direction
@@ -180,4 +224,37 @@ public abstract class TrackerEntity {
      * @return if the tracker entity is valid
      */
     public abstract boolean isValid();
+
+    /**
+     * Get an entity by its ID
+     *
+     * @param id the entity ID
+     * @return the entity
+     */
+    public static TrackerEntity getEntity(final long id) {
+        return getEntity(id, null);
+    }
+
+    /**
+     * Get an entity by its ID
+     *
+     * @param id the entity ID
+     * @param absentCase the entity to use if absent.
+     * @return the entity
+     */
+    public static TrackerEntity getEntity(final long id, final Supplier<TrackerEntity> absentCase) {
+        if (absentCase == null) return entities.get(id);
+        return entities.computeIfAbsent(id, (existing) -> {
+            TrackerEntity registered = absentCase.get();
+            if (registered != null) {
+                long previousId = registered.id;
+                entities.remove(previousId);
+
+                registered.id = id;
+                return registered;
+            }
+
+            return null;
+        });
+    }
 }

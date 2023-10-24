@@ -9,6 +9,7 @@ import lombok.Value;
  */
 @Value(staticConstructor = "of")
 @AllArgsConstructor(staticName = "of")
+@Deprecated
 public class ServerComponent {
 
     @Getter

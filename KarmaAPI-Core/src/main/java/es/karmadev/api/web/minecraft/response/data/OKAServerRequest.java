@@ -30,7 +30,7 @@ import java.util.Base64;
 /**
  * Online KarmaAPI server request
  */
-@Builder
+@Builder @Deprecated
 public class OKAServerRequest implements ImageContainer, JsonContainer {
 
     @Getter @Nullable

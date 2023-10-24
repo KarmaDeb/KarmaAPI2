@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
@@ -19,13 +20,14 @@ import java.util.function.Consumer;
  * Asynchronous task executor
  */
 @SuppressWarnings("unused")
-public class AsyncTaskExecutor implements TaskRunner {
+public class AsyncTaskExecutor implements TaskRunner<Long> {
 
     public final static ScheduledExecutorService EXECUTOR = Executors.newSingleThreadScheduledExecutor();
 
     private final static AtomicLong globalTask = new AtomicLong(0);
     private final static Map<Long, AsyncTaskExecutor> taskInstances = new ConcurrentHashMap<>();
 
+    private final AtomicInteger currentSecond = new AtomicInteger(0);
     private final AtomicLong timeLeft = new AtomicLong(1);
     private final AtomicLong elapsedTime = new AtomicLong(1);
     private final AtomicLong currentId = new AtomicLong(globalTask.incrementAndGet());
@@ -48,7 +50,7 @@ public class AsyncTaskExecutor implements TaskRunner {
      * @param limit the time limit
      * @param workingUnit the working unit
      */
-    public AsyncTaskExecutor(final long limit, final TimeUnit workingUnit) {
+    public AsyncTaskExecutor(final Number limit, final TimeUnit workingUnit) {
         this(1, limit, workingUnit);
     }
 
@@ -59,12 +61,12 @@ public class AsyncTaskExecutor implements TaskRunner {
      * @param limit the scheduler time limit
      * @param workingUnit the scheduler working unit
      */
-    public AsyncTaskExecutor(final long interval, final long limit, final TimeUnit workingUnit) {
-        this.interval = interval;
-        this.limit = limit;
+    public AsyncTaskExecutor(final Number interval, final Number limit, final TimeUnit workingUnit) {
+        this.interval = interval.longValue();
+        this.limit = limit.longValue();
         this.workingUnit = workingUnit;
-        elapsedTime.set(interval);
-        timeLeft.set(limit - interval);
+        elapsedTime.set(interval.longValue());
+        timeLeft.set(limit.longValue() - interval.longValue());
 
         taskInstances.put(currentId.get(), this);
     }
@@ -85,7 +87,7 @@ public class AsyncTaskExecutor implements TaskRunner {
      * @param newTimeLeft the new runner time left
      */
     @Override
-    public void forceTimeLeft(final long newTimeLeft) {
+    public void forceTimeLeft(final Long newTimeLeft) {
         elapsedTime.set(Math.max(limit - Math.min(limit, newTimeLeft), 1));
         timeLeft.set(Math.min(newTimeLeft, limit) - interval);
 
@@ -98,7 +100,7 @@ public class AsyncTaskExecutor implements TaskRunner {
      * @param newMaxTime the new runner max time
      */
     @Override
-    public void forceMaxTime(final long newMaxTime) {
+    public void forceMaxTime(final Long newMaxTime) {
         long oldLimit = this.limit;
         this.limit = newMaxTime;
 
@@ -130,28 +132,22 @@ public class AsyncTaskExecutor implements TaskRunner {
         setStatus(TaskStatus.RUNNING, false);
 
         AtomicReference<ScheduledFuture<?>> future = new AtomicReference<>();
-        future.set(EXECUTOR.scheduleAtFixedRate(() -> {
+        future.set(EXECUTOR.scheduleAtFixedRate(() -> EXECUTOR.submit(() -> {
             if (status().equals(TaskStatus.STOPPED)) return;
 
             if (status().equals(TaskStatus.RUNNING)) {
                 long timeLeft = this.timeLeft.get();
 
-                currentContext = TaskEvent.TICK;
-                executeEvents(true);
+                executeEvents(TaskEvent.TICK, true);
 
                 if (timeLeft == 0) {
                     if (!isRepeating.get()) {
                         future.get().cancel(true);
                         setStatus(TaskStatus.STOPPED, false);
-                        //taskStatus.set(TaskStatus.STOPPED);
-
-                        currentContext = TaskEvent.END;
-                        executeEvents(false);
+                        executeEvents(TaskEvent.END, false);
                     } else {
                         this.timeLeft.set(this.limit - this.interval);
-
-                        currentContext = TaskEvent.RESTART;
-                        executeEvents(false);
+                        executeEvents(TaskEvent.RESTART, false);
                     }
 
                     elapsedTime.set(this.interval);
@@ -166,22 +162,16 @@ public class AsyncTaskExecutor implements TaskRunner {
             }
 
             if (status().equals(TaskStatus.RESUMING)) {
-                currentContext = TaskEvent.RESUME;
-
-                executeEvents(true);
+                executeEvents(TaskEvent.RESUME, true);
                 setStatus(TaskStatus.RUNNING, true);
             }
 
             if (lastTaskStatus.get().equals(TaskStatus.RUNNING) && status().equals(TaskStatus.PAUSED)) {
                 lastTaskStatus.set(TaskStatus.PAUSED);
-
-                currentContext = TaskEvent.PAUSE;
-                executeEvents(false);
+                executeEvents(TaskEvent.PAUSE, false);
             }
-        }, 0, interval, workingUnit));
-
-        currentContext = TaskEvent.START;
-        executeEvents(false);
+        }), 0, interval, workingUnit));
+        executeEvents(TaskEvent.START, false);
     }
 
     /**
@@ -194,8 +184,7 @@ public class AsyncTaskExecutor implements TaskRunner {
         taskStatus.set(TaskStatus.STOPPED);
         lastTaskStatus.set(TaskStatus.STOPPED);
 
-        currentContext = TaskEvent.STOP;
-        executeEvents(false);
+        executeEvents(TaskEvent.STOP, false);
     }
 
     /**
@@ -246,8 +235,8 @@ public class AsyncTaskExecutor implements TaskRunner {
      * @return the task interval
      */
     @Override
-    public long interval(final TimeUnit unit) {
-        return unit.convert(this.interval, this.workingUnit);
+    public Long interval(final TimeUnit unit) {
+        return unit.convert((long) Math.ceil(this.interval - 0.1), this.workingUnit);
     }
 
     /**
@@ -259,8 +248,8 @@ public class AsyncTaskExecutor implements TaskRunner {
      * @return the task time left
      */
     @Override
-    public long timeLeft(final TimeUnit unit) {
-        return unit.convert(timeLeft.get(), workingUnit);
+    public Long timeLeft(final TimeUnit unit) {
+        return unit.convert((long) Math.ceil(timeLeft.get()), workingUnit);
     }
 
     /**
@@ -281,10 +270,11 @@ public class AsyncTaskExecutor implements TaskRunner {
      */
     @Override
     public TaskRunnerEvent<Consumer<Long>> onAny(final BiConsumer<TaskEvent, Long> event) {
-        ConsumerRunnerEvent runnerEvent = new ConsumerRunnerEvent(this, null, (time) -> {
+        ConsumerRunnerEvent<Long> runnerEvent = ConsumerRunnerEvent.forType(this, null, (time) -> {
             event.accept(currentContext, time);
         });
         taskEvents.add(runnerEvent);
+
         return runnerEvent;
     }
 
@@ -310,7 +300,7 @@ public class AsyncTaskExecutor implements TaskRunner {
      */
     @Override
     public TaskRunnerEvent<Consumer<Long>> on(final TaskEvent event, final Consumer<Long> tick) {
-        ConsumerRunnerEvent runnerEvent = new ConsumerRunnerEvent(this, event, tick);
+        ConsumerRunnerEvent<Long> runnerEvent = ConsumerRunnerEvent.forType(this, event, tick);
         taskEvents.add(runnerEvent);
         return runnerEvent;
     }
@@ -364,12 +354,15 @@ public class AsyncTaskExecutor implements TaskRunner {
     }
 
     @SuppressWarnings("unchecked")
-    private void executeEvents(final boolean add) {
+    private void executeEvents(final TaskEvent taskEvent, final boolean add) {
         long elapsed = (add ? elapsedTime.getAndAdd(interval) : elapsedTime.get());
-        taskEvents.stream().filter((e) -> e.trigger() == null || e.trigger().equals(currentContext)).forEachOrdered((event) -> {
+
+        currentContext = taskEvent;
+        taskEvents.stream().filter((e) -> e.trigger() == null || e.trigger().equals(taskEvent)).forEachOrdered((event) -> {
             Object runner = event.get();
             if (runner instanceof Consumer) {
-                ((Consumer<Long>) runner).accept(elapsed);
+                ((Consumer<Number>) runner).accept(elapsed);
+                return;
             }
 
             if (runner instanceof Runnable) {

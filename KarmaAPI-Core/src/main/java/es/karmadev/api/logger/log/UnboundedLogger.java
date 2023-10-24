@@ -218,9 +218,9 @@ public class UnboundedLogger implements SourceLogger {
      * @return the message
      */
     private String buildMessage(final LogLevel level, final String message, final Object... replaces) {
-        String prefix = "&7[&cKarmaAPI - Unbounded&7]&b&8: &f{1}";
+        String prefix = "&7[&cKarmaAPI&7]&b&8: &f{1}";
         if (level != null) {
-            prefix = "&7[&cKarmaAPI - Unbounded&7]&b {&3" + level.name() + "&b}&8: &f{1}";
+            prefix = "&7[&cKarmaAPI&7]&b {&3" + level.name() + "&b}&8: &f{1}";
         }
 
         String finalMessage = message;

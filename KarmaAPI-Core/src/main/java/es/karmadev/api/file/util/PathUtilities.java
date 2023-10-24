@@ -71,12 +71,17 @@ public class PathUtilities {
      * @param path the path to create
      */
     public static boolean createPath(final Path path) {
-        if (Files.exists(path)) return true;
+        Path targetPath = path;
+        if (!targetPath.isAbsolute()) {
+            targetPath = targetPath.toAbsolutePath();
+        }
 
-        Path parent = path.getParent();
+        if (Files.exists(targetPath)) return true;
+
+        Path parent = targetPath.getParent();
         if (createDirectory(parent)) {
             try {
-                Files.createFile(path);
+                Files.createFile(targetPath);
                 return true;
             } catch (IOException ex) {
                 ExceptionCollector.catchException(PathUtilities.class, ex);
@@ -291,6 +296,34 @@ public class PathUtilities {
         }
 
         return "";
+    }
+
+    /**
+     * Get the path name
+     *
+     * @param path the path
+     * @return the path name
+     */
+    public static String getName(final Path path) {
+        return getName(path, false);
+    }
+
+    /**
+     * Get the path name
+     *
+     * @param path the path
+     * @param extension include extension in the file name
+     * @return the path name
+     */
+    public static String getName(final Path path, final boolean extension) {
+        if (Files.isDirectory(path)) {
+            return path.getFileName().toString();
+        }
+
+        String pathExtension = getExtension(path);
+        String name = path.getFileName().toString();
+
+        return (extension ? name : name.replace("." + pathExtension, ""));
     }
 
     /**

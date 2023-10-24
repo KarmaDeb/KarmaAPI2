@@ -13,6 +13,7 @@ import java.util.UUID;
  * Multiple oka request
  */
 @Builder
+@Deprecated
 public class MultiOKARequest {
 
     @Getter

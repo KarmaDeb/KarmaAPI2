@@ -1,11 +1,11 @@
 package es.karmadev.api.database.model.json;
 
 import com.google.gson.*;
-import com.google.gson.reflect.TypeToken;
-import es.karmadev.api.core.KarmaKore;
 import es.karmadev.api.database.DatabaseConnection;
 import es.karmadev.api.database.result.QueryResult;
+import es.karmadev.api.database.result.SimpleQueryResult;
 import es.karmadev.api.file.util.PathUtilities;
+import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -19,11 +19,22 @@ import java.util.*;
 @SuppressWarnings("unused")
 public class JsonConnection implements DatabaseConnection {
 
-    private final Path file;
-    private final String table;
+    final Path file;
+    /**
+     * -- GETTER --
+     *  Get the table name
+     */
+    @Getter
+    final String table;
+    /**
+     * -- GETTER --
+     *  Get the parent connection
+     */
+    @Getter
     private final JsonConnection parent;
-    private JsonObject database;
-    private boolean pretty = false;
+    JsonObject database;
+    boolean pretty = false;
+    boolean autoSave = false;
 
     public JsonConnection(final @NotNull Path file, final @Nullable JsonConnection parent, final @Nullable String table) {
         this.file = file;
@@ -42,7 +53,10 @@ public class JsonConnection implements DatabaseConnection {
 
         database = tmpObject;
         if (!database.has("types") || !database.get("types").isJsonObject()) {
-            database.add("types", new JsonObject());
+            JsonObject typesObject = new JsonObject();
+            typesObject.addProperty("schemed", false);
+            database.add("types", typesObject);
+            save();
         }
     }
 
@@ -69,7 +83,7 @@ public class JsonConnection implements DatabaseConnection {
      */
     @Override
     public boolean querySupported() {
-        return false;
+        return true;
     }
 
     /**
@@ -81,7 +95,39 @@ public class JsonConnection implements DatabaseConnection {
      */
     @Override
     public QueryResult execute(final String query) throws UnsupportedOperationException {
-        throw new UnsupportedOperationException("Json database cannot perform queries!");
+        if (query.equalsIgnoreCase("set pretty printing on;")) {
+            setPrettySave(true);
+            return SimpleQueryResult.builder().database(PathUtilities.getName(file)).table(table).build();
+        }
+        if (query.equalsIgnoreCase("set pretty printing off;")) {
+            setPrettySave(true);
+            return SimpleQueryResult.builder().database(PathUtilities.getName(file)).table(table).build();
+        }
+        if (query.equalsIgnoreCase("toggle pretty printing;")) {
+            setPrettySave(!pretty);
+            return SimpleQueryResult.builder().database(PathUtilities.getName(file)).table(table).build();
+        }
+
+        if (query.equalsIgnoreCase("set query auto save on;")) {
+            autoSave = true;
+            return SimpleQueryResult.builder().database(PathUtilities.getName(file)).table(table).build();
+        }
+        if (query.equalsIgnoreCase("set query auto save off;")) {
+            autoSave = false;
+            return SimpleQueryResult.builder().database(PathUtilities.getName(file)).table(table).build();
+        }
+        if (query.equalsIgnoreCase("toggle query auto save;")) {
+            autoSave = !autoSave;
+            return SimpleQueryResult.builder().database(PathUtilities.getName(file)).table(table).build();
+        }
+
+        if (query.equalsIgnoreCase("save database;")) {
+            save();
+            return SimpleQueryResult.builder().database(PathUtilities.getName(file)).table(table).build();
+        }
+
+        JsonConnectionExecutor executor = new JsonConnectionExecutor(this);
+        return executor.execute(query);
     }
 
     /**
@@ -117,12 +163,16 @@ public class JsonConnection implements DatabaseConnection {
      * @throws UnsupportedOperationException if the table name is already taken by a non-table object
      */
     public JsonConnection createTable(final String name) throws UnsupportedOperationException {
+        JsonObject typesObject = database.getAsJsonObject("types");
+        if (typesObject.get("schemed").getAsBoolean()) {
+            throw new UnsupportedOperationException("Cannot create table " + name + " on " + table + " because it is schemed");
+        }
+
         JsonObject child = new JsonObject();
         if (database.has(name)) {
             JsonElement element = database.get(name);
             if (!element.isJsonObject()) throw new UnsupportedOperationException("Cannot create a table " + name + " because another field with that name already exists");
 
-            JsonObject typesObject = database.getAsJsonObject("types");
             if (typesObject.has(name)) {
                 String type = typesObject.get(name).getAsString();
                 if (!type.equals("table")) throw new UnsupportedOperationException("Cannot create a table " + name + " because another field with that name already exists");
@@ -131,11 +181,15 @@ public class JsonConnection implements DatabaseConnection {
             child = element.getAsJsonObject();
         }
 
+        if (!child.has("types")) {
+            JsonObject types = new JsonObject();
+            types.addProperty("schemed", false);
+            child.add("types", types);
+        }
         database.add(name, child);
         JsonConnection connection = new JsonConnection(file, this, name);
         connection.database = child;
 
-        JsonObject typesObject = database.getAsJsonObject("types");
         typesObject.addProperty(name, "table");
 
         return connection;
@@ -150,6 +204,11 @@ public class JsonConnection implements DatabaseConnection {
      * @throws UnsupportedOperationException if the database name is already taken by another non-database object
      */
     public List<JsonConnection> createTables(final String database, final String... names) throws UnsupportedOperationException {
+        JsonObject typesObject = this.database.getAsJsonObject("types");
+        if (typesObject.get("schemed").getAsBoolean()) {
+            throw new UnsupportedOperationException("Cannot create tables for " + database + " on " + table + " because it is schemed");
+        }
+
         JsonArray array = new JsonArray();
 
         if (this.database.has(database)) {
@@ -177,14 +236,17 @@ public class JsonConnection implements DatabaseConnection {
             JsonObject child = new JsonObject();
             if (map.containsKey(name)) child = map.get(name);
 
+            if (!child.has("types")) {
+                JsonObject types = new JsonObject();
+                types.addProperty("schemed", false);
+                child.add("types", types);
+            }
             array.add(child);
 
             JsonConnection connection = new JsonConnection(file, this, name);
             connection.database = child;
 
-            JsonObject typesObject = this.database.getAsJsonObject("types");
             typesObject.addProperty(name, "table");
-
             connections.add(connection);
         }
         this.database.add(database, array);
@@ -201,6 +263,11 @@ public class JsonConnection implements DatabaseConnection {
      * object
      */
     public void set(final String key, final Map<String, Object> value) throws UnsupportedOperationException {
+        JsonObject typesObject = database.getAsJsonObject("types");
+        if (typesObject.get("schemed").getAsBoolean()) {
+            throw new UnsupportedOperationException("Cannot set map " + key + " on " + table + " because it is schemed");
+        }
+
         if (database.has(key)) {
             JsonElement element = database.get(key);
             if (!element.isJsonObject()) throw new UnsupportedOperationException("Cannot redefine field " + key + " because existing type doesn't match new type");
@@ -212,12 +279,10 @@ public class JsonConnection implements DatabaseConnection {
 
             database.add(key, element);
 
-            JsonObject typesObject = database.getAsJsonObject("types");
             typesObject.addProperty(key, "map");
         } else {
             database.remove(key);
 
-            JsonObject typesObject = database.getAsJsonObject("types");
             typesObject.remove(key);
         }
     }
@@ -230,6 +295,16 @@ public class JsonConnection implements DatabaseConnection {
      * @throws UnsupportedOperationException if the field is already occupied by another non-primitive object
      */
     public void set(final String key, final String value) throws UnsupportedOperationException {
+        JsonObject typesObject = database.getAsJsonObject("types");
+        if (typesObject.get("schemed").getAsBoolean()) {
+            String currentType = getType(key);
+            if (!currentType.equalsIgnoreCase("null") && !currentType.equalsIgnoreCase("string")) {
+                throw new UnsupportedOperationException("Cannot assign string value to non string schemed key " + key);
+            }
+
+            throw new UnsupportedOperationException("Cannot create table " + key + " on " + table + " because it is schemed");
+        }
+
         if (database.has(key)) {
             JsonElement element = database.get(key);
             if (!element.isJsonPrimitive()) throw new UnsupportedOperationException("Cannot redefine field " + key + " because existing type doesn't match new type");
@@ -241,11 +316,9 @@ public class JsonConnection implements DatabaseConnection {
         if (value != null) {
             database.addProperty(key, value);
 
-            JsonObject typesObject = database.getAsJsonObject("types");
             typesObject.addProperty(key, "string");
         } else {
             database.remove(key);
-            JsonObject typesObject = database.getAsJsonObject("types");
             typesObject.remove(key);
         }
     }
@@ -264,19 +337,58 @@ public class JsonConnection implements DatabaseConnection {
 
             JsonPrimitive primitive = element.getAsJsonPrimitive();
             if (!primitive.isNumber()) throw new UnsupportedOperationException("Cannot set number to non-number field!");
+
+            if (value != null) {
+                String currentType = getType(key);
+                String typeName = getTypeName(value);
+
+                JsonObject typesObject = database.getAsJsonObject("types");
+                if (typesObject.get("schemed").getAsBoolean()) {
+                    if (!currentType.equalsIgnoreCase("null") && !currentType.equalsIgnoreCase(typeName)) {
+                        throw new UnsupportedOperationException("Cannot assign " + typeName + " value to non " + typeName + " schemed key " + key);
+                    }
+
+                    throw new UnsupportedOperationException("Cannot create table " + key + " on " + table + " because it is schemed");
+                }
+
+                if (!typeName.equalsIgnoreCase(currentType)) {
+                    throw new UnsupportedOperationException("Cannot set number of " + key + " to non-" + typeName + " value!");
+                }
+            }
         }
 
         if (value != null) {
             database.addProperty(key, value);
 
             JsonObject typesObject = database.getAsJsonObject("types");
-            typesObject.addProperty(key, "number");
+            String typeName = getTypeName(value);
+            typesObject.addProperty(key, typeName);
         } else {
             database.remove(key);
 
             JsonObject typesObject = database.getAsJsonObject("types");
             typesObject.remove(key);
         }
+    }
+
+    private String getTypeName(final @NotNull Number value) {
+        if (value instanceof Byte) {
+            return "byte";
+        }
+        if (value instanceof Short) {
+            return "short";
+        }
+        if (value instanceof Integer) {
+            return "integer";
+        }
+        if (value instanceof Long) {
+            return "long";
+        }
+        if (value instanceof Float) {
+            return "float";
+        }
+
+        return "double";
     }
 
     /**
@@ -287,6 +399,16 @@ public class JsonConnection implements DatabaseConnection {
      * @throws UnsupportedOperationException if the field is already occupied by another non-primitive object
      */
     public void set(final String key, final Boolean value) throws UnsupportedOperationException {
+        JsonObject typesObject = database.getAsJsonObject("types");
+        if (typesObject.get("schemed").getAsBoolean()) {
+            String currentType = getType(key);
+            if (!currentType.equalsIgnoreCase("null") && !currentType.equalsIgnoreCase("boolean")) {
+                throw new UnsupportedOperationException("Cannot assign boolean value to non boolean schemed key " + key);
+            }
+
+            throw new UnsupportedOperationException("Cannot create table " + key + " on " + table + " because it is schemed");
+        }
+
         if (database.has(key)) {
             JsonElement element = database.get(key);
             if (!element.isJsonPrimitive()) throw new UnsupportedOperationException("Cannot redefine field " + key + " because existing type doesn't match new type");
@@ -298,12 +420,9 @@ public class JsonConnection implements DatabaseConnection {
         if (value != null) {
             database.addProperty(key, value);
 
-            JsonObject typesObject = database.getAsJsonObject("types");
             typesObject.addProperty(key, "boolean");
         } else {
             database.remove(key);
-
-            JsonObject typesObject = database.getAsJsonObject("types");
             typesObject.remove(key);
         }
     }
@@ -316,6 +435,11 @@ public class JsonConnection implements DatabaseConnection {
      * @throws UnsupportedOperationException if the field is already occupied by another non-list object
      */
     public void setStringList(final String key, final List<String> value) throws UnsupportedOperationException {
+        JsonObject typesObject = database.getAsJsonObject("types");
+        if (typesObject.get("schemed").getAsBoolean()) {
+            throw new UnsupportedOperationException("Cannot set list " + key + " on " + table + " because it is schemed");
+        }
+
         JsonArray array = new JsonArray();
         if (database.has(key)) {
             JsonElement element = database.get(key);
@@ -337,12 +461,9 @@ public class JsonConnection implements DatabaseConnection {
             for (String s : value) array.add(s);
             database.add(key, array);
 
-            JsonObject typesObject = database.getAsJsonObject("types");
             typesObject.addProperty(key, "stringList");
         } else {
             database.remove(key);
-
-            JsonObject typesObject = database.getAsJsonObject("types");
             typesObject.remove(key);
         }
     }
@@ -355,6 +476,11 @@ public class JsonConnection implements DatabaseConnection {
      * @throws UnsupportedOperationException if the field is already occupied by another non-list object
      */
     public void setNumberList(final String key, final List<Number> value) throws UnsupportedOperationException {
+        JsonObject typesObject = database.getAsJsonObject("types");
+        if (typesObject.get("schemed").getAsBoolean()) {
+            throw new UnsupportedOperationException("Cannot set list " + key + " on " + table + " because it is schemed");
+        }
+
         JsonArray array = new JsonArray();
         if (database.has(key)) {
             JsonElement element = database.get(key);
@@ -376,12 +502,9 @@ public class JsonConnection implements DatabaseConnection {
             for (Number n : value) array.add(n);
             database.add(key, array);
 
-            JsonObject typesObject = database.getAsJsonObject("types");
             typesObject.addProperty(key, "numberList");
         } else {
             database.remove(key);
-
-            JsonObject typesObject = database.getAsJsonObject("types");
             typesObject.remove(key);
         }
     }
@@ -394,6 +517,11 @@ public class JsonConnection implements DatabaseConnection {
      * @throws UnsupportedOperationException if the field is already occupied by another non-list object
      */
     public void setBooleanList(final String key, final List<Boolean> value) throws UnsupportedOperationException {
+        JsonObject typesObject = database.getAsJsonObject("types");
+        if (typesObject.get("schemed").getAsBoolean()) {
+            throw new UnsupportedOperationException("Cannot set list " + key + " on " + table + " because it is schemed");
+        }
+
         JsonArray array = new JsonArray();
         if (database.has(key)) {
             JsonElement element = database.get(key);
@@ -415,12 +543,9 @@ public class JsonConnection implements DatabaseConnection {
             for (boolean b : value) array.add(b);
             database.add(key, array);
 
-            JsonObject typesObject = database.getAsJsonObject("types");
             typesObject.addProperty(key, "booleanList");
         } else {
             database.remove(key);
-
-            JsonObject typesObject = database.getAsJsonObject("types");
             typesObject.remove(key);
         }
     }
@@ -600,7 +725,7 @@ public class JsonConnection implements DatabaseConnection {
      */
     public String getType(final String key) {
         JsonObject typesObject = database.getAsJsonObject("types");
-        if (typesObject.has(key)) {
+        if (typesObject.has(key) && typesObject.get(key).isJsonPrimitive()) {
             return typesObject.get(key).getAsString();
         }
 
@@ -628,29 +753,12 @@ public class JsonConnection implements DatabaseConnection {
     }
 
     /**
-     * Get the table name
-     *
-     * @return the table name
-     */
-    public String getTable() {
-        return table;
-    }
-
-    /**
-     * Get the parent connection
-     *
-     * @return the parent connection
-     */
-    public JsonConnection getParent() {
-        return parent;
-    }
-
-    /**
      * Save all changes into the local database
      */
     public boolean save() {
         if (parent == null) {
-            GsonBuilder builder = new GsonBuilder();
+            GsonBuilder builder = new GsonBuilder().serializeNulls();
+
             if (pretty) builder.setPrettyPrinting();
             Gson gson = builder.create();
             String raw = gson.toJson(database);

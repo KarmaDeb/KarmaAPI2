@@ -1,0 +1,31 @@
+{
+  "types": {
+    "schemed": false,
+    "hello world": "table"
+  },
+  "hello world": {
+    "types": {
+      "schemed": true,
+      "name": "string",
+      "id": "integer",
+      "enabled": "boolean",
+      "modifiers": {
+        "name": [],
+        "id": [
+          "nn",
+          "ai"
+        ],
+        "enabled": []
+      },
+      "attributes": {
+        "id": 1
+      }
+    },
+    "records": [
+      {
+        "name": "Hello world",
+        "id": 0
+      }
+    ]
+  }
+}

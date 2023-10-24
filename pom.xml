@@ -14,6 +14,8 @@
         <module>KarmaAPIHologram</module>
         <module>KarmaAPI-Minecraft</module>
         <module>PluginSpigot</module>
+        <module>PluginBungee</module>
+        <module>KarmaAPI-Bungee</module>
     </modules>
 
     <properties>
@@ -62,51 +64,15 @@
                                     </relocation>
 
                                     <relocation>
-                                        <pattern>net.jpountz</pattern>
-                                        <shadedPattern>es.karmadev.api.shaded.jpountz</shadedPattern>
-                                    </relocation>
-
-                                    <relocation>
                                         <pattern>com.github.fge</pattern>
                                         <shadedPattern>es.karmadev.api.shaded.fge</shadedPattern>
                                     </relocation>
 
                                     <!-- json schema validator -->
+
                                     <relocation>
-                                        <pattern>com.fasterxml.jackson</pattern>
-                                        <shadedPattern>es.karmadev.api.shaded.jackson</shadedPattern>
-                                    </relocation>
-                                    <relocation>
-                                        <pattern>com.google</pattern>
-                                        <shadedPattern>es.karmadev.api.shaded.google</shadedPattern>
-                                    </relocation>
-                                    <relocation>
-                                        <pattern>com.sun.mail</pattern>
-                                        <shadedPattern>es.karmadev.api.shaded.com.sun.mail</shadedPattern>
-                                    </relocation>
-                                    <relocation>
-                                        <pattern>javax.annotation</pattern>
-                                        <shadedPattern>es.karmadev.api.shaded.javax.annotation</shadedPattern>
-                                    </relocation>
-                                    <relocation>
-                                        <pattern>javax.mail</pattern>
-                                        <shadedPattern>es.karmadev.api.shaded.javax.mail</shadedPattern>
-                                    </relocation>
-                                    <relocation>
-                                        <pattern>joptsimple</pattern>
-                                        <shadedPattern>es.karmadev.api.shaded.joptsimple</shadedPattern>
-                                    </relocation>
-                                    <relocation>
-                                        <pattern>org.checkerframework</pattern>
-                                        <shadedPattern>es.karmadev.api.shaded.checkerframework</shadedPattern>
-                                    </relocation>
-                                    <relocation>
-                                        <pattern>org.joda</pattern>
-                                        <shadedPattern>es.karmadev.api.shaded.joda</shadedPattern>
-                                    </relocation>
-                                    <relocation>
-                                        <pattern>org.mozilla</pattern>
-                                        <shadedPattern>es.karmadev.api.shaded.mozilla</shadedPattern>
+                                        <pattern>com.google.gson</pattern>
+                                        <shadedPattern>es.karmadev.api.shaded.google.gson</shadedPattern>
                                     </relocation>
 
                                     <relocation>
@@ -114,21 +80,45 @@
                                         <shadedPattern>es.karmadev.api.shaded.snakeyaml</shadedPattern>
                                     </relocation>
 
-                                    <!--
-                                    <relocation>
-                                        <pattern>org.burningwave</pattern>
-                                        <shadedPattern>es.karmadev.api.shaded.burningwave</shadedPattern>
-                                    </relocation>
-                                    -->
-
                                     <relocation>
                                         <pattern>com.github.yeetmanlord.reflection_api</pattern>
-                                        <shadedPattern>es.karmadev.api.shaded.yeetmanlord.reflection</shadedPattern>
+                                        <shadedPattern>es.karmadev.forked.reflection_api</shadedPattern>
                                     </relocation>
                                 </relocations>
                             </configuration>
                         </execution>
                     </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>2.2.1</version>
+                    <executions>
+                        <execution>
+                            <id>attach-sources</id>
+                            <goals>
+                                <goal>jar-no-fork</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>3.2.0</version>
+                    <executions>
+                        <execution>
+                            <id>attach-javadocs</id>
+                            <goals>
+                                <goal>jar</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                    <configuration>
+                        <additionalOptions>
+                            <additionalOption>-Xdoclint:none</additionalOption>
+                        </additionalOptions>
+                    </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -149,7 +139,51 @@
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
         </repository>
+        <repository>
+            <id>cuba-work</id>
+            <url>https://repo.cuba-platform.com/content/groups/work/</url>
+        </repository>
     </repositories>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>karmadev_releases</id>
+            <name>KarmaDev Releases</name>
+            <url>https://nexus.karmadev.es/repository/maven-releases/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </pluginRepository>
+        <pluginRepository>
+            <id>karmadev_snapshots</id>
+            <name>KarmaDev Snapshots</name>
+            <url>https://nexus.karmadev.es/repository/maven-snapshots/</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </pluginRepository>
+    </pluginRepositories>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.28</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>24.0.1</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
 
     <dependencyManagement>
         <dependencies>
@@ -157,8 +191,8 @@
             <dependency>
                 <groupId>com.github.YeetManLord</groupId>
                 <artifactId>ReflectionAPI</artifactId>
-                <version>1.0.4</version>
-                <scope>compile</scope>
+                <version>1.0.5</version>
+                <scope>provided</scope>
             </dependency>
 
             <!-- SnakeYAML -->
@@ -166,7 +200,7 @@
                 <groupId>org.yaml</groupId>
                 <artifactId>snakeyaml</artifactId>
                 <version>2.0</version>
-                <scope>compile</scope>
+                <scope>provided</scope>
             </dependency>
 
             <dependency>
@@ -183,31 +217,17 @@
                 <scope>provided</scope>
             </dependency>
 
-            <!-- Lombok/Annotation processors -->
-            <dependency>
-                <groupId>org.projectlombok</groupId>
-                <artifactId>lombok</artifactId>
-                <version>1.18.26</version>
-                <scope>provided</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.jetbrains</groupId>
-                <artifactId>annotations</artifactId>
-                <version>24.0.1</version>
-                <scope>provided</scope>
-            </dependency>
-
             <!-- Google -->
             <dependency>
                 <groupId>com.google.code.gson</groupId>
                 <artifactId>gson</artifactId>
                 <version>2.10.1</version>
-                <scope>compile</scope>
+                <scope>provided</scope>
             </dependency>
             <dependency>
-                <groupId>com.github.java-json-tools</groupId>
-                <artifactId>json-schema-validator</artifactId>
-                <version>2.2.14</version>
+                <groupId>com.github.erosb</groupId>
+                <artifactId>everit-json-schema</artifactId>
+                <version>1.14.2</version>
                 <scope>provided</scope>
             </dependency>
             <dependency>
@@ -255,14 +275,60 @@
                 <version>1.20-R0.1-SNAPSHOT</version>
                 <scope>provided</scope>
             </dependency>
+
+            <dependency>
+                <groupId>me.lucko</groupId>
+                <artifactId>jar-relocator</artifactId>
+                <version>1.7</version>
+                <scope>compile</scope>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.ow2.asm</groupId>
+                        <artifactId>asm</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.ow2.asm</groupId>
+                        <artifactId>asm-commons</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
+    <!--
+    <distributionManagement>
+        <repository>
+            <id>karmadev_releases</id>
+            <url>https://nexus.karmadev.es/repository/maven-releases/</url>
+        </repository>
+        <snapshotRepository>
+            <id>karmadev_snapshots</id>
+            <url>https://nexus.karmadev.es/repository/maven-snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
+    -->
+    <!--
     <distributionManagement>
         <repository>
             <id>internal.repo</id>
             <name>Internal repo</name>
             <url>file:${project.basedir}/ir/out/${project.version}</url>
         </repository>
+        <snapshotRepository>
+            <id>internal.repo</id>
+            <name>Internal repo</name>
+            <url>file:${project.basedir}/ir/out/${project.version}</url>
+        </snapshotRepository>
+    </distributionManagement>
+    -->
+    <distributionManagement>
+        <repository>
+            <id>karmadev_releases</id>
+            <url>https://nexus.karmadev.es/repository/maven-releases/</url>
+        </repository>
+        <snapshotRepository>
+            <id>karmadev_snapshots</id>
+            <url>https://nexus.karmadev.es/repository/maven-snapshots/</url>
+        </snapshotRepository>
     </distributionManagement>
 </project>

@@ -6,15 +6,20 @@ import es.karmadev.api.logger.SourceLogger;
 import es.karmadev.api.logger.log.console.ConsoleColor;
 import es.karmadev.api.logger.log.console.LogLevel;
 import es.karmadev.api.logger.log.file.LogFile;
+import lombok.SneakyThrows;
 
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.function.Function;
+import java.util.logging.*;
 
 /**
  * KarmaAPI bounded logger
  */
 @SuppressWarnings("unused")
-public class BoundedLogger implements SourceLogger {
+public class BoundedLogger extends Logger implements SourceLogger {
 
     private final static APIConfiguration config = new APIConfiguration();
 
@@ -29,8 +34,12 @@ public class BoundedLogger implements SourceLogger {
      * @param owner the console owner
      */
     public BoundedLogger(final APISource owner) {
+        super("KarmaAPI - Logger", null);
         this.source = owner;
         log = new LogFile(source);
+
+        BoundedConsoleHandler handler = new BoundedConsoleHandler();
+        addHandler(handler) ;
     }
 
     /**
@@ -80,7 +89,7 @@ public class BoundedLogger implements SourceLogger {
                 return;
             }
 
-            System.out.println(ConsoleColor.parse(finalMessage));
+            doLog(finalMessage);
         }
     }
 
@@ -95,13 +104,17 @@ public class BoundedLogger implements SourceLogger {
     public void send(final Throwable error, final String message, final Object... replaces) {
         if (config.isLevelEnabled(LogLevel.ERROR)) {
             StackTraceElement[] elements = error.getStackTrace();
-            String finalMessage = buildMessage(LogLevel.ERROR, source.sourceName(), message, replaces);
+            String finalMessage = buildMessage(LogLevel.ERROR, source.sourceName(), message + " &7(&b " + error.getClass().getCanonicalName() + ": " + error.getMessage() + " &7)", replaces);
 
-            String msg = finalMessage + " &7(&b " + error.fillInStackTrace() + " &8|&b " + error.getLocalizedMessage() + " &7)";
+            Throwable cause = error.getCause();
+            if (error.getSuppressed().length > 0) {
+                finalMessage += "&b AND " + (error.getSuppressed().length + (cause != null ? 1 : 0)) + " MORE";
+            }
+
             if (logFunction != null) {
-                logFunction.apply(msg);
+                logFunction.apply(finalMessage);
             } else {
-                System.out.println(ConsoleColor.parse(msg));
+                doLog(finalMessage);
             }
 
             for (StackTraceElement element : elements) {
@@ -111,22 +124,29 @@ public class BoundedLogger implements SourceLogger {
                 int line = element.getLineNumber();
 
                 if (file == null) {
-                    String eMsg = String.format("\t\t\t&c%s&8&c&f#&7%s&8 (&cat line &b%d&8)%n", clazz, method, line);
+                    String eMsg = String.format("\t\t\t&c%s&8&c&f#&7%s&8 (&cat line &b%d&8)", clazz, method, line);
                     if (logFunction != null) {
                         logFunction.apply(eMsg);
                     } else {
-                        System.out.println(ConsoleColor.parse(eMsg));
+                        doLog(eMsg);
                     }
                 } else {
                     file = file.replace(".java", "");
-                    String eMsg = String.format("\t\t\t&c%s&f#&7%s&8 (&cat &7%s&f:&b%d&8)%n", clazz, method, file, line);
+                    String eMsg = String.format("\t\t\t&c%s&f#&7%s&8 (&cat &7%s&f:&b%d&8)", clazz, method, file, line);
                     if (logFunction != null) {
                         logFunction.apply(eMsg);
                     } else {
-                        System.out.println(ConsoleColor.parse(eMsg));
+                        doLog(eMsg);
                     }
                 }
             }
+
+            /*
+            We should log instead of displaying the whole error
+            thing
+            for (Throwable sup : error.getSuppressed()) {
+                send(sup, message, replaces);
+            }*/
         }
     }
 
@@ -155,7 +175,7 @@ public class BoundedLogger implements SourceLogger {
             return;
         }
 
-        System.out.println(ConsoleColor.parse(finalMessage));
+        doLog(finalMessage);
     }
 
     /**
@@ -186,6 +206,9 @@ public class BoundedLogger implements SourceLogger {
             send(error, message, replaces);
 
         log.append(LogLevel.ERROR, error, parseReplaces(message, replaces));
+        for (Throwable sup : error.getSuppressed()) {
+            log(sup, message, replaces);
+        }
     }
 
     /**
@@ -214,6 +237,31 @@ public class BoundedLogger implements SourceLogger {
     }
 
     /**
+     * Log a LogRecord.
+     * <p>
+     * All the other logging methods in this class call through
+     * this method to actually perform any logging.  Subclasses can
+     * override this single method to capture all log activity.
+     *
+     * @param record the LogRecord to be published
+     */
+    @Override
+    public void log(final LogRecord record) {
+        Filter theFilter = getFilter();
+        if (theFilter != null && !theFilter.isLoggable(record)) {
+            return;
+        }
+
+        Logger logger = this;
+        final Handler[] loggerHandlers = logger.getHandlers();
+
+        for (Handler handler : loggerHandlers) {
+            handler.publish(record);
+            handler.flush();
+        }
+    }
+
+    /**
      * Get the source owning this console
      *
      * @return the console source
@@ -232,9 +280,11 @@ public class BoundedLogger implements SourceLogger {
      * @return the message
      */
     private String buildMessage(final LogLevel level, final String name, final String message, final Object... replaces) {
+        String finalMessage = parseReplaces(message, replaces);
+
+        APIConfiguration config = new APIConfiguration();
         String prefix = config.getPrefix(level).replace("{0}", name);
 
-        String finalMessage = parseReplaces(message, replaces);
         return prefix.replace("{1}", finalMessage);
     }
 
@@ -248,11 +298,69 @@ public class BoundedLogger implements SourceLogger {
     private String parseReplaces(final String message, final Object... replaces) {
         String finalMessage = message;
         for (int i = 0; i < replaces.length; i++) {
-            String placeholder = "{" + i + "}";
-            Object replace = replaces[i];
-            finalMessage = finalMessage.replace(placeholder, String.valueOf(replace));
+            String prefix = "{" + i + "}";
+            Object value = replaces[i];
+
+            finalMessage = finalMessage.replace(prefix, String.valueOf(value));
         }
 
         return finalMessage;
+    }
+
+    protected void doLog(final String message) {
+        LogRecord record = new LogRecord(Level.ALL, message);
+        record.setLoggerName("KarmaAPI - Logger");
+        log(record);
+    }
+}
+
+class BoundedConsoleHandler extends Handler {
+
+    private final static Writer writer = new OutputStreamWriter(System.err, StandardCharsets.UTF_8);
+
+    /**
+     * Format and publish a <tt>LogRecord</tt>.
+     * <p>
+     * The <tt>StreamHandler</tt> first checks if there is an <tt>OutputStream</tt>
+     * and if the given <tt>LogRecord</tt> has at least the required log level.
+     * If not it silently returns.  If so, it calls any associated
+     * <tt>Filter</tt> to check if the record should be published.  If so,
+     * it calls its <tt>Formatter</tt> to format the record and then writes
+     * the result to the current output stream.
+     * <p>
+     * If this is the first <tt>LogRecord</tt> to be written to a given
+     * <tt>OutputStream</tt>, the <tt>Formatter</tt>'s "head" string is
+     * written to the stream before the <tt>LogRecord</tt> is written.
+     *
+     * @param record description of the log event. A null record is
+     *               silently ignored and is not published
+     */
+    @Override @SneakyThrows
+    public synchronized void publish(final LogRecord record) {
+        writer.write(ConsoleColor.parse(record.getMessage()) + ConsoleColor.RESET.toOsCode() + "\n");
+    }
+
+    /**
+     * Flush any buffered output.
+     */
+    @Override @SneakyThrows
+    public void flush() {
+        writer.flush();
+    }
+
+    /**
+     * Close the <tt>Handler</tt> and free all associated resources.
+     * <p>
+     * The close method will perform a <tt>flush</tt> and then close the
+     * <tt>Handler</tt>.   After close has been called this <tt>Handler</tt>
+     * should no longer be used.  Method calls may either be silently
+     * ignored or may throw runtime exceptions.
+     *
+     * @throws SecurityException if a security manager exists and if
+     *                           the caller does not have <tt>LoggingPermission("control")</tt>.
+     */
+    @Override @SneakyThrows
+    public void close() throws SecurityException {
+        throw new SecurityException("Cannot close");
     }
 }

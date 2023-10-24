@@ -15,7 +15,7 @@ public interface TaskRunnerEvent<T> {
      *
      * @return the task
      */
-    TaskRunner task();
+    TaskRunner<? extends Number> task();
 
     /**
      * Get the event trigger
@@ -30,13 +30,6 @@ public interface TaskRunnerEvent<T> {
      * @return the runner
      */
     T get();
-
-    /**
-     * Get if the event is hooked
-     *
-     * @return if the event is hooked
-     */
-    boolean isHooked();
 
     /**
      * Un hook the event

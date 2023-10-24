@@ -2,6 +2,7 @@ package es.karmadev.api.logger;
 
 import es.karmadev.api.core.source.APISource;
 import es.karmadev.api.logger.log.BoundedLogger;
+import es.karmadev.api.logger.log.UnboundedLogger;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,6 +21,7 @@ public class LogManager {
      * @return the new logger
      */
     public static SourceLogger getLogger(final APISource owner) {
+        if (owner == null) return new UnboundedLogger();
         return consoleLoggers.computeIfAbsent(owner, (logger) -> new BoundedLogger(owner));
     }
 }

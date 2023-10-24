@@ -28,7 +28,7 @@ import java.util.Base64;
 /**
  * Online KarmaAPI head request
  */
-@Builder
+@Builder @Deprecated
 public class OKAHeadRequest implements ImageContainer, JsonContainer {
 
     @Nullable

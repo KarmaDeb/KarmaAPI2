@@ -10,6 +10,9 @@
           "^[0-9]+(\\.[0-9]+)*$": {
             "type": "object",
             "properties": {
+              "date": {
+                "type": "string"
+              },
               "build": {
                 "type": "string"
               },
@@ -27,7 +30,7 @@
                 }
               }
             },
-            "required": ["build", "changelog"]
+            "required": ["date", "build", "changelog"]
           }
         }
       }

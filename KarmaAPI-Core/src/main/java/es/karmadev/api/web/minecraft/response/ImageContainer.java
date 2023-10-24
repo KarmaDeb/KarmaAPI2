@@ -14,7 +14,7 @@ import java.nio.file.Path;
 /**
  * Image response container
  */
-@SuppressWarnings("unused")
+@SuppressWarnings("unused") @Deprecated
 public interface ImageContainer {
 
     /**

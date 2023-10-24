@@ -5,6 +5,17 @@ package es.karmadev.api.spigot.entity.trace;
  */
 public enum TraceOption {
     /**
+     * Rollback the location when a block
+     * is hit, meaning it will heave the
+     * new Y, but the old x and z
+     */
+    ROLLBACK_ON_HIT,
+    /**
+     * Stop as soon as something
+     * gets hit
+     */
+    STOP_ON_FIRST_HIT,
+    /**
      * Stop the raytrace task when an
      * entity is hit
      */

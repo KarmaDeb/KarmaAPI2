@@ -1,28 +1,28 @@
 package es.karmadev.api.version.checker;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.github.fge.jsonschema.core.exceptions.ProcessingException;
-import com.github.fge.jsonschema.core.report.ProcessingMessage;
-import com.github.fge.jsonschema.core.report.ProcessingReport;
-import com.github.fge.jsonschema.main.JsonSchema;
-import com.github.fge.jsonschema.main.JsonSchemaFactory;
-import es.karmadev.api.core.KarmaAPI;
-import es.karmadev.api.core.source.KarmaSource;
+import com.google.gson.*;
+import es.karmadev.api.core.source.APISource;
+import es.karmadev.api.file.util.StreamUtils;
+import es.karmadev.api.logger.log.console.LogLevel;
 import es.karmadev.api.schedule.task.completable.TaskCompletor;
 import es.karmadev.api.schedule.task.completable.late.LateTask;
 import es.karmadev.api.version.BuildStatus;
 import es.karmadev.api.version.Version;
-import es.karmadev.api.web.URLConnectionWrapper;
 import es.karmadev.api.web.url.URLUtilities;
+import org.everit.json.schema.Schema;
+import org.everit.json.schema.ValidationException;
+import org.everit.json.schema.loader.SchemaLoader;
 import org.jetbrains.annotations.Nullable;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -36,13 +36,14 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @SuppressWarnings("unused")
 public class VersionChecker {
 
-    private static JsonSchema versionSchema;
+    private static Schema versionSchema;
 
-    private final KarmaSource source;
+    private final APISource source;
     private final Changelog changelog = new Changelog();
     private final List<Version> versionHistory = new CopyOnWriteArrayList<>();
     private Version version;
     private final Map<Version, URL[]> updateURL = new ConcurrentHashMap<>();
+    private final Map<Version, Instant> releaseDates = new ConcurrentHashMap<>();
     private boolean checking = false;
     private TaskCompletor<Void> checkTask;
 
@@ -51,21 +52,39 @@ public class VersionChecker {
      *
      * @param source the source to check version with
      */
-    public VersionChecker(final KarmaSource source) {
+    public VersionChecker(final APISource source) {
         this.source = source;
 
         if (versionSchema == null) {
             try (InputStream stream = VersionChecker.class.getResourceAsStream("/update.schema.json")) {
                 if (stream != null) {
-                    JsonSchemaFactory factory = JsonSchemaFactory.byDefault();
-                    ObjectMapper mapper = new ObjectMapper();
-                    JsonNode node = mapper.readTree(stream);
-                    versionSchema = factory.getJsonSchema(node);
+                    String rawStream = StreamUtils.streamToString(stream, false);
+
+                    JSONObject rawSchema = new JSONObject(rawStream);
+                    versionSchema = SchemaLoader.load(rawSchema);
                 }
-            } catch (IOException | ProcessingException ex) {
-                ex.printStackTrace();
+            } catch (IOException ex) {
+                source.logger().log(ex, "Failed to read update schema");
             }
         }
+    }
+
+    /**
+     * Set the version checker schema
+     *
+     * @param schema the version schema
+     * @return the version checker
+     */
+    public VersionChecker withSchema(final InputStream schema) {
+        if (schema == null) {
+            versionSchema = null;
+            return this;
+        }
+
+        JSONObject rawSchema = new JSONObject(schema);
+        versionSchema = SchemaLoader.load(rawSchema);
+
+        return this;
     }
 
     /**
@@ -73,12 +92,8 @@ public class VersionChecker {
      *
      * @throws IOException if there's a problem connecting
      * with the update server
-     * @throws ProcessingException if the update json doesn't match
-     * the schema
      */
-    public void checkAndWait() throws IOException, ProcessingException {
-        if (versionSchema == null) return;
-
+    public void checkAndWait() throws IOException {
         if (!checking) {
             checking = true;
             checkOnline();
@@ -96,10 +111,10 @@ public class VersionChecker {
             checking = true;
             checkTask = new LateTask<>();
 
-            source.createScheduler("async").schedule(() -> {
+            source.scheduler("async").schedule(() -> {
                 try {
                     checkOnline();
-                } catch (IOException | ProcessingException ex) {
+                } catch (IOException | ValidationException ex) {
                     checkTask.completeFirst(null, ex);
                 } finally {
                     checkTask.completeFirst(null);
@@ -116,16 +131,16 @@ public class VersionChecker {
      *
      * @throws MalformedURLException if the update URL is not valid
      * @throws IOException if the connection fails to open
-     * @throws ProcessingException if the version data is not valid
+     * @throws ValidationException if the update URL does not point to a valid json version data
      */
-    private void checkOnline() throws MalformedURLException, IOException, ProcessingException {
+    private void checkOnline() throws MalformedURLException, IOException, ValidationException {
         URI uri = source.sourceUpdateURI();
         if (uri == null) return;
 
         String rawUrl = uri.toString();
         URL url = new URL(rawUrl);
 
-        try (URLConnectionWrapper connection = URLConnectionWrapper.fromURL(url)) {
+        /*try (URLConnectionWrapper connection = URLConnectionWrapper.fromURL(url)) {
             connection.setUserAgent(KarmaAPI.USER_AGENT.get());
             connection.setRequestProperty("Content-Type", "application/json");
 
@@ -134,55 +149,81 @@ public class VersionChecker {
                 throw new IOException("Failed to connect to update web server at " + url + " with code: " + code);
             }
 
-            try (InputStream updateContent = connection.getInputStream()) {
-                if (updateContent != null) {
-                    ObjectMapper mapper = new ObjectMapper();
-                    JsonNode node = mapper.readTree(updateContent);
 
-                    ProcessingReport report = versionSchema.validate(node);
-                    if (!report.isSuccess()) {
-                        ProcessingMessage message = new ProcessingMessage();
-                        report.error(message);
-                        throw message.asException();
-                    }
+        }*/
+        try (InputStream updateContent = url.openStream()) {
+            if (updateContent != null) {
+                String rawResponse = StreamUtils.streamToString(updateContent, false);
+                JSONObject node = new JSONObject(rawResponse);
+                if (versionSchema != null) {
+                    /*
+                    Should we throw exception instead if the schema
+                    validator is null?
+                    */
+                    versionSchema.validate(node);
+                } else {
+                    source.logger().send(LogLevel.WARNING, "Schema validator is not valid, version checker might not work as expected");
+                }
 
-                    ArrayNode versions = (ArrayNode) node.get("versions");
-                    for (JsonNode versionNode : versions) {
-                        String raw = versionNode.fieldNames().next();
-                        JsonNode infoNode = versionNode.get(raw);
+                Gson gson = new GsonBuilder().setLenient().create();
+                JsonObject json = gson.fromJson(rawResponse, JsonObject.class);
 
-                        String build = infoNode.get("build").asText();
-                        if (build.replaceAll("\\s", "").isEmpty()) build = null;
+                JsonArray versions = json.getAsJsonArray("versions");
+                for (JsonElement element : versions) {
+                    JsonObject versionNode = element.getAsJsonObject();
+                    String raw = versionNode.keySet().toArray(new String[0])[0];
+                    JsonObject infoNode = versionNode.getAsJsonObject(raw);
 
-                        Version version = Version.parse(raw, build);
+                    String build = infoNode.get("build").getAsString();
+                    if (build.replaceAll("\\s", "").isEmpty()) build = null;
 
-                        List<URL> urls = new ArrayList<>();
-                        if (infoNode.has("update")) {
-                            ArrayNode rawUpdate = (ArrayNode) infoNode.get("update");
-                            for (JsonNode updateUrlLineNode : rawUpdate) {
-                                String rawURL = updateUrlLineNode.asText().replace("%version%", raw).replace("%build%", String.valueOf(build));
-                                URL realURL = URLUtilities.fromString(rawURL);
-                                if (realURL != null)
-                                    urls.add(realURL);
-                            }
+                    Version version = Version.parse(raw, build);
+
+                    List<URL> urls = new ArrayList<>();
+                    if (infoNode.has("update")) {
+                        JsonArray rawUpdate = infoNode.getAsJsonArray("update");
+                        for (JsonElement updateUrlLineNode : rawUpdate) {
+                            String rawURL = updateUrlLineNode.getAsString()
+                                    .replace("%version%", raw)
+                                    .replace("%build%", String.valueOf(build));
+                            URL realURL = URLUtilities.fromString(rawURL);
+                            if (realURL != null)
+                                urls.add(realURL);
                         }
+                    }
 
-                        updateURL.put(version, urls.toArray(new URL[0]));
+                    updateURL.put(version, urls.toArray(new URL[0]));
 
-                        ArrayNode rawChangelog = (ArrayNode) infoNode.get("changelog");
-                        List<String> changelog = new ArrayList<>();
+                    JsonArray rawChangelog = infoNode.getAsJsonArray("changelog");
+                    List<String> changelog = new ArrayList<>();
 
+                    String when = infoNode.get("date").getAsString();
+
+                    if (!versionHistory.contains(version)) {
                         versionHistory.add(version);
-                        for (JsonNode changelogLineNode : rawChangelog) changelog.add(changelogLineNode.asText().replace("%version%", raw).replace("%build%", String.valueOf(build)));
-                        this.changelog.define(version, changelog.toArray(new String[0]));
                     }
 
-                    if (!versionHistory.isEmpty()) {
-                        versionHistory.sort(Version.comparator());
-                        Collections.reverse(versionHistory);
+                    Instant instant = Instant.parse(when);
+                    ZonedDateTime zdt = instant.atZone(ZoneId.systemDefault());
+                        /*
+                        Whe don't care when the version was released from publisher
+                        time zone, we want to know when it was released in our timezone
+                         */
 
-                        version = versionHistory.get(0);
-                    }
+                    releaseDates.put(version, zdt.toInstant());
+                    for (JsonElement changelogLineNode : rawChangelog)
+                        changelog.add(changelogLineNode.getAsString()
+                                .replace("%version%", raw)
+                                .replace("%build%", String.valueOf(build)));
+
+                    this.changelog.define(version, changelog.toArray(new String[0]));
+                }
+
+                if (!versionHistory.isEmpty()) {
+                    versionHistory.sort(Version.comparator());
+                    Collections.reverse(versionHistory);
+
+                    version = versionHistory.get(0);
                 }
             }
         }
@@ -229,6 +270,28 @@ public class VersionChecker {
     }
 
     /**
+     * Get the latest version release date
+     *
+     * @return the latest version release
+     * date
+     */
+    public Instant getReleaseDate() {
+        if (version == null) return Instant.MIN;
+        return releaseDates.get(version);
+    }
+
+    /**
+     * Get the release date for the specified
+     * version
+     *
+     * @param version the version to get for
+     * @return the version release date
+     */
+    public Instant getReleaseDate(final Version version) {
+        return releaseDates.getOrDefault(version, Instant.now());
+    }
+
+    /**
      * Get the update URLs for
      * the specified version
      *
@@ -255,8 +318,34 @@ public class VersionChecker {
      *
      * @return the build status
      */
-    public BuildStatus getBuildStatus() {
+    public BuildStatus getStatus() {
         return compareWith(version);
+    }
+
+    /**
+     * Get the number of updates behind
+     * the last one
+     *
+     * @return the amount of updates behind
+     * the last build
+     */
+    public int getBehind() {
+        int behind = 0;
+
+        Version current = source.sourceVersion();
+        boolean count = false;
+        for (Version version : versionHistory) {
+            if (count) {
+                behind++;
+                continue;
+            }
+
+            if (current.compareTo(version) == 0) {
+                count = true;
+            }
+        }
+
+        return behind;
     }
 
     /**
@@ -270,6 +359,6 @@ public class VersionChecker {
         if (version == null) return BuildStatus.OUTDATED;
 
         Version current = source.sourceVersion();
-        return version.compareTo(current) >= 0 ? BuildStatus.UPDATED : BuildStatus.OUTDATED;
+        return current.compareTo(version) >= 0 ? BuildStatus.UPDATED : BuildStatus.OUTDATED;
     }
 }

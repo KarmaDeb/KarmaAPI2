@@ -1,7 +1,7 @@
 package es.karmadev.api.spigot.reflection.actionbar;
 
 import es.karmadev.api.core.KarmaKore;
-import es.karmadev.api.core.KarmaPlugin;
+import es.karmadev.api.spigot.core.KarmaPlugin;
 import es.karmadev.api.object.ObjectUtils;
 import es.karmadev.api.schedule.runner.signal.SignalHandler;
 import es.karmadev.api.schedule.runner.signal.parameter.SignalParameter;

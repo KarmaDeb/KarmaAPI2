@@ -11,6 +11,7 @@ import java.net.URL;
  */
 @Value(staticConstructor = "of")
 @AllArgsConstructor(staticName = "of")
+@Deprecated
 public class CapeComponent {
 
     @Getter

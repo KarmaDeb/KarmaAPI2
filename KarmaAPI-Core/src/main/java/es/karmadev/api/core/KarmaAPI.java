@@ -4,12 +4,13 @@ import es.karmadev.api.core.source.APISource;
 import es.karmadev.api.core.source.SourceManager;
 import es.karmadev.api.core.source.exception.UnknownProviderException;
 import es.karmadev.api.file.util.PathUtilities;
-import es.karmadev.api.logger.log.UnboundedLogger;
-import es.karmadev.api.logger.log.console.LogLevel;
 import es.karmadev.api.security.LockedProperties;
 import es.karmadev.api.web.WebDownloader;
 import es.karmadev.api.web.url.URLUtilities;
+import me.lucko.jarrelocator.JarRelocator;
+import me.lucko.jarrelocator.Relocation;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
@@ -41,7 +42,7 @@ public class KarmaAPI {
         } catch (NullPointerException | IllegalArgumentException | IOException ignored) {}
     }
 
-    public final static String VERSION = properties.getProperty("version", "1.0.0");
+    public final static String VERSION = properties.getProperty("version", "2.0.0");
     public final static String BUILD = properties.getProperty("build", "1");
     public final static String FULL_VERSION = properties.getProperty("full", "2.0.0-1");
     public final static String COMPILER = properties.getProperty("java", "8");
@@ -81,17 +82,15 @@ public class KarmaAPI {
      * @throws URISyntaxException if the application fails to find the install location
      */
     public static void setup() throws URISyntaxException {
-        UnboundedLogger unbounded = new UnboundedLogger();
-
         Class<?> clazz = KarmaAPI.class;
         ProtectionDomain domain = clazz.getProtectionDomain();
-        if (domain == null) throw new IllegalStateException("Cannot setup source because the protected domain is null");
+        if (domain == null) return;
 
         CodeSource code = domain.getCodeSource();
-        if (code == null) throw new IllegalStateException("Cannot setup source because the code source is null");
+        if (code == null) return;
 
         URL location = code.getLocation();
-        if (location == null) throw new IllegalStateException("Cannot setup source because the code location is null");
+        if (location == null) return;
 
         URI uri = location.toURI();
         Path source = Paths.get(uri);
@@ -100,21 +99,39 @@ public class KarmaAPI {
         Path thirdparty = workingDirectory.resolve("thirdparty");
         Path runtime = thirdparty.resolve("runtime");
         Path library = thirdparty.resolve("library");
+        Path relocated = library.resolve("relocation");
 
-        Path burningWave = runtime.resolve("BurningWave.jar"); //Done
-        Path jvmDriver = runtime.resolve("JVMDriver.jar"); //Done
+        Path burningWave = runtime.resolve("BurningWave.jar");
+        Path jvmDriver = runtime.resolve("JVMDriver.jar");
 
-        Path lz4 = library.resolve("LZ4.jar"); //Done
-        Path zstd = library.resolve("ZSTD.jar"); //Done
-        Path schemaValidator = library.resolve("SchemaValidator.jar"); //Done
-        Path snakeYaml = library.resolve("SnakeYaml.jar"); //Done
+        Path relocatorASM = library.resolve("ASM.jar");
+        Path asmTree = library.resolve("ASMTree.jar");
+        Path asmAnalysis = library.resolve("ASMAnalysis.jar");
+        Path asmCommons = library.resolve("ASMCommons.jar");
 
-        String downloadURL = properties.getProperty("download_server", "https://reddo.es/repository/karma/");
+        Path lz4 = library.resolve("LZ4.jar");
+        Path zstd = library.resolve("ZSTD.jar");
+
+        Path schemaValidator = library.resolve("SchemaValidator.jar");
+        Path schemaJson = library.resolve("JSON.jar");
+
+        Path snakeYaml = library.resolve("SnakeYaml.jar");
+        Path relocatedSnakeYaml = relocated.resolve("snake_yaml.jar");
+
+        Path javaScript = library.resolve("MozillaScript.jar");
+
+        Path reflectionAPI = library.resolve("ReflectionAPI.jar");
+        Path relocatedReflection = relocated.resolve("reflection_api.jar");
+
+        Path googleGson = library.resolve("GSON.jar");
+        Path relocatedGson = relocated.resolve("google_gson.jar");
+
+        String downloadURL = properties.getProperty("download_server", "https://karmadev.es/karma-repository/v2/");
         URL downloadRoot = URLUtilities.fromString(downloadURL);
         assert downloadRoot != null;
 
         if (!Files.exists(jvmDriver)) {
-            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "JVMDriver.jar"));
+            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "jvm_driver.jar"));
             try {
                 downloader.download(jvmDriver);
             } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
@@ -122,15 +139,47 @@ public class KarmaAPI {
             }
         }
         if (!Files.exists(burningWave)) {
-            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "BurningWave.jar"));
+            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "burning_wave.jar"));
             try {
                 downloader.download(burningWave);
             } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
                 throw new RuntimeException(e);
             }
         }
+        if (!Files.exists(relocatorASM)) {
+            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "relocator_asm.jar"));
+            try {
+                downloader.download(relocatorASM);
+            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if (!Files.exists(asmTree)) {
+            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "asm_tree.jar"));
+            try {
+                downloader.download(asmTree);
+            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if (!Files.exists(asmAnalysis)) {
+            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "asm_analysis.jar"));
+            try {
+                downloader.download(asmAnalysis);
+            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if (!Files.exists(asmCommons)) {
+            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "asm_commons.jar"));
+            try {
+                downloader.download(asmCommons);
+            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
+                throw new RuntimeException(e);
+            }
+        }
         if (!Files.exists(lz4)) {
-            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "LZ4.jar"));
+            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "compressor_lz4.jar"));
             try {
                 downloader.download(lz4);
             } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
@@ -138,7 +187,7 @@ public class KarmaAPI {
             }
         }
         if (!Files.exists(zstd)) {
-            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "ZSTD.jar"));
+            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "compressor_zstd.jar"));
             try {
                 downloader.download(zstd);
             } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
@@ -146,49 +195,82 @@ public class KarmaAPI {
             }
         }
         if (!Files.exists(schemaValidator)) {
-            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "SchemaValidator.jar"));
+            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "schema_validator.jar"));
             try {
                 downloader.download(schemaValidator);
             } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
                 throw new RuntimeException(e);
             }
         }
+        if (!Files.exists(schemaJson)) {
+            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "schema_json.jar"));
+            try {
+                downloader.download(schemaJson);
+            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
+                throw new RuntimeException(e);
+            }
+        }
         if (!Files.exists(snakeYaml)) {
-            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "SnakeYaml.jar"));
+            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "snake_yaml.jar"));
             try {
                 downloader.download(snakeYaml);
             } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
                 throw new RuntimeException(e);
             }
         }
+        if (!Files.exists(javaScript)) {
+            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "mozilla_javascript.jar"));
+            try {
+                downloader.download(javaScript);
+            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if (!Files.exists(reflectionAPI)) {
+            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "reflection_api.jar"));
+            try {
+                downloader.download(reflectionAPI);
+            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if (!Files.exists(googleGson)) {
+            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "google_gson.jar"));
+            try {
+                downloader.download(googleGson);
+            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
+                throw new RuntimeException(e);
+            }
+        }
 
-        URLClassLoader tmp = null;
+        ClassLoader tmp = null;
         try {
             APISource principal = SourceManager.getPrincipal();
             if (principal != null) {
-                tmp = (URLClassLoader) principal.getClass().getClassLoader();
+                tmp = principal.getClass().getClassLoader();
             }
         } catch (ClassCastException | UnknownProviderException ignored) {}
-        if (tmp == null) tmp = (URLClassLoader) Thread.currentThread().getContextClassLoader();
+        if (tmp == null) tmp = Thread.currentThread().getContextClassLoader();
 
         try {
             URL[] urls = {
                     new URL("jar:file:" + burningWave + "!/"),
                     new URL("jar:file:" + jvmDriver + "!/")};
 
-            URLClassLoader cl = new URLClassLoader(urls, tmp);
-            Class<?> loader = cl.loadClass("org.burningwave.core.assembler.StaticComponentContainer");
+            try (URLClassLoader cl = new URLClassLoader(urls, tmp)) {
+                Class<?> loader = cl.loadClass("org.burningwave.core.assembler.StaticComponentContainer");
 
-            Field modules = loader.getDeclaredField("Modules");
-            Object module = modules.get(null);
-            if (module != null) {
-                Class<?> modClass = module.getClass();
+                Field modules = loader.getDeclaredField("Modules");
+                Object module = modules.get(null);
+                if (module != null) {
+                    Class<?> modClass = module.getClass();
 
-                Method exportAllToAll = modClass.getDeclaredMethod("exportAllToAll");
-                exportAllToAll.setAccessible(true);
+                    Method exportAllToAll = modClass.getDeclaredMethod("exportAllToAll");
+                    exportAllToAll.setAccessible(true);
 
-                exportAllToAll.invoke(module);
-                unbounded.send(LogLevel.SUCCESS, "Successfully injected with BurningWave");
+                    exportAllToAll.invoke(module);
+                    //logger.send(LogLevel.SUCCESS, "Successfully injected with BurningWave");
+                }
             }
         } catch (ClassNotFoundException |
                  NoSuchFieldException |
@@ -196,13 +278,73 @@ public class KarmaAPI {
                  NoSuchMethodException |
                  InvocationTargetException |
                  IOException ex) {
-            unbounded.send(ex, "Failed to inject BurningWave");
+            //logger.send(ex, "Failed to inject BurningWave");
+            throw new RuntimeException(ex);
         }
+
+        inject(relocatorASM, tmp);
+        inject(asmTree, tmp);
+        inject(asmAnalysis, tmp);
+        inject(asmCommons, tmp);
+
+        //logger.send(LogLevel.INFO, "Preparing to relocate");
+
+        Set<Relocation> relocations = new HashSet<>();
+        //relocations.add(new Relocation(buildPackage("org", "github", "fge"), "es.karmadev.api.shaded.fge"));
+        relocations.add(new Relocation(buildPackage("org", "yaml", "snakeyaml"), "es.karmadev.api.shaded.snakeyaml"));
+        relocations.add(new Relocation(buildPackage("com", "github", "yeetmanlord", "reflection_api"), "es.karmadev.forked.reflection_api"));
+        relocations.add(new Relocation(buildPackage("com", "google", "gson"), "es.karmadev.api.shaded.google.gson"));
+
+        PathUtilities.createPath(relocatedSnakeYaml);
+        PathUtilities.createPath(relocatedReflection);
+        PathUtilities.createPath(relocatedGson);
+
+        File snakeSource = snakeYaml.toFile();
+        File snakeRelocated = relocatedSnakeYaml.toFile();
+        JarRelocator snakeRelocator = new JarRelocator(snakeSource, snakeRelocated, relocations);
+
+        File reflectionSource = reflectionAPI.toFile();
+        File reflectionRelocated = relocatedReflection.toFile();
+        JarRelocator reflectionRelocator = new JarRelocator(reflectionSource, reflectionRelocated, relocations);
+
+        File gsonSource = googleGson.toFile();
+        File gsonRelocated = relocatedGson.toFile();
+        JarRelocator gsonRelocator = new JarRelocator(gsonSource, gsonRelocated, relocations);
+
+        try {
+            snakeRelocator.run();
+            reflectionRelocator.run();
+            gsonRelocator.run();
+
+            //logger.send(LogLevel.INFO, "Successfully relocated 3 libraries [snake_yaml, reflection_api, google_gson]");
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
+
+        inject(schemaJson, tmp);
+        inject(schemaValidator, tmp);
+        inject(relocatedGson, tmp);
+        inject(relocatedSnakeYaml, tmp);
+        inject(javaScript, tmp);
 
         inject(lz4, tmp);
         inject(zstd, tmp);
-        inject(schemaValidator, tmp);
-        inject(snakeYaml, tmp);
+
+        inject(relocatedReflection, tmp);
+    }
+
+    private static String buildPackage(final String... parts) {
+        StringBuilder builder = new StringBuilder();
+
+        int index = 0;
+        for (String part : parts) {
+            builder.append(part);
+            if (index++ < parts.length - 1) {
+                builder.append(".");
+            }
+        }
+
+        return builder.toString();
     }
 
     /**

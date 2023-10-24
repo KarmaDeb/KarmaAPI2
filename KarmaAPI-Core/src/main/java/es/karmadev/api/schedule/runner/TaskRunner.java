@@ -11,7 +11,7 @@ import java.util.function.Consumer;
  * Task runner
  */
 @SuppressWarnings("unused")
-public interface TaskRunner {
+public interface TaskRunner<TaskType extends Number> {
 
     /**
      * Get the task ID
@@ -25,14 +25,14 @@ public interface TaskRunner {
      *
      * @param newTimeLeft the new runner time left
      */
-    void forceTimeLeft(final long newTimeLeft);
+    void forceTimeLeft(final TaskType newTimeLeft);
 
     /**
      * Force the task runner max time
      *
      * @param newMaxTime the new runner max time
      */
-    void forceMaxTime(final long newMaxTime);
+    void forceMaxTime(final TaskType newMaxTime);
 
     /**
      * Set if the task repeats infinitely
@@ -82,7 +82,7 @@ public interface TaskRunner {
      *
      * @return the task interval
      */
-    default long interval() {
+    default TaskType interval() {
         return interval(workingUnit());
     }
 
@@ -92,7 +92,7 @@ public interface TaskRunner {
      *
      * @return the task time left
      */
-    default long timeLeft() {
+    default TaskType timeLeft() {
         return timeLeft(workingUnit());
     }
 
@@ -103,7 +103,7 @@ public interface TaskRunner {
      *             interval as
      * @return the task interval
      */
-    long interval(final TimeUnit unit);
+    TaskType interval(final TimeUnit unit);
 
     /**
      * Get the time left for this
@@ -113,7 +113,7 @@ public interface TaskRunner {
      *             time as
      * @return the task time left
      */
-    long timeLeft(final TimeUnit unit);
+    TaskType timeLeft(final TimeUnit unit);
 
     /**
      * Get the task working unit
@@ -128,7 +128,7 @@ public interface TaskRunner {
      * @param event the event
      * @return the task runner
      */
-    TaskRunnerEvent<Consumer<Long>> onAny(final BiConsumer<TaskEvent, Long> event);
+    TaskRunnerEvent<Consumer<TaskType>> onAny(final BiConsumer<TaskEvent, TaskType> event);
 
     /**
      * Add an event listener for this task
@@ -146,7 +146,7 @@ public interface TaskRunner {
      * @return the task runner
      */
     @SuppressWarnings("UnusedReturnValue")
-    TaskRunnerEvent<Consumer<Long>> on(final TaskEvent event, final Consumer<Long> tick);
+    TaskRunnerEvent<Consumer<TaskType>> on(final TaskEvent event, final Consumer<TaskType> tick);
 
     /**
      * Add an event listener for this task

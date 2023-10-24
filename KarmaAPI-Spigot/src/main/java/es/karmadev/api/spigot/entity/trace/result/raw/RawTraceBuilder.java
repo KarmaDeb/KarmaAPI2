@@ -17,6 +17,7 @@ public class RawTraceBuilder<T> {
 
     private final int type;
     private final Map<T, HitPosition> data = new ConcurrentHashMap<>();
+    private final Map<T, Location[]> traces = new ConcurrentHashMap<>();
 
     /**
      * Initialize the ray trace result
@@ -38,6 +39,16 @@ public class RawTraceBuilder<T> {
     }
 
     /**
+     * Assign the data
+     *
+     * @param key the data key
+     * @param trace the data value
+     */
+    public void assign(final T key, final Location[] trace) {
+        traces.put(key, trace);
+    }
+
+    /**
      * Build the trace result
      *
      * @return the trace result
@@ -46,14 +57,16 @@ public class RawTraceBuilder<T> {
     public <RType> RawTraceResult<RType> build() {
         switch (type) {
             case 0:
-                Object entityResult = RawEntityResult.fromMap((Map<Entity, HitPosition>) data);
+                Object entityResult = RawEntityResult.fromMap((Map<Entity, HitPosition>) data, (Map<Entity, Location[]>) traces);
                 return (RawTraceResult<RType>) entityResult;
             case 1:
-                Object blockResult = RawBlockResult.fromMap((Map<Block, HitPosition>) data);
+                Object blockResult = RawBlockResult.fromMap((Map<Block, HitPosition>) data, (Map<Block, Location[]>) traces);
                 return (RawTraceResult<RType>) blockResult;
             case 2:
             default:
-                Object traceResult = es.karmadev.api.spigot.entity.trace.result.raw.trace.RawTraceResult.fromMap((Map<Location, HitPosition>) data);
+                Object traceResult = es.karmadev.api.spigot.entity.trace.result.raw.trace.RawTraceResult.fromMap(
+                        (Map<Location, HitPosition>) data,
+                        (Map<Location, Location[]>) traces);
                 return (RawTraceResult<RType>) traceResult;
         }
     }

@@ -6,9 +6,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Path;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Karma YAML file manager
@@ -278,8 +276,8 @@ public interface YamlFileHandler {
      * @return the value or default value if
      * not found
      *
-     * @throws IOException if the unserialization fails
-     * @throws ClassNotFoundException if the unserialization loads a class which does not exist anymore
+     * @throws IOException if the serialization fails
+     * @throws ClassNotFoundException if the serialization loads a class which does not exist anymore
      */
     Object getSerialized(final String path, final Object def) throws IOException, ClassNotFoundException;
 
@@ -303,7 +301,31 @@ public interface YamlFileHandler {
      * @param path the list path
      * @return the list
      */
-    List<String> getList(final String path);
+    default List<String> getList(final String path) {
+        return getList(path, Collections.emptyList());
+    }
+
+    /**
+     * Get a list
+     *
+     * @param path the list path
+     * @param def the default values to add on the
+     *            list
+     * @return the list
+     */
+    default List<String> getList(final String path, final String... def) {
+        return getList(path, Arrays.asList(def));
+    }
+
+    /**
+     * Get a list
+     *
+     * @param path the list path
+     * @param ifNull the list if the path does not point
+     *               to a list or is not set
+     * @return the list
+     */
+    List<String> getList(final String path, final List<String> ifNull);
 
     /**
      * Get a section

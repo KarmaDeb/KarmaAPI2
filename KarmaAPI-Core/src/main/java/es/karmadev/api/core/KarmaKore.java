@@ -153,39 +153,33 @@ public final class KarmaKore extends KarmaSource {
     @Override
     public void start() {
         if (directory == null) directory = runtime.getFile().getParent().resolve(name);
-        if (console instanceof UnboundedLogger) {
-            UnboundedLogger unbound = (UnboundedLogger) console;
-            unbound.bind(this);
 
-            unbound.log("Beep!");
+        TaskRunner<Long> runner = new AsyncTaskExecutor(5, 10, TimeUnit.MINUTES);
+        runner.setRepeating(true);
 
-            TaskRunner runner = new AsyncTaskExecutor(5, 10, TimeUnit.MINUTES);
-            runner.setRepeating(true);
+        runner.on(TaskEvent.RESTART, () -> {
+            console.send("Checking for KarmaAPI updates...", LogLevel.DEBUG);
+            VersionChecker checker = new VersionChecker(this);
+            checker.check().onComplete((task) -> {
+                Throwable error = task.error();
+                if (error == null) {
+                    Version latest = checker.getVersion();
+                    if (latest != null && !latest.equals(version) && latest.compareTo(version) > 0) {
+                        String[] changelog = checker.getChangelog();
+                        console.send("KarmaAPI is out of date! A new version has been found ({0}). Current is: {1}", latest, version);
+                        console.send("&7--&b CHANGELOG&7 --");
+                        for (String line : changelog) console.send(line);
 
-            runner.on(TaskEvent.RESTART, () -> {
-                unbound.send("Checking for KarmaAPI updates...", LogLevel.DEBUG);
-                VersionChecker checker = new VersionChecker(this);
-                checker.check().onComplete((task) -> {
-                    Throwable error = task.error();
-                    if (error == null) {
-                        Version latest = checker.getVersion();
-                        if (latest != null && !latest.equals(version) && latest.compareTo(version) > 0) {
-                            String[] changelog = checker.getChangelog();
-                            unbound.send("KarmaAPI is out of date! A new version has been found ({0}). Current is: {1}", latest, version);
-                            unbound.send("&7--&b CHANGELOG&7 --");
-                            for (String line : changelog) unbound.send(line);
-
-                            URL[] updateURLs = checker.getUpdateURLs();
-                            unbound.send("&7--&b UPDATE&7 --");
-                            for (URL url : updateURLs) unbound.send("&e" + url);
-                        }
-                    } else {
-                        unbound.log(error, "An error occurred while checking for updates");
+                        URL[] updateURLs = checker.getUpdateURLs();
+                        console.send("&7--&b UPDATE&7 --");
+                        for (URL url : updateURLs) console.send("&e" + url);
                     }
-                });
+                } else {
+                    console.log(error, "An error occurred while checking for updates");
+                }
             });
-            runner.start();
-        }
+        });
+        runner.start();
 
         try {
             DatabaseManager.register(new JsonDatabase());
@@ -213,8 +207,10 @@ public final class KarmaKore extends KarmaSource {
      * @return if the source was able to be initialized
      */
     public static APISource INSTANCE() {
+        APISource source = null;
+
         try {
-            APISource source = SourceManager.getPrincipal();
+            source = SourceManager.getPrincipal();
             if (source == null) {
                 source = new KarmaKore();
                 ((KarmaKore) source).start();
@@ -237,7 +233,7 @@ public final class KarmaKore extends KarmaSource {
             ExceptionCollector.catchException(KarmaKore.class, ex2);
         }
 
-        return null;
+        return source;
     }
 
     /**
@@ -250,6 +246,8 @@ public final class KarmaKore extends KarmaSource {
         return koreIdentifier;
     }
 
+    private URI uri;
+
     /**
      * Get the source update URI
      *
@@ -257,7 +255,11 @@ public final class KarmaKore extends KarmaSource {
      */
     @Override
     public @Nullable URI sourceUpdateURI() {
-        return null;
+        return uri;
+    }
+
+    public void setUpdateURI(final URI uri) {
+        this.uri = uri;
     }
 
     /**

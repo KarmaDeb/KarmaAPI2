@@ -28,4 +28,17 @@
             <artifactId>Common</artifactId>
         </dependency>
     </dependencies>
+
+    <distributionManagement>
+        <repository>
+            <id>internal.repo</id>
+            <name>Internal repo</name>
+            <url>file:${project.basedir}/ir/out/${project.version}</url>
+        </repository>
+        <snapshotRepository>
+            <id>internal.repo</id>
+            <name>Internal repo</name>
+            <url>file:${project.basedir}/ir/out/${project.version}</url>
+        </snapshotRepository>
+    </distributionManagement>
 </project>

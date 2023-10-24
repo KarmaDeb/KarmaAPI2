@@ -1,11 +1,16 @@
 package es.karmadev.api.database.result;
 
-import java.lang.reflect.Type;
-
 /**
  * KarmaAPI database connection query result
  */
 public interface QueryResult {
+
+    /**
+     * Goes to the next query result
+     *
+     * @return true if there are more results
+     */
+    boolean next();
 
     /**
      * Get the result fields
@@ -15,6 +20,23 @@ public interface QueryResult {
     int fields();
 
     /**
+     * Get the database we are at
+     *
+     * @return the database name
+     */
+    String databaseName();
+
+    /**
+     * Get the table we are at, for
+     * non-relational database types, such
+     * as mongo, this should be the collection
+     * name instead
+     *
+     * @return the table name of the result
+     */
+    String tableName();
+
+    /**
      * Get the result field names
      *
      * @return the field names
@@ -22,101 +44,12 @@ public interface QueryResult {
     String[] fieldNames();
 
     /**
-     * Get the result type
+     * Get if the latest result fetched
+     * was null
      *
-     * @return the result type
+     * @return if the result was null
      */
-    Type result();
-
-    /**
-     * Get a long value
-     *
-     * @param field the field to get the long
-     *              from
-     * @return the long value
-     */
-    long getLong(final String field);
-
-    /**
-     * Get a long value
-     *
-     * @param index the field index to get the
-     *              long from
-     * @return the long value
-     */
-    long getLong(final int index);
-
-    /**
-     * Get a short value
-     *
-     * @param field the field to get the short
-     *              from
-     * @return the short value
-     */
-    short getShort(final String field);
-
-    /**
-     * Get a short value
-     *
-     * @param index the field index to get the
-     *              short from
-     * @return the short value
-     */
-    short getShort(final int index);
-
-    /**
-     * Get an integer value
-     *
-     * @param field the field to get the integer
-     *              from
-     * @return the integer value
-     */
-    int getInteger(final String field);
-
-    /**
-     * Get an integer value
-     *
-     * @param index the field index to get the integer
-     *              from
-     * @return the integer value
-     */
-    int getInteger(final int index);
-
-    /**
-     * Get a double value
-     *
-     * @param field the field to get the double
-     *              from
-     * @return the double value
-     */
-    double getDouble(final String field);
-
-    /**
-     * Get a double value
-     *
-     * @param index the field index to get the
-     *              double from
-     * @return the double value
-     */
-    double getDouble(final int index);
-
-    /**
-     * Get a float value
-     *
-     * @param field the field name to get the
-     *              float from
-     * @return the float value
-     */
-    float getFloat(final String field);
-
-    /**
-     * Get a float value
-     *
-     * @param index the field index to get the
-     *              float from
-     * @return the float value
-     */
-    float getFloat(final int index);
+    boolean wasNull();
 
     /**
      * Get a byte value
@@ -124,8 +57,9 @@ public interface QueryResult {
      * @param field the field to get the byte
      *              from
      * @return the byte value
+     * @throws NoSuchFieldException if the specified type does not contain the data
      */
-    byte getByte(final String field);
+    byte getByte(final String field) throws NoSuchFieldException;
 
     /**
      * Get a byte value
@@ -133,8 +67,115 @@ public interface QueryResult {
      * @param index the field index to get the
      *              byte from
      * @return the byte value
+     * @throws IndexOutOfBoundsException if the index is out of bounds
+     * @throws NoSuchFieldException if the specified type does not contain the data
      */
-    byte getByte(final int index);
+    byte getByte(final int index) throws IndexOutOfBoundsException, NoSuchFieldException;
+
+    /**
+     * Get a short value
+     *
+     * @param field the field to get the short
+     *              from
+     * @return the short value
+     * @throws NoSuchFieldException if the specified type does not contain the data
+     */
+    short getShort(final String field) throws NoSuchFieldException;
+
+    /**
+     * Get a short value
+     *
+     * @param index the field index to get the
+     *              short from
+     * @return the short value
+     * @throws IndexOutOfBoundsException if the index is out of bounds
+     * @throws NoSuchFieldException if the specified type does not contain the data
+     */
+    short getShort(final int index) throws IndexOutOfBoundsException, NoSuchFieldException;
+
+    /**
+     * Get an integer value
+     *
+     * @param field the field to get the integer
+     *              from
+     * @return the integer value
+     * @throws NoSuchFieldException if the specified type does not contain the data
+     */
+    int getInteger(final String field) throws NoSuchFieldException;
+
+    /**
+     * Get an integer value
+     *
+     * @param index the field index to get the integer
+     *              from
+     * @return the integer value
+     * @throws IndexOutOfBoundsException if the index is out of bounds
+     * @throws NoSuchFieldException if the specified type does not contain the data
+     */
+    int getInteger(final int index) throws IndexOutOfBoundsException, NoSuchFieldException;
+
+    /**
+     * Get a long value
+     *
+     * @param field the field to get the long
+     *              from
+     * @return the long value
+     * @throws NoSuchFieldException if the specified type does not contain the data
+     */
+    long getLong(final String field) throws NoSuchFieldException;
+
+    /**
+     * Get a long value
+     *
+     * @param index the field index to get the
+     *              long from
+     * @return the long value
+     * @throws IndexOutOfBoundsException if the index is out of bounds
+     * @throws NoSuchFieldException if the specified type does not contain the data
+     */
+    long getLong(final int index) throws IndexOutOfBoundsException, NoSuchFieldException;
+
+    /**
+     * Get a double value
+     *
+     * @param field the field to get the double
+     *              from
+     * @return the double value
+     * @throws NoSuchFieldException if the specified type does not contain the data
+     */
+    double getDouble(final String field) throws NoSuchFieldException;
+
+    /**
+     * Get a double value
+     *
+     * @param index the field index to get the
+     *              double from
+     * @return the double value
+     * @throws IndexOutOfBoundsException if the index is out of bounds
+     * @throws NoSuchFieldException if the specified type does not contain the data
+     */
+    double getDouble(final int index) throws IndexOutOfBoundsException, NoSuchFieldException;
+
+    /**
+     * Get a float value
+     *
+     * @param field the field name to get the
+     *              float from
+     * @return the float value
+     * @throws NoSuchFieldException if the specified type does not contain the data
+     */
+    float getFloat(final String field) throws NoSuchFieldException;
+
+    /**
+     * Get a float value
+     *
+     * @param index the field index to get the
+     *              float from
+     * @return the float value
+     * @throws IndexOutOfBoundsException if the index is out of bounds
+     * @throws NoSuchFieldException if the specified type does not contain the data
+     */
+    float getFloat(final int index) throws IndexOutOfBoundsException, NoSuchFieldException;
 
     /**
      * Get a string value
@@ -142,8 +183,9 @@ public interface QueryResult {
      * @param field the field to get the string
      *              from
      * @return the string value
+     * @throws NoSuchFieldException if the specified type does not contain the data
      */
-    String getString(final String field);
+    String getString(final String field) throws NoSuchFieldException;
 
     /**
      * Get a string value
@@ -151,8 +193,10 @@ public interface QueryResult {
      * @param index the field index to get the
      *              string from
      * @return the string value
+     * @throws IndexOutOfBoundsException if the index is out of bounds
+     * @throws NoSuchFieldException if the specified type does not contain the data
      */
-    String getString(final int index);
+    String getString(final int index) throws IndexOutOfBoundsException, NoSuchFieldException;
 
     /**
      * Get a boolean value
@@ -160,8 +204,9 @@ public interface QueryResult {
      * @param field the field to get the boolean
      *              from
      * @return the boolean value
+     * @throws NoSuchFieldException if the specified type does not contain the data
      */
-    boolean getBoolean(final String field);
+    boolean getBoolean(final String field) throws NoSuchFieldException;
 
     /**
      * Get a boolean value
@@ -169,6 +214,8 @@ public interface QueryResult {
      * @param index the field index to get the
      *              boolean from
      * @return the boolean value
+     * @throws IndexOutOfBoundsException if the index is out of bounds
+     * @throws NoSuchFieldException if the specified type does not contain the data
      */
-    boolean getBoolean(final int index);
+    boolean getBoolean(final int index) throws IndexOutOfBoundsException, NoSuchFieldException;
 }

@@ -3,7 +3,7 @@ package es.karmadev.api.web.minecraft.response;
 /**
  * Json response container
  */
-@SuppressWarnings("unused")
+@SuppressWarnings("unused") @Deprecated
 public interface JsonContainer {
 
     /**
