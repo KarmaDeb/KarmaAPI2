@@ -3,12 +3,10 @@ package es.karmadev.api.strings;
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.core.KarmaKore;
 import es.karmadev.api.core.source.APISource;
-import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.strings.placeholder.PlaceholderEngine;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -24,6 +22,68 @@ public class StringUtils {
             {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',  'Y', 'Z'},
             {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
     };
+
+    /**
+     * Get the next word of a sequence
+     *
+     * @param sequence the sequence to iterate with
+     * @return the next sequence word (starting from index 0)
+     */
+    public static String nextWord(final CharSequence sequence) {
+        return nextWord(sequence, -1, -1);
+    }
+
+    /**
+     * Get the next word of a sequence
+     *
+     * @param sequence the sequence to iterate with
+     * @param startIndex the start index
+     * @return the next sequence word
+     */
+    public static String nextWord(final CharSequence sequence, final int startIndex) {
+        return nextWord(sequence, startIndex, -1);
+    }
+
+    /**
+     * Get the next word of a sequence
+     *
+     * @param sequence the sequence to iterate with
+     * @param startIndex the start index
+     * @param maxIndex the max index
+     * @return the next sequence word
+     */
+    public static String nextWord(final CharSequence sequence, final int startIndex, final int maxIndex) {
+        if (sequence == null || sequence.length() == 0) return "";
+        int start = Math.max(0, startIndex);
+        int end = maxIndex;
+        if (end < start) {
+            end = sequence.length();
+        }
+
+        CharSequence subSequence = sequence.subSequence(start, end);
+        StringBuilder builder = new StringBuilder();
+        boolean building = false;
+        for (int i = 0; i < subSequence.length(); i++) {
+            char character = subSequence.charAt(i);
+            if (character == ' ') {
+                if (building) {
+                    if (builder.length() > 0) {
+                        break; //We've reached the end of the word
+                    }
+
+                    continue;
+                }
+
+                building = true;
+                continue;
+            }
+
+            building = true; //At this point, the character is not a space, regardless if we just started iterating or not
+            builder.append(character);
+        }
+
+        return builder.toString();
+    }
 
     /**
      * Replace the last matching string

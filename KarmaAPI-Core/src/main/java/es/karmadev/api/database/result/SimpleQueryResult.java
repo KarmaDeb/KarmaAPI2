@@ -57,7 +57,7 @@ public class SimpleQueryResult implements QueryResult {
      */
     @Override
     public int fields() {
-        return indexes[Math.min(0, Math.max(indexes.length - 1, index))].size();
+        return indexes[Math.max(0, Math.min(indexes.length - 1, this.index))].size();
     }
 
     /**
@@ -90,7 +90,7 @@ public class SimpleQueryResult implements QueryResult {
      */
     @Override
     public String[] fieldNames() {
-        return indexes[Math.min(0, Math.max(indexes.length - 1, index))].values().toArray(new String[0]);
+        return indexes[Math.max(0, Math.min(indexes.length - 1, this.index))].values().toArray(new String[0]);
     }
 
     /**
@@ -105,151 +105,19 @@ public class SimpleQueryResult implements QueryResult {
     }
 
     /**
-     * Get a long value
-     *
-     * @param field the field to get the long
-     *              from
-     * @return the long value
-     * @throws NoSuchFieldException if the specified type does not contain the data
-     */
-    @Override
-    public long getLong(final String field) throws NoSuchFieldException {
-        return indexOfMap(field, longMap[Math.min(0, Math.max(indexes.length - 1, index))]);
-    }
-
-    /**
-     * Get a long value
-     *
-     * @param index the field index to get the
-     *              long from
-     * @return the long value
-     * @throws IndexOutOfBoundsException if the index is out of bounds
-     * @throws NoSuchFieldException      if the specified type does not contain the data
-     */
-    @Override
-    public long getLong(final int index) throws IndexOutOfBoundsException, NoSuchFieldException {
-        return indexOfMap(index, longMap[Math.min(0, Math.max(indexes.length - 1, index))]);
-    }
-
-    /**
-     * Get a short value
-     *
-     * @param field the field to get the short
-     *              from
-     * @return the short value
-     * @throws NoSuchFieldException if the specified type does not contain the data
-     */
-    @Override
-    public short getShort(final String field) throws NoSuchFieldException {
-        return indexOfMap(field, shortMap[Math.min(0, Math.max(indexes.length - 1, index))]);
-    }
-
-    /**
-     * Get a short value
-     *
-     * @param index the field index to get the
-     *              short from
-     * @return the short value
-     * @throws IndexOutOfBoundsException if the index is out of bounds
-     * @throws NoSuchFieldException      if the specified type does not contain the data
-     */
-    @Override
-    public short getShort(final int index) throws IndexOutOfBoundsException, NoSuchFieldException {
-        return indexOfMap(index, shortMap[Math.min(0, Math.max(indexes.length - 1, index))]);
-    }
-
-    /**
-     * Get an integer value
-     *
-     * @param field the field to get the integer
-     *              from
-     * @return the integer value
-     * @throws NoSuchFieldException if the specified type does not contain the data
-     */
-    @Override
-    public int getInteger(final String field) throws NoSuchFieldException {
-        return indexOfMap(field, intMap[Math.min(0, Math.max(indexes.length - 1, index))]);
-    }
-
-    /**
-     * Get an integer value
-     *
-     * @param index the field index to get the integer
-     *              from
-     * @return the integer value
-     * @throws IndexOutOfBoundsException if the index is out of bounds
-     * @throws NoSuchFieldException      if the specified type does not contain the data
-     */
-    @Override
-    public int getInteger(final int index) throws IndexOutOfBoundsException, NoSuchFieldException {
-        return indexOfMap(index, intMap[Math.min(0, Math.max(indexes.length - 1, index))]);
-    }
-
-    /**
-     * Get a double value
-     *
-     * @param field the field to get the double
-     *              from
-     * @return the double value
-     * @throws NoSuchFieldException if the specified type does not contain the data
-     */
-    @Override
-    public double getDouble(final String field) throws NoSuchFieldException {
-        return indexOfMap(field, doubleMap[Math.min(0, Math.max(indexes.length - 1, index))]);
-    }
-
-    /**
-     * Get a double value
-     *
-     * @param index the field index to get the
-     *              double from
-     * @return the double value
-     * @throws IndexOutOfBoundsException if the index is out of bounds
-     * @throws NoSuchFieldException      if the specified type does not contain the data
-     */
-    @Override
-    public double getDouble(final int index) throws IndexOutOfBoundsException, NoSuchFieldException {
-        return indexOfMap(index, doubleMap[Math.min(0, Math.max(indexes.length - 1, index))]);
-    }
-
-    /**
-     * Get a float value
-     *
-     * @param field the field name to get the
-     *              float from
-     * @return the float value
-     * @throws NoSuchFieldException if the specified type does not contain the data
-     */
-    @Override
-    public float getFloat(final String field) throws NoSuchFieldException {
-        return indexOfMap(field, floatMap[Math.min(0, Math.max(indexes.length - 1, index))]);
-    }
-
-    /**
-     * Get a float value
-     *
-     * @param index the field index to get the
-     *              float from
-     * @return the float value
-     * @throws IndexOutOfBoundsException if the index is out of bounds
-     * @throws NoSuchFieldException      if the specified type does not contain the data
-     */
-    @Override
-    public float getFloat(final int index) throws IndexOutOfBoundsException, NoSuchFieldException {
-        return indexOfMap(index, floatMap[Math.min(0, Math.max(indexes.length - 1, index))]);
-    }
-
-    /**
      * Get a byte value
      *
      * @param field the field to get the byte
      *              from
      * @return the byte value
-     * @throws NoSuchFieldException if the specified type does not contain the data
+     * @throws NoSuchElementException if the specified type does not contain the data
      */
     @Override
-    public byte getByte(final String field) throws NoSuchFieldException {
-        return indexOfMap(field, byteMap[Math.min(0, Math.max(indexes.length - 1, index))]);
+    public byte getByte(final String field) throws NoSuchElementException {
+        Byte val = indexOfMap(field, byteMap[Math.max(0, Math.min(indexes.length - 1, this.index))]);
+        if (val == null) return 0;
+
+        return val;
     }
 
     /**
@@ -259,11 +127,179 @@ public class SimpleQueryResult implements QueryResult {
      *              byte from
      * @return the byte value
      * @throws IndexOutOfBoundsException if the index is out of bounds
-     * @throws NoSuchFieldException      if the specified type does not contain the data
+     * @throws NoSuchElementException      if the specified type does not contain the data
      */
     @Override
-    public byte getByte(final int index) throws IndexOutOfBoundsException, NoSuchFieldException {
-        return indexOfMap(index, byteMap[Math.min(0, Math.max(indexes.length - 1, index))]);
+    public byte getByte(final int index) throws IndexOutOfBoundsException, NoSuchElementException {
+        Byte val = indexOfMap(index, byteMap[Math.max(0, Math.min(indexes.length - 1, this.index))]);
+        if (val == null) return 0;
+
+        return val;
+    }
+
+    /**
+     * Get a short value
+     *
+     * @param field the field to get the short
+     *              from
+     * @return the short value
+     * @throws NoSuchElementException if the specified type does not contain the data
+     */
+    @Override
+    public short getShort(final String field) throws NoSuchElementException {
+        Short val = indexOfMap(field, shortMap[Math.max(0, Math.min(indexes.length - 1, this.index))]);
+        if (val == null) return 0;
+
+        return val;
+    }
+
+    /**
+     * Get a short value
+     *
+     * @param index the field index to get the
+     *              short from
+     * @return the short value
+     * @throws IndexOutOfBoundsException if the index is out of bounds
+     * @throws NoSuchElementException      if the specified type does not contain the data
+     */
+    @Override
+    public short getShort(final int index) throws IndexOutOfBoundsException, NoSuchElementException {
+        Short val = indexOfMap(index, shortMap[Math.max(0, Math.min(indexes.length - 1, this.index))]);
+        if (val == null) return 0;
+
+        return val;
+    }
+
+    /**
+     * Get an integer value
+     *
+     * @param field the field to get the integer
+     *              from
+     * @return the integer value
+     * @throws NoSuchElementException if the specified type does not contain the data
+     */
+    @Override
+    public int getInteger(final String field) throws NoSuchElementException {
+        Integer val = indexOfMap(field, intMap[Math.max(0, Math.min(indexes.length - 1, this.index))]);
+        if (val == null) return 0;
+
+        return val;
+    }
+
+    /**
+     * Get an integer value
+     *
+     * @param index the field index to get the integer
+     *              from
+     * @return the integer value
+     * @throws IndexOutOfBoundsException if the index is out of bounds
+     * @throws NoSuchElementException      if the specified type does not contain the data
+     */
+    @Override
+    public int getInteger(final int index) throws IndexOutOfBoundsException, NoSuchElementException {
+        Integer val = indexOfMap(index, intMap[Math.max(0, Math.min(indexes.length - 1, this.index))]);
+        if (val == null) return 0;
+
+        return val;
+    }
+
+    /**
+     * Get a long value
+     *
+     * @param field the field to get the long
+     *              from
+     * @return the long value
+     * @throws NoSuchElementException if the specified type does not contain the data
+     */
+    @Override
+    public long getLong(final String field) throws NoSuchElementException {
+        Long val = indexOfMap(field, longMap[Math.max(0, Math.min(indexes.length - 1, this.index))]);
+        if (val == null) return 0;
+
+        return val;
+    }
+
+    /**
+     * Get a long value
+     *
+     * @param index the field index to get the
+     *              long from
+     * @return the long value
+     * @throws IndexOutOfBoundsException if the index is out of bounds
+     * @throws NoSuchElementException      if the specified type does not contain the data
+     */
+    @Override
+    public long getLong(final int index) throws IndexOutOfBoundsException, NoSuchElementException {
+        Long val = indexOfMap(index, longMap[Math.max(0, Math.min(indexes.length - 1, this.index))]);
+        if (val == null) return 0;
+
+        return val;
+    }
+
+    /**
+     * Get a double value
+     *
+     * @param field the field to get the double
+     *              from
+     * @return the double value
+     * @throws NoSuchElementException if the specified type does not contain the data
+     */
+    @Override
+    public double getDouble(final String field) throws NoSuchElementException {
+        Double val = indexOfMap(field, doubleMap[Math.max(0, Math.min(indexes.length - 1, this.index))]);
+        if (val == null) return 0;
+
+        return val;
+    }
+
+    /**
+     * Get a double value
+     *
+     * @param index the field index to get the
+     *              double from
+     * @return the double value
+     * @throws IndexOutOfBoundsException if the index is out of bounds
+     * @throws NoSuchElementException      if the specified type does not contain the data
+     */
+    @Override
+    public double getDouble(final int index) throws IndexOutOfBoundsException, NoSuchElementException {
+        Double val = indexOfMap(index, doubleMap[Math.max(0, Math.min(indexes.length - 1, this.index))]);
+        if (val == null) return 0;
+
+        return val;
+    }
+
+    /**
+     * Get a float value
+     *
+     * @param field the field name to get the
+     *              float from
+     * @return the float value
+     * @throws NoSuchElementException if the specified type does not contain the data
+     */
+    @Override
+    public float getFloat(final String field) throws NoSuchElementException {
+        Float val = indexOfMap(field, floatMap[Math.max(0, Math.min(indexes.length - 1, this.index))]);
+        if (val == null) return 0;
+
+        return val;
+    }
+
+    /**
+     * Get a float value
+     *
+     * @param index the field index to get the
+     *              float from
+     * @return the float value
+     * @throws IndexOutOfBoundsException if the index is out of bounds
+     * @throws NoSuchElementException      if the specified type does not contain the data
+     */
+    @Override
+    public float getFloat(final int index) throws IndexOutOfBoundsException, NoSuchElementException {
+        Float val = indexOfMap(index, floatMap[Math.max(0, Math.min(indexes.length - 1, this.index))]);
+        if (val == null) return 0;
+
+        return val;
     }
 
     /**
@@ -272,11 +308,11 @@ public class SimpleQueryResult implements QueryResult {
      * @param field the field to get the string
      *              from
      * @return the string value
-     * @throws NoSuchFieldException if the specified type does not contain the data
+     * @throws NoSuchElementException if the specified type does not contain the data
      */
     @Override
-    public String getString(final String field) throws NoSuchFieldException {
-        return indexOfMap(field, stringMap[Math.min(0, Math.max(indexes.length - 1, index))]);
+    public String getString(final String field) throws NoSuchElementException {
+        return indexOfMap(field, stringMap[Math.max(0, Math.min(indexes.length - 1, this.index))]);
     }
 
     /**
@@ -286,11 +322,11 @@ public class SimpleQueryResult implements QueryResult {
      *              string from
      * @return the string value
      * @throws IndexOutOfBoundsException if the index is out of bounds
-     * @throws NoSuchFieldException      if the specified type does not contain the data
+     * @throws NoSuchElementException      if the specified type does not contain the data
      */
     @Override
-    public String getString(final int index) throws IndexOutOfBoundsException, NoSuchFieldException {
-        return indexOfMap(index, stringMap[Math.min(0, Math.max(indexes.length - 1, index))]);
+    public String getString(final int index) throws IndexOutOfBoundsException, NoSuchElementException {
+        return indexOfMap(index, stringMap[Math.max(0, Math.min(indexes.length - 1, this.index))]);
     }
 
     /**
@@ -299,11 +335,14 @@ public class SimpleQueryResult implements QueryResult {
      * @param field the field to get the boolean
      *              from
      * @return the boolean value
-     * @throws NoSuchFieldException if the specified type does not contain the data
+     * @throws NoSuchElementException if the specified type does not contain the data
      */
     @Override
-    public boolean getBoolean(final String field) throws NoSuchFieldException {
-        return indexOfMap(field, boolMap[Math.min(0, Math.max(indexes.length - 1, index))]);
+    public boolean getBoolean(final String field) throws NoSuchElementException {
+        Boolean bool = indexOfMap(field, boolMap[Math.max(0, Math.min(indexes.length - 1, this.index))]);
+        if (bool == null) return false;
+
+        return bool;
     }
 
     /**
@@ -313,11 +352,14 @@ public class SimpleQueryResult implements QueryResult {
      *              boolean from
      * @return the boolean value
      * @throws IndexOutOfBoundsException if the index is out of bounds
-     * @throws NoSuchFieldException      if the specified type does not contain the data
+     * @throws NoSuchElementException      if the specified type does not contain the data
      */
     @Override
-    public boolean getBoolean(final int index) throws IndexOutOfBoundsException, NoSuchFieldException {
-        return indexOfMap(index, boolMap[Math.min(0, Math.max(indexes.length - 1, index))]);
+    public boolean getBoolean(final int index) throws IndexOutOfBoundsException, NoSuchElementException {
+        Boolean bool = indexOfMap(index, boolMap[Math.max(0, Math.min(indexes.length - 1, this.index))]);
+        if (bool == null) return false;
+
+        return bool;
     }
 
     /**
@@ -328,11 +370,11 @@ public class SimpleQueryResult implements QueryResult {
      * @param map the map to get data from
      * @return the value
      * @param <T> the value type
-     * @throws NoSuchFieldException if the specified type does not contain the data
+     * @throws NoSuchElementException if the specified type does not contain the data
      */
-    private <T> T indexOfMap(final String field, final Map<String, T> map) throws NoSuchFieldException {
+    private <T> T indexOfMap(final String field, final Map<String, T> map) throws NoSuchElementException {
         if (!map.containsKey(field)) {
-            throw new NoSuchFieldException("No field named " + field + " in result set");
+            throw new NoSuchElementException("No field named " + field + " in result set");
         }
 
         T v = map.get(field);
@@ -349,17 +391,25 @@ public class SimpleQueryResult implements QueryResult {
      * @return the value
      * @param <T> the value type
      * @throws IndexOutOfBoundsException if the index is out of bounds
-     * @throws NoSuchFieldException if the specified type does not contain the data
+     * @throws NoSuchElementException if the specified type does not contain the data
      */
-    private <T> T indexOfMap(final int index, final Map<String, T> map) throws IndexOutOfBoundsException, NoSuchFieldException {
-        int currentIndex = Math.min(0, Math.max(indexes.length - 1, this.index));
-        if (index < 0 || index > indexes[currentIndex].size() || !indexes[currentIndex].containsKey(index)) {
+    private <T> T indexOfMap(final int index, final Map<String, T> map) throws IndexOutOfBoundsException, NoSuchElementException {
+        if (index < 0 || index > indexes[this.index].size()) {
             throw new IndexOutOfBoundsException("No field at index " + index);
         }
 
-        String fieldName = indexes[currentIndex].get(index);
+        int searchIndex = 0;
+        int i = 0;
+        for (Map.Entry<Integer, String> indexes : this.indexes[this.index].entrySet()) {
+            if (i++ == index) {
+                searchIndex = indexes.getKey();
+                break;
+            }
+        }
+
+        String fieldName = indexes[this.index].get(searchIndex);
         if (!map.containsKey(fieldName)) {
-            throw new NoSuchFieldException("No field named " + fieldName + " in result set");
+            throw new NoSuchElementException("No field named " + fieldName + " in result set");
         }
 
         T v = map.get(fieldName);
@@ -382,7 +432,7 @@ public class SimpleQueryResult implements QueryResult {
         private String database;
         private int index = 0;
 
-        private int writeIndex = 0;
+        private int writeIndex = -1;
         private final List<Map<Integer, String>> indexes = new ArrayList<>();
         private final List<Map<String, Byte>> byteMap = new ArrayList<>();
         private final List<Map<String, Short>> shortMap = new ArrayList<>();
@@ -416,6 +466,9 @@ public class SimpleQueryResult implements QueryResult {
         }
 
         public QueryResultBuilder appendResult(final String fieldName, final Byte value) {
+            if (writeIndex < 0) {
+                writeIndex = 0;
+            }
             Map<Integer, String> indexes = this.indexes.get(writeIndex);
             Map<String, Byte> byteMap = this.byteMap.get(writeIndex);
 
@@ -426,6 +479,9 @@ public class SimpleQueryResult implements QueryResult {
         }
 
         public QueryResultBuilder appendResult(final String fieldName, final Short value) {
+            if (writeIndex < 0) {
+                writeIndex = 0;
+            }
             Map<Integer, String> indexes = this.indexes.get(writeIndex);
             Map<String, Short> shortMap = this.shortMap.get(writeIndex);
 
@@ -436,6 +492,9 @@ public class SimpleQueryResult implements QueryResult {
         }
 
         public QueryResultBuilder appendResult(final String fieldName, final Integer value) {
+            if (writeIndex < 0) {
+                writeIndex = 0;
+            }
             Map<Integer, String> indexes = this.indexes.get(writeIndex);
             Map<String, Integer> intMap = this.intMap.get(writeIndex);
 
@@ -446,6 +505,9 @@ public class SimpleQueryResult implements QueryResult {
         }
 
         public QueryResultBuilder appendResult(final String fieldName, final Long value) {
+            if (writeIndex < 0) {
+                writeIndex = 0;
+            }
             Map<Integer, String> indexes = this.indexes.get(writeIndex);
             Map<String, Long> longMap = this.longMap.get(writeIndex);
 
@@ -456,6 +518,9 @@ public class SimpleQueryResult implements QueryResult {
         }
 
         public QueryResultBuilder appendResult(final String fieldName, final Float value) {
+            if (writeIndex < 0) {
+                writeIndex = 0;
+            }
             Map<Integer, String> indexes = this.indexes.get(writeIndex);
             Map<String, Float> floatMap = this.floatMap.get(writeIndex);
 
@@ -466,6 +531,9 @@ public class SimpleQueryResult implements QueryResult {
         }
 
         public QueryResultBuilder appendResult(final String fieldName, final Double value) {
+            if (writeIndex < 0) {
+                writeIndex = 0;
+            }
             Map<Integer, String> indexes = this.indexes.get(writeIndex);
             Map<String, Double> doubleMap = this.doubleMap.get(writeIndex);
 
@@ -476,6 +544,9 @@ public class SimpleQueryResult implements QueryResult {
         }
 
         public QueryResultBuilder appendResult(final String fieldName, final String value) {
+            if (writeIndex < 0) {
+                writeIndex = 0;
+            }
             Map<Integer, String> indexes = this.indexes.get(writeIndex);
             Map<String, String> stringMap = this.stringMap.get(writeIndex);
 
@@ -486,6 +557,9 @@ public class SimpleQueryResult implements QueryResult {
         }
 
         public QueryResultBuilder appendResult(final String fieldName, final Boolean value) {
+            if (writeIndex < 0) {
+                writeIndex = 0;
+            }
             Map<Integer, String> indexes = this.indexes.get(writeIndex);
             Map<String, Boolean> boolMap = this.boolMap.get(writeIndex);
 
@@ -501,6 +575,10 @@ public class SimpleQueryResult implements QueryResult {
          * @return the new query builder
          */
         public QueryResultBuilder nextQuery() {
+            if (indexes.get(Math.max(0, Math.min(writeIndex, indexes.size() - 1))).isEmpty()) {
+                return this;
+            }
+
             writeIndex++;
             indexes.add(new HashMap<>());
             byteMap.add(new LinkedHashMap<>());
@@ -523,6 +601,9 @@ public class SimpleQueryResult implements QueryResult {
          * @return this builder
          */
         public QueryResultBuilder add(final QueryResultBuilder other) {
+            if (writeIndex < 0) {
+                writeIndex = 0;
+            }
             if (!indexes.get(writeIndex).isEmpty()) {
                 throw new UnsupportedOperationException("Cannot add another query result to a used query builder");
             }
@@ -542,6 +623,10 @@ public class SimpleQueryResult implements QueryResult {
         }
 
         private void checkDuplication(final String fieldName, final Object container) throws IllegalStateException {
+            if (writeIndex < 0) {
+                writeIndex = 0;
+            }
+
             Field[] fields = getClass().getDeclaredFields();
             for (Field field : fields) {
                 try {

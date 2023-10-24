@@ -749,7 +749,12 @@ public class JsonConnection implements DatabaseConnection {
      */
     public Set<String> getKeys() {
         JsonObject typesObject = database.getAsJsonObject("types");
-        return typesObject.keySet();
+        Set<String> keys = typesObject.keySet();
+        keys.remove("schemed");
+        keys.remove("modifiers");
+        keys.remove("attributes");
+
+        return keys;
     }
 
     /**

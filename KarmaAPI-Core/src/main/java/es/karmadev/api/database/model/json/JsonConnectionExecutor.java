@@ -1,20 +1,19 @@
 package es.karmadev.api.database.model.json;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
+import com.google.gson.*;
+import es.karmadev.api.database.model.json.query.GlobalTypeValue;
+import es.karmadev.api.database.model.json.query.QueryPart;
+import es.karmadev.api.database.model.json.query.RawQuery;
+import es.karmadev.api.database.model.json.query.SimpleQuery;
 import es.karmadev.api.database.result.QueryResult;
 import es.karmadev.api.database.result.SimpleQueryResult;
 import es.karmadev.api.file.util.PathUtilities;
+import es.karmadev.api.object.ObjectUtils;
 import es.karmadev.api.strings.StringUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -36,8 +35,10 @@ class JsonConnectionExecutor {
         Pattern createQueryPattern = Pattern.compile("^SETUP TABLE '([\\w\\s]+)';$", Pattern.CASE_INSENSITIVE);
 
         Pattern defineSchemaPattern = Pattern.compile("^IN TABLE '([\\w\\s]+)' SCHEMA IS (\\(.*\\));$", Pattern.CASE_INSENSITIVE);
-        Pattern singleDefinePattern = Pattern.compile("^IN TABLE '([\\w\\s]+)' SET KEY '(\\w*)' VALUE TO ('[^']*'|[+-]?\\d*|[+-]?\\d*[,.]\\d*|false|true|NULL);$", Pattern.CASE_INSENSITIVE);
-        Pattern singleDefineWherePattern = Pattern.compile("^IN TABLE '([\\w\\s]+)' SET KEY '(\\w*)' VALUE TO ('[^']*'|[+-]?\\d*|[+-]?\\d*[,.]\\d*|false|true|NULL) WHEREVER '(\\w*)' (=|>|<|>=|<=|<>) ('[^']*'|[+-]?\\d*|[+-]?\\d*[,.]\\d*|false|true|NULL);$", Pattern.CASE_INSENSITIVE);
+        Pattern singleDefinePattern = Pattern.compile("^IN TABLE '([\\w\\s]+)' SET KEY '(\\w*)' VALUE TO ('[^']*'|[+-]?\\d*[,.]?e?\\d*|false|true|NULL);$", Pattern.CASE_INSENSITIVE);
+        Pattern singleDefineWherePattern = Pattern.compile("^IN TABLE '([\\w\\s]+)' SET KEY '(\\w*)' VALUE TO ('[^']*'|[+-]?\\d*[,.]?e?\\d*|false|true|NULL) WHEREVER '(\\w*)' (=|~=|!>|~>|~<|>=|<=|>~|<~|<>|>|<) ('[^']*'|[+-]?\\d*[,.]?e?\\d*|false|true|NULL);$", Pattern.CASE_INSENSITIVE);
+        Pattern singleGetPattern = Pattern.compile("^FROM TABLE '([^']*)' SELECT (\\(.*\\)|\\*);$", Pattern.CASE_INSENSITIVE);
+        Pattern whereGetPattern = Pattern.compile("^FROM TABLE '([^']*)' SELECT (\\(.*\\)|\\*) WHERE (.+);$", Pattern.CASE_INSENSITIVE);
 
         Matcher createMatcher = createQueryPattern.matcher(query);
         if (createMatcher.matches()) {
@@ -47,6 +48,22 @@ class JsonConnectionExecutor {
         Matcher defineSchemaMatcher = defineSchemaPattern.matcher(query);
         if (defineSchemaMatcher.matches()) {
             return executeScheme(defineSchemaMatcher, query);
+        }
+
+        Matcher singleDefineMatcher = singleDefinePattern.matcher(query);
+        if (singleDefineMatcher.matches()) {
+            String table = singleDefineMatcher.group(1);
+            String key = singleDefineMatcher.group(2);
+            String value = singleDefineMatcher.group(3);
+            if (value.startsWith("'") && value.endsWith("'")) {
+                value = value.substring(1, value.length() - 1);
+            } else {
+                if (value.equals("NULL")) {
+                    value = DEFAULT_NULL_VALUE;
+                }
+            }
+
+            return executeSingleDefine(table, key, value);
         }
 
         Matcher singleDefineWhereMatcher = singleDefineWherePattern.matcher(query);
@@ -77,20 +94,55 @@ class JsonConnectionExecutor {
             return executeSingleDefineWhere(table, key, value, field, comparator, requiredValue);
         }
 
-        Matcher singleDefineMatcher = singleDefinePattern.matcher(query);
-        if (singleDefineMatcher.matches()) {
-            String table = singleDefineMatcher.group(1);
-            String key = singleDefineMatcher.group(2);
-            String value = singleDefineMatcher.group(3);
-            if (value.startsWith("'") && value.endsWith("'")) {
-                value = value.substring(1, value.length() - 1);
-            } else {
-                if (value.equals("NULL")) {
-                    value = DEFAULT_NULL_VALUE;
+        Matcher singleGetMatcher = singleGetPattern.matcher(query);
+        if (singleGetMatcher.matches()) {
+            String table = singleGetMatcher.group(1);
+            String select = singleGetMatcher.group(2);
+            if (!select.equalsIgnoreCase("*")) {
+                select = select.substring(1, select.length() - 1);
+                if (ObjectUtils.isNullOrEmpty(select)) {
+                    throw new UnsupportedOperationException("Unknown or invalid json database syntax: " + query);
                 }
             }
 
-            return executeSingleDefine(table, key, value);
+            return executeSingleGet(table, select);
+        }
+
+        Matcher getWhereMatcher = whereGetPattern.matcher(query);
+        if (getWhereMatcher.matches()) {
+            String table = getWhereMatcher.group(1);
+            String keys = getWhereMatcher.group(2);
+            String where = getWhereMatcher.group(3);
+
+            List<String> keyArray = new ArrayList<>();
+            if (!keys.equalsIgnoreCase("*")) {
+                keys = keys.substring(1, keys.length() - 1);
+                if (ObjectUtils.isNullOrEmpty(keys)) {
+                    throw new IllegalStateException("Unknown or invalid json database syntax: " + query);
+                }
+
+                Pattern keyPattern = Pattern.compile("\\s*'(\\w+)'\\s*");
+                if (keys.contains(",")) {
+                    String[] data = keys.split(",");
+                    for (String key : data) {
+                        Matcher matcher = keyPattern.matcher(key);
+                        if (matcher.matches()) {
+                            keyArray.add(matcher.group(1));
+                        } else {
+                            throw new IllegalStateException("Unknown or invalid json database syntax at: " + query);
+                        }
+                    }
+                } else {
+                    Matcher matcher = keyPattern.matcher(keys);
+                    if (matcher.matches()) {
+                        keyArray.add(matcher.group(1));
+                    } else {
+                        throw new IllegalStateException("Unknown or invalid json database syntax at: " + query);
+                    }
+                }
+            }
+
+            return executeGetWhere(table, keyArray, where, query);
         }
 
         throw new UnsupportedOperationException("Unknown or invalid json database syntax: " + query);
@@ -404,16 +456,41 @@ class JsonConnectionExecutor {
 
                     switch (comparator) {
                         case ">=":
+                            updateRecord = existingValue.equalsIgnoreCase(DEFAULT_NULL_VALUE) || existingValue.startsWith(stringValue);
+                            break;
+                        case ">~":
+                            updateRecord = existingValue.equalsIgnoreCase(DEFAULT_NULL_VALUE) || existingValue.toLowerCase().startsWith(stringValue.toLowerCase());
+                            break;
                         case ">":
+                            updateRecord = existingValue.equalsIgnoreCase(DEFAULT_NULL_VALUE) || existingValue.contains(stringValue);
+                            break;
+                        case "~>":
+                            updateRecord = existingValue.equalsIgnoreCase(DEFAULT_NULL_VALUE) || existingValue.toLowerCase().contains(stringValue.toLowerCase());
+                            break;
                         case "<=":
+                            updateRecord = existingValue.equalsIgnoreCase(DEFAULT_NULL_VALUE) || existingValue.endsWith(stringValue);
+                            break;
+                        case "<~":
+                            updateRecord = existingValue.equalsIgnoreCase(DEFAULT_NULL_VALUE) || existingValue.toLowerCase().endsWith(stringValue.toLowerCase());
+                            break;
                         case "<":
-                            throw new UnsupportedOperationException("Unsupported string operator: " + comparator);
+                            updateRecord = existingValue.equalsIgnoreCase(DEFAULT_NULL_VALUE) || !existingValue.contains(stringValue);
+                            break;
+                        case "~<":
+                            updateRecord = existingValue.equalsIgnoreCase(DEFAULT_NULL_VALUE) || !existingValue.toLowerCase().contains(stringValue.toLowerCase());
+                            break;
                         case "<>":
+                            updateRecord = existingValue.equalsIgnoreCase(DEFAULT_NULL_VALUE) || !existingValue.equals(stringValue);
+                            break;
+                        case "!>":
                             updateRecord = existingValue.equalsIgnoreCase(DEFAULT_NULL_VALUE) || !existingValue.equalsIgnoreCase(stringValue);
+                            break;
+                        case "~=":
+                            updateRecord = existingValue.equalsIgnoreCase(stringValue);
                             break;
                         case "=":
                         default:
-                            updateRecord = existingValue.equalsIgnoreCase(stringValue);
+                            updateRecord = existingValue.equals(stringValue);
                             break;
                     }
                     break;
@@ -759,6 +836,307 @@ class JsonConnectionExecutor {
         return builder.build();
     }
 
+    private QueryResult executeSingleGet(final String table, final String search) {
+        if (!connection.hasTable(table)) {
+            throw new UnsupportedOperationException("Unknown table: " + table);
+        }
+
+        JsonConnection jsonTable = connection.createTable(table);
+        JsonObject typesJson = jsonTable.database.get("types").getAsJsonObject();
+
+        if (!typesJson.has("schemed") || !typesJson.get("schemed").getAsBoolean()) {
+            throw new UnsupportedOperationException("Cannot execute json query on non-schemed table");
+        }
+
+        if (search.equalsIgnoreCase("*")) {
+            return createAllResult(jsonTable.file, table, jsonTable);
+        }
+
+        Pattern keysPattern = Pattern.compile("^\\s*'([^']*)'\\s*$", Pattern.CASE_INSENSITIVE);
+        List<String> keys = new ArrayList<>();
+        if (search.contains(",")) {
+            String[] data = search.split(",");
+            for (String str : data) {
+                Matcher matcher = keysPattern.matcher(str);
+                if (matcher.matches()) {
+                    String key = matcher.group(1);
+                    keys.add(key);
+                } else {
+                    throw new IllegalStateException("Unknown or invalid json query syntax at: " + str);
+                }
+            }
+        } else {
+            Matcher matcher = keysPattern.matcher(search);
+            if (matcher.matches()) {
+                String key = matcher.group(1);
+                keys.add(key);
+            } else {
+                throw new IllegalStateException("Unknown or invalid json query syntax at: " + search);
+            }
+        }
+
+        if (keys.isEmpty()) {
+            return createAllResult(jsonTable.file, table, jsonTable);
+        }
+
+        SimpleQueryResult.QueryResultBuilder builder = SimpleQueryResult.builder().database(PathUtilities.getName(jsonTable.file))
+                .table(table);
+
+        JsonArray records = new JsonArray();
+        if (jsonTable.database.has("records")) {
+            records = jsonTable.database.get("records").getAsJsonArray();
+        }
+
+        for (JsonElement element : records) {
+            JsonObject record = element.getAsJsonObject();
+            builder.nextQuery();
+
+            for (String key : keys) {
+                String keyType = jsonTable.getType(key);
+                if (keyType.equalsIgnoreCase("table")) continue;
+
+                JsonElement recordElement = record.get(key);
+                if (recordElement == null) {
+                    recordElement = JsonNull.INSTANCE;
+                }
+
+                switch (keyType) {
+                    case "string":
+                        if (recordElement.isJsonNull()) {
+                            builder.appendResult(key, (String) null);
+                        } else {
+                            builder.appendResult(key, recordElement.getAsString());
+                        }
+                        break;
+                    case "boolean":
+                        if (recordElement.isJsonNull()) {
+                            builder.appendResult(key, (Boolean) null);
+                        } else {
+                            builder.appendResult(key, recordElement.getAsBoolean());
+                        }
+                        break;
+                    case "byte":
+                        if (recordElement.isJsonNull()) {
+                            builder.appendResult(key, (Byte) null);
+                        } else {
+                            builder.appendResult(key, recordElement.getAsByte());
+                        }
+                        break;
+                    case "short":
+                        if (recordElement.isJsonNull()) {
+                            builder.appendResult(key, (Short) null);
+                        } else {
+                            builder.appendResult(key, recordElement.getAsShort());
+                        }
+                        break;
+                    case "integer":
+                        if (recordElement.isJsonNull()) {
+                            builder.appendResult(key, (Integer) null);
+                        } else {
+                            builder.appendResult(key, recordElement.getAsInt());
+                        }
+                        break;
+                    case "long":
+                        if (recordElement.isJsonNull()) {
+                            builder.appendResult(key, (Long) null);
+                        } else {
+                            builder.appendResult(key, recordElement.getAsLong());
+                        }
+                        break;
+                    case "float":
+                        if (recordElement.isJsonNull()) {
+                            builder.appendResult(key, (Float) null);
+                        } else {
+                            builder.appendResult(key, recordElement.getAsFloat());
+                        }
+                        break;
+                    case "double":
+                        if (recordElement.isJsonNull()) {
+                            builder.appendResult(key, (Double) null);
+                        } else {
+                            builder.appendResult(key, recordElement.getAsDouble());
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+
+        return builder.build();
+    }
+
+    private QueryResult executeGetWhere(final String table, final List<String> keys, final String search, final String query) {
+        if (!connection.hasTable(table)) {
+            throw new UnsupportedOperationException("Unknown table: " + table);
+        }
+
+        JsonConnection jsonTable = connection.createTable(table);
+        JsonObject typesJson = jsonTable.database.get("types").getAsJsonObject();
+
+        if (!typesJson.get("schemed").getAsBoolean()) {
+            throw new UnsupportedOperationException("Cannot execute json query on non-schemed table");
+        }
+
+        Pattern whereAndOrPattern = Pattern.compile("(AND|OR)?\\s*'([^']*)'\\s*(=|~=|!>|~>|~<|>=|<=|>~|<~|<>|>|<)\\s*('[^']*'|null|true|false|[+-]?\\d*[,.]?e?\\d*)", Pattern.CASE_INSENSITIVE);
+        Matcher multiWhere = whereAndOrPattern.matcher(search);
+        boolean first = true;
+
+        List<QueryPart> parts = new ArrayList<>();
+        while (multiWhere.find()) {
+            int start = multiWhere.start();
+            int end = multiWhere.end();
+
+            String sub = search.substring(start, end);
+            while (sub.startsWith(" ")) {
+                sub = sub.substring(1);
+            }
+
+            if (!sub.toLowerCase().startsWith("and") && !sub.toLowerCase().startsWith("or")) {
+                if (first) {
+                    first = false;
+
+                    parts.add(new RawQuery(sub, false, false, true));
+                    continue;
+                }
+
+                throw new IllegalStateException("Unexpected json database syntax at: " + query + ". Expected AND or OR");
+            }
+
+            if (sub.toLowerCase().startsWith("and")) {
+                parts.add(new RawQuery(sub, true, false, false));
+                continue;
+            }
+
+            parts.add(new RawQuery(sub, false, true, false));
+        }
+        SimpleQuery sq = new SimpleQuery(parts);
+
+        SimpleQueryResult.QueryResultBuilder builder = SimpleQueryResult.builder().database(PathUtilities.getName(connection.file))
+                .table(table);
+
+
+        JsonArray records = new JsonArray();
+        if (jsonTable.database.has("records")) {
+            records = jsonTable.database.getAsJsonArray("records");
+        }
+
+        for (JsonElement recordElement : records) {
+            Map<String, GlobalTypeValue<?>> valueMap = new HashMap<>();
+
+            for (String field : keys) {
+                JsonObject record = recordElement.getAsJsonObject();
+                String fieldType = jsonTable.getType(field);
+
+                if (fieldType.equalsIgnoreCase("null")) {
+                    throw new IllegalStateException("Unknown field " + field + " in table " + table);
+                }
+
+                JsonElement elementValue = record.get(field);
+                switch (fieldType) {
+                    case "string":
+                        if (elementValue == null || elementValue.isJsonNull()) {
+                            valueMap.put(field, GlobalTypeValue.of(null, String.class));
+                            continue;
+                        }
+
+                        valueMap.put(field, GlobalTypeValue.of(elementValue.getAsString(), String.class));
+                        break;
+                    case "boolean":
+                        if (elementValue == null || elementValue.isJsonNull()) {
+                            valueMap.put(field, GlobalTypeValue.of(null, Boolean.class));
+                            continue;
+                        }
+
+                        valueMap.put(field, GlobalTypeValue.of(elementValue.getAsBoolean(), Boolean.class));
+                        break;
+                    case "byte":
+                        if (elementValue == null || elementValue.isJsonNull()) {
+                            valueMap.put(field, GlobalTypeValue.of(null, Byte.class));
+                            continue;
+                        }
+
+                        valueMap.put(field, GlobalTypeValue.of(elementValue.getAsByte(), Byte.class));
+                        break;
+                    case "short":
+                        if (elementValue == null || elementValue.isJsonNull()) {
+                            valueMap.put(field, GlobalTypeValue.of(null, Short.class));
+                            continue;
+                        }
+
+                        valueMap.put(field, GlobalTypeValue.of(elementValue.getAsShort(), Short.class));
+                        break;
+                    case "integer":
+                        if (elementValue == null || elementValue.isJsonNull()) {
+                            valueMap.put(field, GlobalTypeValue.of(null, Integer.class));
+                            continue;
+                        }
+
+                        valueMap.put(field, GlobalTypeValue.of(elementValue.getAsInt(), Integer.class));
+                        break;
+                    case "long":
+                        if (elementValue == null || elementValue.isJsonNull()) {
+                            valueMap.put(field, GlobalTypeValue.of(null, Long.class));
+                            continue;
+                        }
+
+                        valueMap.put(field, GlobalTypeValue.of(elementValue.getAsLong(), Long.class));
+                        break;
+                    case "float":
+                        if (elementValue == null || elementValue.isJsonNull()) {
+                            valueMap.put(field, GlobalTypeValue.of(null, Float.class));
+                            continue;
+                        }
+
+                        valueMap.put(field, GlobalTypeValue.of(elementValue.getAsFloat(), Float.class));
+                        break;
+                    case "double":
+                        if (elementValue == null || elementValue.isJsonNull()) {
+                            valueMap.put(field, GlobalTypeValue.of(null, Double.class));
+                            continue;
+                        }
+
+                        valueMap.put(field, GlobalTypeValue.of(elementValue.getAsDouble(), Double.class));
+                        break;
+                }
+            }
+
+            if (sq.test(valueMap)) {
+                builder.nextQuery();
+
+                for (String field : valueMap.keySet()) {
+                    GlobalTypeValue<?> rs = valueMap.get(field);
+                    if (rs.getType().equals(String.class)) {
+                        builder.appendResult(field, (String) rs.getValue());
+                    } else if (rs.getType().equals(Boolean.class)) {
+                        builder.appendResult(field, (Boolean) rs.getValue());
+                    } else if (rs.getType().equals(Byte.class)) {
+                        builder.appendResult(field, (Byte) rs.getValue());
+                    } else if (rs.getType().equals(Short.class)) {
+                        builder.appendResult(field, (Short) rs.getValue());
+                    } else if (rs.getType().equals(Integer.class)) {
+                        builder.appendResult(field, (Integer) rs.getValue());
+                    } else if (rs.getType().equals(Long.class)) {
+                        builder.appendResult(field, (Long) rs.getValue());
+                    } else if (rs.getType().equals(Float.class)) {
+                        builder.appendResult(field, (Float) rs.getValue());
+                    } else {
+                        builder.appendResult(field, (Boolean) rs.getValue());
+                    }
+                }
+            }
+        }
+
+        return builder.build();
+
+        /*Map<String, GlobalTypeValue<?>> valueMap = new HashMap<>();
+        valueMap.put("id", GlobalTypeValue.of(0, Integer.class));
+        valueMap.put("enabled", GlobalTypeValue.of(true, Boolean.class));
+        valueMap.put("name", GlobalTypeValue.of("Karma", String.class));
+
+        SimpleQuery query = new SimpleQuery(parts);*/
+    }
+
     private void updateValue(final JsonConnection jsonTable, final String key, final String table, final String rawValue, final JsonObject record, final SimpleQueryResult.QueryResultBuilder builder) {
         switch (jsonTable.getType(key)) {
             case "string":
@@ -886,7 +1264,7 @@ class JsonConnectionExecutor {
     }
 
     @NotNull
-    private static Map<String, BiValue<String[]>> getTypesFromString(final String schema, final Pattern keyTypePattern) {
+    private Map<String, BiValue<String[]>> getTypesFromString(final String schema, final Pattern keyTypePattern) {
         Map<String, BiValue<String[]>> types = new HashMap<>();
         if (schema.contains(",")) {
             String[] data = schema.split(",");
@@ -940,41 +1318,88 @@ class JsonConnectionExecutor {
         return types;
     }
 
-    private static QueryResult createAllResult(final Path file, final String table, final JsonConnection jsonTable) {
+    private QueryResult createAllResult(final Path file, final String table, final JsonConnection jsonTable) {
         SimpleQueryResult.QueryResultBuilder builder = SimpleQueryResult.builder().database(PathUtilities.getName(file))
                 .table(table);
 
-        for (String key : jsonTable.getKeys()) {
-            String type = jsonTable.getType(key);
-            if (type.equalsIgnoreCase("table")) continue;
-            switch (type) {
-                case "string":
-                    builder.appendResult(key, jsonTable.getString(key));
-                    break;
-                case "boolean":
-                    builder.appendResult(key, jsonTable.getBoolean(key));
-                    break;
-                case "byte":
-                    builder.appendResult(key, (Byte) jsonTable.getNumber(key));
-                    break;
-                case "short":
-                    builder.appendResult(key, (Short) jsonTable.getNumber(key));
-                    break;
-                case "integer":
-                    builder.appendResult(key, (Integer) jsonTable.getNumber(key));
-                    break;
-                case "long":
-                    builder.appendResult(key, (Long) jsonTable.getNumber(key));
-                    break;
-                case "float":
-                    builder.appendResult(key, (Float) jsonTable.getNumber(key));
-                    break;
-                case "double":
-                    builder.appendResult(key, (Double) jsonTable.getNumber(key));
-                    break;
-                default:
-                    break;
+        JsonArray records = new JsonArray();
+        if (jsonTable.database.has("records")) {
+            records = jsonTable.database.get("records").getAsJsonArray();
+        }
 
+        for (JsonElement element : records) {
+            builder.nextQuery();
+            JsonObject record = element.getAsJsonObject();
+
+            for (String key : jsonTable.getKeys()) {
+                String type = jsonTable.getType(key);
+                if (type.equalsIgnoreCase("table") || key.equals("schemed")  || !jsonTable.database.get("types").getAsJsonObject().get(key).isJsonPrimitive()) continue;
+
+                JsonElement recordElement = record.get(key);
+                if (recordElement == null) {
+                    recordElement = JsonNull.INSTANCE;
+                }
+
+                switch (type) {
+                    case "string":
+                        if (recordElement.isJsonNull()) {
+                            builder.appendResult(key, (String) null);
+                        } else {
+                            builder.appendResult(key, recordElement.getAsString());
+                        }
+                        break;
+                    case "boolean":
+                        if (recordElement.isJsonNull()) {
+                            builder.appendResult(key, (Boolean) null);
+                        } else {
+                            builder.appendResult(key, recordElement.getAsBoolean());
+                        }
+                        break;
+                    case "byte":
+                        if (recordElement.isJsonNull()) {
+                            builder.appendResult(key, (Byte) null);
+                        } else {
+                            builder.appendResult(key, recordElement.getAsByte());
+                        }
+                        break;
+                    case "short":
+                        if (recordElement.isJsonNull()) {
+                            builder.appendResult(key, (Short) null);
+                        } else {
+                            builder.appendResult(key, recordElement.getAsShort());
+                        }
+                        break;
+                    case "integer":
+                        if (recordElement.isJsonNull()) {
+                            builder.appendResult(key, (Integer) null);
+                        } else {
+                            builder.appendResult(key, recordElement.getAsInt());
+                        }
+                        break;
+                    case "long":
+                        if (recordElement.isJsonNull()) {
+                            builder.appendResult(key, (Long) null);
+                        } else {
+                            builder.appendResult(key, recordElement.getAsLong());
+                        }
+                        break;
+                    case "float":
+                        if (recordElement.isJsonNull()) {
+                            builder.appendResult(key, (Float) null);
+                        } else {
+                            builder.appendResult(key, recordElement.getAsFloat());
+                        }
+                        break;
+                    case "double":
+                        if (recordElement.isJsonNull()) {
+                            builder.appendResult(key, (Double) null);
+                        } else {
+                            builder.appendResult(key, recordElement.getAsDouble());
+                        }
+                        break;
+                    default:
+                        break;
+                }
             }
         }
 

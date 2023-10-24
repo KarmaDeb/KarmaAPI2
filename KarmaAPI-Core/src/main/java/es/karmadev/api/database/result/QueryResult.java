@@ -1,5 +1,7 @@
 package es.karmadev.api.database.result;
 
+import java.util.NoSuchElementException;
+
 /**
  * KarmaAPI database connection query result
  */
@@ -57,9 +59,9 @@ public interface QueryResult {
      * @param field the field to get the byte
      *              from
      * @return the byte value
-     * @throws NoSuchFieldException if the specified type does not contain the data
+     * @throws NoSuchElementException if the specified type does not contain the data
      */
-    byte getByte(final String field) throws NoSuchFieldException;
+    byte getByte(final String field) throws NoSuchElementException;
 
     /**
      * Get a byte value
@@ -68,9 +70,9 @@ public interface QueryResult {
      *              byte from
      * @return the byte value
      * @throws IndexOutOfBoundsException if the index is out of bounds
-     * @throws NoSuchFieldException if the specified type does not contain the data
+     * @throws NoSuchElementException if the specified type does not contain the data
      */
-    byte getByte(final int index) throws IndexOutOfBoundsException, NoSuchFieldException;
+    byte getByte(final int index) throws IndexOutOfBoundsException, NoSuchElementException;
 
     /**
      * Get a short value
@@ -78,9 +80,9 @@ public interface QueryResult {
      * @param field the field to get the short
      *              from
      * @return the short value
-     * @throws NoSuchFieldException if the specified type does not contain the data
+     * @throws NoSuchElementException if the specified type does not contain the data
      */
-    short getShort(final String field) throws NoSuchFieldException;
+    short getShort(final String field) throws NoSuchElementException;
 
     /**
      * Get a short value
@@ -89,9 +91,9 @@ public interface QueryResult {
      *              short from
      * @return the short value
      * @throws IndexOutOfBoundsException if the index is out of bounds
-     * @throws NoSuchFieldException if the specified type does not contain the data
+     * @throws NoSuchElementException if the specified type does not contain the data
      */
-    short getShort(final int index) throws IndexOutOfBoundsException, NoSuchFieldException;
+    short getShort(final int index) throws IndexOutOfBoundsException, NoSuchElementException;
 
     /**
      * Get an integer value
@@ -99,9 +101,9 @@ public interface QueryResult {
      * @param field the field to get the integer
      *              from
      * @return the integer value
-     * @throws NoSuchFieldException if the specified type does not contain the data
+     * @throws NoSuchElementException if the specified type does not contain the data
      */
-    int getInteger(final String field) throws NoSuchFieldException;
+    int getInteger(final String field) throws NoSuchElementException;
 
     /**
      * Get an integer value
@@ -110,9 +112,9 @@ public interface QueryResult {
      *              from
      * @return the integer value
      * @throws IndexOutOfBoundsException if the index is out of bounds
-     * @throws NoSuchFieldException if the specified type does not contain the data
+     * @throws NoSuchElementException if the specified type does not contain the data
      */
-    int getInteger(final int index) throws IndexOutOfBoundsException, NoSuchFieldException;
+    int getInteger(final int index) throws IndexOutOfBoundsException, NoSuchElementException;
 
     /**
      * Get a long value
@@ -120,9 +122,9 @@ public interface QueryResult {
      * @param field the field to get the long
      *              from
      * @return the long value
-     * @throws NoSuchFieldException if the specified type does not contain the data
+     * @throws NoSuchElementException if the specified type does not contain the data
      */
-    long getLong(final String field) throws NoSuchFieldException;
+    long getLong(final String field) throws NoSuchElementException;
 
     /**
      * Get a long value
@@ -131,9 +133,9 @@ public interface QueryResult {
      *              long from
      * @return the long value
      * @throws IndexOutOfBoundsException if the index is out of bounds
-     * @throws NoSuchFieldException if the specified type does not contain the data
+     * @throws NoSuchElementException if the specified type does not contain the data
      */
-    long getLong(final int index) throws IndexOutOfBoundsException, NoSuchFieldException;
+    long getLong(final int index) throws IndexOutOfBoundsException, NoSuchElementException;
 
     /**
      * Get a double value
@@ -141,9 +143,9 @@ public interface QueryResult {
      * @param field the field to get the double
      *              from
      * @return the double value
-     * @throws NoSuchFieldException if the specified type does not contain the data
+     * @throws NoSuchElementException if the specified type does not contain the data
      */
-    double getDouble(final String field) throws NoSuchFieldException;
+    double getDouble(final String field) throws NoSuchElementException;
 
     /**
      * Get a double value
@@ -152,9 +154,9 @@ public interface QueryResult {
      *              double from
      * @return the double value
      * @throws IndexOutOfBoundsException if the index is out of bounds
-     * @throws NoSuchFieldException if the specified type does not contain the data
+     * @throws NoSuchElementException if the specified type does not contain the data
      */
-    double getDouble(final int index) throws IndexOutOfBoundsException, NoSuchFieldException;
+    double getDouble(final int index) throws IndexOutOfBoundsException, NoSuchElementException;
 
     /**
      * Get a float value
@@ -162,9 +164,9 @@ public interface QueryResult {
      * @param field the field name to get the
      *              float from
      * @return the float value
-     * @throws NoSuchFieldException if the specified type does not contain the data
+     * @throws NoSuchElementException if the specified type does not contain the data
      */
-    float getFloat(final String field) throws NoSuchFieldException;
+    float getFloat(final String field) throws NoSuchElementException;
 
     /**
      * Get a float value
@@ -173,9 +175,9 @@ public interface QueryResult {
      *              float from
      * @return the float value
      * @throws IndexOutOfBoundsException if the index is out of bounds
-     * @throws NoSuchFieldException if the specified type does not contain the data
+     * @throws NoSuchElementException if the specified type does not contain the data
      */
-    float getFloat(final int index) throws IndexOutOfBoundsException, NoSuchFieldException;
+    float getFloat(final int index) throws IndexOutOfBoundsException, NoSuchElementException;
 
     /**
      * Get a string value
@@ -183,9 +185,9 @@ public interface QueryResult {
      * @param field the field to get the string
      *              from
      * @return the string value
-     * @throws NoSuchFieldException if the specified type does not contain the data
+     * @throws NoSuchElementException if the specified type does not contain the data
      */
-    String getString(final String field) throws NoSuchFieldException;
+    String getString(final String field) throws NoSuchElementException;
 
     /**
      * Get a string value
@@ -194,9 +196,9 @@ public interface QueryResult {
      *              string from
      * @return the string value
      * @throws IndexOutOfBoundsException if the index is out of bounds
-     * @throws NoSuchFieldException if the specified type does not contain the data
+     * @throws NoSuchElementException if the specified type does not contain the data
      */
-    String getString(final int index) throws IndexOutOfBoundsException, NoSuchFieldException;
+    String getString(final int index) throws IndexOutOfBoundsException, NoSuchElementException;
 
     /**
      * Get a boolean value
@@ -204,9 +206,9 @@ public interface QueryResult {
      * @param field the field to get the boolean
      *              from
      * @return the boolean value
-     * @throws NoSuchFieldException if the specified type does not contain the data
+     * @throws NoSuchElementException if the specified type does not contain the data
      */
-    boolean getBoolean(final String field) throws NoSuchFieldException;
+    boolean getBoolean(final String field) throws NoSuchElementException;
 
     /**
      * Get a boolean value
@@ -215,7 +217,7 @@ public interface QueryResult {
      *              boolean from
      * @return the boolean value
      * @throws IndexOutOfBoundsException if the index is out of bounds
-     * @throws NoSuchFieldException if the specified type does not contain the data
+     * @throws NoSuchElementException if the specified type does not contain the data
      */
-    boolean getBoolean(final int index) throws IndexOutOfBoundsException, NoSuchFieldException;
+    boolean getBoolean(final int index) throws IndexOutOfBoundsException, NoSuchElementException;
 }
