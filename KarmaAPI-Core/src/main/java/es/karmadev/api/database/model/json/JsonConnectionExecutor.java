@@ -14,6 +14,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -22,6 +23,18 @@ import java.util.regex.Pattern;
  * Json connection query executor
  */
 class JsonConnectionExecutor {
+
+
+    private final static Pattern createQueryPattern = Pattern.compile("^SETUP TABLE '(?<table>[\\w\\s]+)';$", Pattern.CASE_INSENSITIVE);
+    private final static Pattern defineSchemaPattern = Pattern.compile("^IN TABLE '(?<table>[\\w\\s]+)' SCHEMA IS (?<schema>\\(.*\\));$", Pattern.CASE_INSENSITIVE);
+    private final static Pattern singleDefinePattern = Pattern.compile("^IN TABLE '(?<table>[\\w\\s]+)' SET KEY '(?<key>\\w*)' VALUE TO (?<value>'[^']*'|[+-]?\\d*[,.]?e?\\d*|false|true|NULL);$", Pattern.CASE_INSENSITIVE);
+    private final static Pattern multiDefinePattern = Pattern.compile("^IN TABLE '(?<table>[\\w\\s]+)' SET KEYS \\('(?<keys>.*)'\\) VALUE TO \\((?<values>.*)\\);$", Pattern.CASE_INSENSITIVE);
+    private final static Pattern singleDefineWherePattern = Pattern.compile("^IN TABLE '(?<table>[\\w\\s]+)' SET KEY '(?<key>\\w*)' VALUE TO (?<value>'[^']*'|[+-]?\\d*[,.]?e?\\d*|false|true|NULL) WHEREVER '(?<whereKey>\\w*)' (?<operator>=|~=|!>|~>|~<|>=|<=|>~|<~|<>|>|<) (?<whereValue>'[^']*'|[+-]?\\d*[,.]?e?\\d*|false|true|NULL);$", Pattern.CASE_INSENSITIVE);
+    private final static Pattern singleGetPattern = Pattern.compile("^FROM TABLE '(?<table>[^']*)' SELECT (?<key>\\(.*\\)|\\*);$", Pattern.CASE_INSENSITIVE);
+    private final static Pattern whereGetPattern = Pattern.compile("^FROM TABLE '(?<table>[^']*)' SELECT (?<keys>\\(.*\\)|\\*) WHERE (?<where>.+);$", Pattern.CASE_INSENSITIVE);
+    private final static Pattern keyPattern = Pattern.compile("\\s*'(?<key>\\w+)'\\s*", Pattern.CASE_INSENSITIVE);
+    private final static Pattern keyTypePattern = Pattern.compile("\\s*'(?<key>\\w+)'\\s*(?<type>string|boolean|byte|short|integer|int|long|float|double)\\s*(?<modifier1>NN|AI|UK)?\\s*(?<modifier2>NN|AI|UK)?\\s*(?<modifier3>NN|AI|UK)?", Pattern.CASE_INSENSITIVE);
+    private final static Pattern whereAndOrPattern = Pattern.compile("(?<optionalANDiOR>AND|OR)?\\s*'(?<key>[^']*)'\\s*(?<operator>=|~=|!>|~>|~<|>=|<=|>~|<~|<>|>|<)\\s*(?<value>'[^']*'|null|true|false|[+-]?\\d*[,.]?e?\\d*)", Pattern.CASE_INSENSITIVE);
 
     private final static String DEFAULT_NULL_VALUE = StringUtils.generateString();
 
@@ -32,17 +45,9 @@ class JsonConnectionExecutor {
     }
 
     public QueryResult execute(final String query) {
-        Pattern createQueryPattern = Pattern.compile("^SETUP TABLE '([\\w\\s]+)';$", Pattern.CASE_INSENSITIVE);
-
-        Pattern defineSchemaPattern = Pattern.compile("^IN TABLE '([\\w\\s]+)' SCHEMA IS (\\(.*\\));$", Pattern.CASE_INSENSITIVE);
-        Pattern singleDefinePattern = Pattern.compile("^IN TABLE '([\\w\\s]+)' SET KEY '(\\w*)' VALUE TO ('[^']*'|[+-]?\\d*[,.]?e?\\d*|false|true|NULL);$", Pattern.CASE_INSENSITIVE);
-        Pattern singleDefineWherePattern = Pattern.compile("^IN TABLE '([\\w\\s]+)' SET KEY '(\\w*)' VALUE TO ('[^']*'|[+-]?\\d*[,.]?e?\\d*|false|true|NULL) WHEREVER '(\\w*)' (=|~=|!>|~>|~<|>=|<=|>~|<~|<>|>|<) ('[^']*'|[+-]?\\d*[,.]?e?\\d*|false|true|NULL);$", Pattern.CASE_INSENSITIVE);
-        Pattern singleGetPattern = Pattern.compile("^FROM TABLE '([^']*)' SELECT (\\(.*\\)|\\*);$", Pattern.CASE_INSENSITIVE);
-        Pattern whereGetPattern = Pattern.compile("^FROM TABLE '([^']*)' SELECT (\\(.*\\)|\\*) WHERE (.+);$", Pattern.CASE_INSENSITIVE);
-
         Matcher createMatcher = createQueryPattern.matcher(query);
         if (createMatcher.matches()) {
-            return executeCreate(createMatcher.group(1));
+            return executeCreate(createMatcher.group("table"));
         }
 
         Matcher defineSchemaMatcher = defineSchemaPattern.matcher(query);
@@ -52,9 +57,9 @@ class JsonConnectionExecutor {
 
         Matcher singleDefineMatcher = singleDefinePattern.matcher(query);
         if (singleDefineMatcher.matches()) {
-            String table = singleDefineMatcher.group(1);
-            String key = singleDefineMatcher.group(2);
-            String value = singleDefineMatcher.group(3);
+            String table = singleDefineMatcher.group("table");
+            String key = singleDefineMatcher.group("key");
+            String value = singleDefineMatcher.group("value");
             if (value.startsWith("'") && value.endsWith("'")) {
                 value = value.substring(1, value.length() - 1);
             } else {
@@ -63,17 +68,81 @@ class JsonConnectionExecutor {
                 }
             }
 
-            return executeSingleDefine(table, key, value);
+            Map<String, String> singleMap = new ConcurrentHashMap<>();
+            singleMap.put(key, value);
+            return executeDefine(table, singleMap);
+        }
+
+        Matcher multiDefinematcher = multiDefinePattern.matcher(query);
+        if (multiDefinematcher.matches()) {
+            String table = multiDefinematcher.group("table");
+            String rawKeys = multiDefinematcher.group("keys");
+            String rawValues = multiDefinematcher.group("values");
+
+            Map<String, String> multiMap = new ConcurrentHashMap<>();
+            if (rawKeys.contains(",")) {
+                if (!rawValues.contains(",")) {
+                    throw new IllegalStateException("Unknown or invalid json database syntax: " + query);
+                }
+
+                String[] keyData = rawKeys.split(",");
+                String[] valueData = rawValues.split(",");
+                if (keyData.length == 0 || valueData.length == 0) {
+                    throw new IllegalStateException("Unknown or invalid json database syntax: " + query);
+                }
+                if (keyData.length != valueData.length) {
+                    throw new IllegalStateException("Unknown or invalid json database syntax: " + query);
+                }
+
+                for (int i = 0; i < keyData.length; i++) {
+                    String key = keyData[i];
+                    String value = valueData[i];
+
+                    if (key.startsWith("'")) {
+                        key = key.substring(1);
+                    }
+                    if (key.endsWith("'")) {
+                        key = key.substring(0, key.length() - 1);
+                    }
+
+                    while (key.startsWith(" ")) {
+                        key = key.substring(1);
+                    }
+                    while (key.endsWith(" ")) {
+                        key = key.substring(0, key.length() - 1);
+                    }
+                    while (value.startsWith(" ")) {
+                        value = value.substring(1);
+                    }
+                    while (value.endsWith(" ")) {
+                        value = value.substring(0, value.length() - 1);
+                    }
+
+                    if (value.startsWith("'") && value.endsWith("'")) {
+                        value = value.substring(1, value.length() - 1);
+                    } else {
+                        if (value.equals("NULL")) {
+                            value = DEFAULT_NULL_VALUE;
+                        }
+                    }
+
+                    multiMap.put(key, value);
+                }
+            } else {
+                multiMap.put(rawKeys, rawValues);
+            }
+
+            return executeDefine(table, multiMap);
         }
 
         Matcher singleDefineWhereMatcher = singleDefineWherePattern.matcher(query);
         if (singleDefineWhereMatcher.matches()) {
-            String table = singleDefineWhereMatcher.group(1);
-            String key = singleDefineWhereMatcher.group(2);
-            String value = singleDefineWhereMatcher.group(3);
-            String field = singleDefineWhereMatcher.group(4);
-            String comparator = singleDefineWhereMatcher.group(5);
-            String requiredValue = singleDefineWhereMatcher.group(6);
+            String table = singleDefineWhereMatcher.group("table");
+            String key = singleDefineWhereMatcher.group("key");
+            String value = singleDefineWhereMatcher.group("value");
+            String field = singleDefineWhereMatcher.group("whereKey");
+            String comparator = singleDefineWhereMatcher.group("operator");
+            String requiredValue = singleDefineWhereMatcher.group("whereValue");
 
             if (value.startsWith("'") && value.endsWith("'")) {
                 value = value.substring(1, value.length() - 1);
@@ -96,8 +165,8 @@ class JsonConnectionExecutor {
 
         Matcher singleGetMatcher = singleGetPattern.matcher(query);
         if (singleGetMatcher.matches()) {
-            String table = singleGetMatcher.group(1);
-            String select = singleGetMatcher.group(2);
+            String table = singleGetMatcher.group("table");
+            String select = singleGetMatcher.group("key");
             if (!select.equalsIgnoreCase("*")) {
                 select = select.substring(1, select.length() - 1);
                 if (ObjectUtils.isNullOrEmpty(select)) {
@@ -110,9 +179,9 @@ class JsonConnectionExecutor {
 
         Matcher getWhereMatcher = whereGetPattern.matcher(query);
         if (getWhereMatcher.matches()) {
-            String table = getWhereMatcher.group(1);
-            String keys = getWhereMatcher.group(2);
-            String where = getWhereMatcher.group(3);
+            String table = getWhereMatcher.group("table");
+            String keys = getWhereMatcher.group("keys");
+            String where = getWhereMatcher.group("where");
 
             List<String> keyArray = new ArrayList<>();
             if (!keys.equalsIgnoreCase("*")) {
@@ -121,7 +190,7 @@ class JsonConnectionExecutor {
                     throw new IllegalStateException("Unknown or invalid json database syntax: " + query);
                 }
 
-                Pattern keyPattern = Pattern.compile("\\s*'(\\w+)'\\s*");
+
                 if (keys.contains(",")) {
                     String[] data = keys.split(",");
                     for (String key : data) {
@@ -182,8 +251,7 @@ class JsonConnectionExecutor {
         }
 
         schema = schema.substring(1, schema.length() - 1);
-        Pattern keyTypePattern = Pattern.compile("\\s*'(\\w+)'\\s*(string|boolean|byte|short|integer|int|long|float|double)\\s*(NN|AI)?\\s*(NN|AI)?", Pattern.CASE_INSENSITIVE);
-        Map<String, BiValue<String[]>> types = getTypesFromString(schema, keyTypePattern);
+        Map<String, BiValue<String[]>> types = getTypesFromString(schema);
 
         if (connection.hasTable(table)) {
             JsonConnection jsonTable = connection.createTable(table);
@@ -248,7 +316,7 @@ class JsonConnectionExecutor {
         return createAllResult(connection.file, table, jsonTable);
     }
 
-    private QueryResult executeSingleDefine(final String table, final String key, final String rawValue) {
+    private QueryResult executeDefine(final String table, final Map<String, String> keyValues) {
         if (!connection.hasTable(table)) {
             throw new UnsupportedOperationException("Unknown table: " + table);
         }
@@ -260,105 +328,211 @@ class JsonConnectionExecutor {
             throw new UnsupportedOperationException("Cannot execute json query on non-schemed table");
         }
 
-        if (!typesJson.has(key)) {
-            throw new IllegalStateException("Unknown field " + key + " in table " + table);
-        }
-
-        if (!rawValue.equalsIgnoreCase(DEFAULT_NULL_VALUE)) {
-            String type = typesJson.get(key).getAsString();
-            if (type.equalsIgnoreCase("boolean")) {
-                if (!rawValue.equalsIgnoreCase("true") && !rawValue.equalsIgnoreCase("false") &&
-                        !rawValue.equalsIgnoreCase("1") && !rawValue.equalsIgnoreCase("0")) {
-                    throw new IllegalStateException("Cannot set non boolean value " + rawValue + " for boolean field " + key + " in table " + table);
-                }
-            }
-
-            if (!type.equalsIgnoreCase("string") && !rawValue.matches("^[+-]?(\\d*[,.]\\d+)|(\\d*)$")) {
-                throw new IllegalStateException("Cannot set non numeric value " + rawValue + " for numeric field " + key + " in table " + table);
-            }
-        }
-
-        SimpleQueryResult.QueryResultBuilder builder = SimpleQueryResult.builder().database(PathUtilities.getName(connection.file))
-                .table(table);
-
-        String type = jsonTable.getType(key);
         JsonArray records = new JsonArray();
         if (jsonTable.database.has("records")) {
             records = jsonTable.database.getAsJsonArray("records");
         }
 
-        JsonObject recordElement = new JsonObject();
-        if (!rawValue.equals(DEFAULT_NULL_VALUE)) {
-            switch (type) {
-                case "string":
-                    recordElement.addProperty(key, rawValue);
-                    builder.appendResult(key, rawValue);
+        SimpleQueryResult.QueryResultBuilder builder = SimpleQueryResult.builder().database(PathUtilities.getName(connection.file))
+                .table(table);
 
-                    break;
-                case "boolean":
-                    if (rawValue.equalsIgnoreCase("1") || rawValue.equalsIgnoreCase("true")) {
-                        recordElement.addProperty(key, true);
-                        builder.appendResult(key, true);
+        JsonObject recordElement = new JsonObject();
+        for (String key : keyValues.keySet()) {
+            String rawValue = keyValues.get(key);
+
+            if (!typesJson.has(key)) {
+                throw new IllegalStateException("Unknown field " + key + " in table " + table);
+            }
+
+            if (!rawValue.equalsIgnoreCase(DEFAULT_NULL_VALUE)) {
+                String type = typesJson.get(key).getAsString();
+                if (type.equalsIgnoreCase("boolean")) {
+                    if (!rawValue.equalsIgnoreCase("true") && !rawValue.equalsIgnoreCase("false") &&
+                            !rawValue.equalsIgnoreCase("1") && !rawValue.equalsIgnoreCase("0")) {
+                        throw new IllegalStateException("Cannot set non boolean value " + rawValue + " for boolean field " + key + " in table " + table);
+                    }
+                } else if (!type.equalsIgnoreCase("string") && !rawValue.matches("^[+-]?(\\d*[,.]\\d+)|(\\d*)$")) {
+                    throw new IllegalStateException("Cannot set non numeric value " + rawValue + " for numeric field " + key + " in table " + table);
+                }
+            }
+
+            String type = jsonTable.getType(key);
+            if (hasModifier(jsonTable.database, key, "uk")) {
+                for (JsonElement record : records) {
+                    if (!record.isJsonObject()) continue;
+                    JsonObject object = record.getAsJsonObject();
+                    if (object.has(key)) {
+                        JsonElement primitive = object.get(key);
+                        if (primitive == null) primitive = JsonNull.INSTANCE;
+
+                        switch (type) {
+                            case "string":
+                                if (primitive.isJsonNull()) {
+                                    if (rawValue.equalsIgnoreCase(DEFAULT_NULL_VALUE)) {
+                                        throw new IllegalStateException("Cannot set value for " + key + " on table " + table + " because it's marked as unique key but the table already has a record with that value");
+                                    }
+                                }
+
+                                if (primitive.getAsString().equals(rawValue)) {
+                                    throw new IllegalStateException("Cannot set value for " + key + " on table " + table + " because it's marked as unique key but the table already has a record with that value");
+                                }
+                                break;
+                            case "boolean":
+                                if (primitive.isJsonNull()) {
+                                    if (rawValue.equalsIgnoreCase(DEFAULT_NULL_VALUE)) {
+                                        throw new IllegalStateException("Cannot set value for " + key + " on table " + table + " because it's marked as unique key but the table already has a record with that value");
+                                    }
+                                }
+
+                                if (String.valueOf(primitive.getAsBoolean()).equals(rawValue.replace("1", "true").replace("0", "false"))) {
+                                    throw new IllegalStateException("Cannot set value for " + key + " on table " + table + " because it's marked as unique key but the table already has a record with that value");
+                                }
+                                break;
+                            case "byte":
+                                if (primitive.isJsonNull()) {
+                                    if (rawValue.equalsIgnoreCase(DEFAULT_NULL_VALUE)) {
+                                        throw new IllegalStateException("Cannot set value for " + key + " on table " + table + " because it's marked as unique key but the table already has a record with that value");
+                                    }
+                                }
+
+                                if (String.valueOf(primitive.getAsByte()).equals(rawValue)) {
+                                    throw new IllegalStateException("Cannot set value for " + key + " on table " + table + " because it's marked as unique key but the table already has a record with that value");
+                                }
+                                break;
+                            case "short":
+                                if (primitive.isJsonNull()) {
+                                    if (rawValue.equalsIgnoreCase(DEFAULT_NULL_VALUE)) {
+                                        throw new IllegalStateException("Cannot set value for " + key + " on table " + table + " because it's marked as unique key but the table already has a record with that value");
+                                    }
+                                }
+
+                                if (String.valueOf(primitive.getAsShort()).equals(rawValue)) {
+                                    throw new IllegalStateException("Cannot set value for " + key + " on table " + table + " because it's marked as unique key but the table already has a record with that value");
+                                }
+                                break;
+                            case "integer":
+                                if (primitive.isJsonNull()) {
+                                    if (rawValue.equalsIgnoreCase(DEFAULT_NULL_VALUE)) {
+                                        throw new IllegalStateException("Cannot set value for " + key + " on table " + table + " because it's marked as unique key but the table already has a record with that value");
+                                    }
+                                }
+
+                                if (String.valueOf(primitive.getAsInt()).equals(rawValue)) {
+                                    throw new IllegalStateException("Cannot set value for " + key + " on table " + table + " because it's marked as unique key but the table already has a record with that value");
+                                }
+                                break;
+                            case "long":
+                                if (primitive.isJsonNull()) {
+                                    if (rawValue.equalsIgnoreCase(DEFAULT_NULL_VALUE)) {
+                                        throw new IllegalStateException("Cannot set value for " + key + " on table " + table + " because it's marked as unique key but the table already has a record with that value");
+                                    }
+                                }
+
+                                if (String.valueOf(primitive.getAsLong()).equals(rawValue)) {
+                                    throw new IllegalStateException("Cannot set value for " + key + " on table " + table + " because it's marked as unique key but the table already has a record with that value");
+                                }
+                                break;
+                            case "float":
+                                if (primitive.isJsonNull()) {
+                                    if (rawValue.equalsIgnoreCase(DEFAULT_NULL_VALUE)) {
+                                        throw new IllegalStateException("Cannot set value for " + key + " on table " + table + " because it's marked as unique key but the table already has a record with that value");
+                                    }
+                                }
+
+                                if (String.valueOf(primitive.getAsFloat()).equals(rawValue.replace(",", "."))) {
+                                    throw new IllegalStateException("Cannot set value for " + key + " on table " + table + " because it's marked as unique key but the table already has a record with that value");
+                                }
+                                break;
+                            case "double":
+                                if (primitive.isJsonNull()) {
+                                    if (rawValue.equalsIgnoreCase(DEFAULT_NULL_VALUE)) {
+                                        throw new IllegalStateException("Cannot set value for " + key + " on table " + table + " because it's marked as unique key but the table already has a record with that value");
+                                    }
+                                }
+
+                                if (String.valueOf(primitive.getAsByte()).equals(rawValue.replace(",", "."))) {
+                                    throw new IllegalStateException("Cannot set value for " + key + " on table " + table + " because it's marked as unique key but the table already has a record with that value");
+                                }
+                                break;
+                        }
+                    }
+                }
+            }
+
+            if (!rawValue.equals(DEFAULT_NULL_VALUE)) {
+                switch (type) {
+                    case "string":
+                        recordElement.addProperty(key, rawValue);
+                        builder.appendResult(key, rawValue);
 
                         break;
-                    }
+                    case "boolean":
+                        if (rawValue.equalsIgnoreCase("1") || rawValue.equalsIgnoreCase("true")) {
+                            recordElement.addProperty(key, true);
+                            builder.appendResult(key, true);
 
-                    recordElement.addProperty(key, false);
-                    builder.appendResult(key, false);
+                            break;
+                        }
 
-                    break;
-                case "byte":
-                    byte b = Byte.parseByte(rawValue);
-                    recordElement.addProperty(key, b);
-                    builder.appendResult(key, b);
+                        recordElement.addProperty(key, false);
+                        builder.appendResult(key, false);
 
-                    break;
-                case "short":
-                    short s = Short.parseShort(rawValue);
-                    recordElement.addProperty(key, s);
-                    builder.appendResult(key, s);
+                        break;
+                    case "byte":
+                        byte b = Byte.parseByte(rawValue);
+                        recordElement.addProperty(key, b);
+                        builder.appendResult(key, b);
 
-                    break;
-                case "integer":
-                    int i = Integer.parseInt(rawValue);
-                    recordElement.addProperty(key, i);
-                    builder.appendResult(key, i);
+                        break;
+                    case "short":
+                        short s = Short.parseShort(rawValue);
+                        recordElement.addProperty(key, s);
+                        builder.appendResult(key, s);
 
-                    break;
-                case "long":
-                    long l = Long.parseLong(rawValue);
-                    recordElement.addProperty(key, l);
-                    builder.appendResult(key, l);
+                        break;
+                    case "integer":
+                        int i = Integer.parseInt(rawValue);
+                        recordElement.addProperty(key, i);
+                        builder.appendResult(key, i);
 
-                    break;
-                case "float":
-                    float fl = Float.parseFloat(rawValue.replace(",", "."));
-                    recordElement.addProperty(key, fl);
-                    builder.appendResult(key, fl);
+                        break;
+                    case "long":
+                        long l = Long.parseLong(rawValue);
+                        recordElement.addProperty(key, l);
+                        builder.appendResult(key, l);
 
-                    break;
-                case "double":
-                    double db = Double.parseDouble(rawValue);
-                    recordElement.addProperty(key, db);
-                    builder.appendResult(key, db);
+                        break;
+                    case "float":
+                        float fl = Float.parseFloat(rawValue.replace(",", "."));
+                        recordElement.addProperty(key, fl);
+                        builder.appendResult(key, fl);
 
-                    break;
-                default:
-                    throw new UnsupportedOperationException("Unsupported field " + key + " type: " + type);
-            }
-        } else {
-            if (hasModifier(jsonTable.database, key, "nn")) {
-                throw new UnsupportedOperationException("Cannot set null value for non null key " + key + " on table " + table);
-            }
+                        break;
+                    case "double":
+                        double db = Double.parseDouble(rawValue);
+                        recordElement.addProperty(key, db);
+                        builder.appendResult(key, db);
 
-            if (type.equalsIgnoreCase("boolean")) {
-                recordElement.addProperty(key, false);
+                        break;
+                    default:
+                        throw new UnsupportedOperationException("Unsupported field " + key + " type: " + type);
+                }
             } else {
-                recordElement.addProperty(key, (String) null);
+                if (hasModifier(jsonTable.database, key, "nn")) {
+                    throw new UnsupportedOperationException("Cannot set null value for non null key " + key + " on table " + table);
+                }
+
+                if (type.equalsIgnoreCase("boolean")) {
+                    recordElement.addProperty(key, false);
+                } else {
+                    recordElement.addProperty(key, (String) null);
+                }
             }
         }
 
         for (String field : getFieldsWithModifiers(jsonTable.database, "ai")) {
+            if (keyValues.containsKey(field)) continue;
+
             String fieldType = jsonTable.getType(field);
             if (fieldType.equalsIgnoreCase("integer")) {
                 int val = getOrCreateIntAttribute(jsonTable.database, field, (value, attributes) -> {
@@ -370,6 +544,7 @@ class JsonConnectionExecutor {
         }
 
         records.add(recordElement);
+
         jsonTable.database.add("records", records);
         if (connection.autoSave) {
             connection.save();
@@ -406,10 +581,10 @@ class JsonConnectionExecutor {
                         !rawValue.equalsIgnoreCase("1") && !rawValue.equalsIgnoreCase("0")) {
                     throw new IllegalStateException("Cannot set non boolean value " + rawValue + " for boolean field " + key + " in table " + table);
                 }
-            }
-
-            if (!type.equalsIgnoreCase("string") && !rawValue.matches("^[+-]?(\\d*[,.]\\d+)|(\\d*)$")) {
-                throw new IllegalStateException("Cannot set non numeric value " + rawValue + " for numeric field " + key + " in table " + table);
+            } else {
+                if (!type.equalsIgnoreCase("string") && !rawValue.matches("^[+-]?(\\d*[,.]\\d+)|(\\d*)$")) {
+                    throw new IllegalStateException("Cannot set non numeric value " + rawValue + " for numeric field " + key + " in table " + table);
+                }
             }
         }
 
@@ -852,12 +1027,11 @@ class JsonConnectionExecutor {
             return createAllResult(jsonTable.file, table, jsonTable);
         }
 
-        Pattern keysPattern = Pattern.compile("^\\s*'([^']*)'\\s*$", Pattern.CASE_INSENSITIVE);
         List<String> keys = new ArrayList<>();
         if (search.contains(",")) {
             String[] data = search.split(",");
             for (String str : data) {
-                Matcher matcher = keysPattern.matcher(str);
+                Matcher matcher = keyPattern.matcher(str);
                 if (matcher.matches()) {
                     String key = matcher.group(1);
                     keys.add(key);
@@ -866,7 +1040,7 @@ class JsonConnectionExecutor {
                 }
             }
         } else {
-            Matcher matcher = keysPattern.matcher(search);
+            Matcher matcher = keyPattern.matcher(search);
             if (matcher.matches()) {
                 String key = matcher.group(1);
                 keys.add(key);
@@ -978,7 +1152,6 @@ class JsonConnectionExecutor {
             throw new UnsupportedOperationException("Cannot execute json query on non-schemed table");
         }
 
-        Pattern whereAndOrPattern = Pattern.compile("(AND|OR)?\\s*'([^']*)'\\s*(=|~=|!>|~>|~<|>=|<=|>~|<~|<>|>|<)\\s*('[^']*'|null|true|false|[+-]?\\d*[,.]?e?\\d*)", Pattern.CASE_INSENSITIVE);
         Matcher multiWhere = whereAndOrPattern.matcher(search);
         boolean first = true;
 
@@ -1128,13 +1301,6 @@ class JsonConnectionExecutor {
         }
 
         return builder.build();
-
-        /*Map<String, GlobalTypeValue<?>> valueMap = new HashMap<>();
-        valueMap.put("id", GlobalTypeValue.of(0, Integer.class));
-        valueMap.put("enabled", GlobalTypeValue.of(true, Boolean.class));
-        valueMap.put("name", GlobalTypeValue.of("Karma", String.class));
-
-        SimpleQuery query = new SimpleQuery(parts);*/
     }
 
     private void updateValue(final JsonConnection jsonTable, final String key, final String table, final String rawValue, final JsonObject record, final SimpleQueryResult.QueryResultBuilder builder) {
@@ -1264,7 +1430,7 @@ class JsonConnectionExecutor {
     }
 
     @NotNull
-    private Map<String, BiValue<String[]>> getTypesFromString(final String schema, final Pattern keyTypePattern) {
+    private Map<String, BiValue<String[]>> getTypesFromString(final String schema) {
         Map<String, BiValue<String[]>> types = new HashMap<>();
         if (schema.contains(",")) {
             String[] data = schema.split(",");

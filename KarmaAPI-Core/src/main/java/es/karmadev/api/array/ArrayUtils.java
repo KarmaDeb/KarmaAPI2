@@ -1,5 +1,7 @@
 package es.karmadev.api.array;
 
+import es.karmadev.api.object.ObjectUtils;
+
 import java.util.Arrays;
 import java.util.Collection;
 
@@ -7,6 +9,40 @@ import java.util.Collection;
  * Array utilities
  */
 public class ArrayUtils {
+
+    /**
+     * Get if the array contains the provided element
+     * ignore case. This method will make use of {@link es.karmadev.api.object.ObjectUtils#equalsIgnoreCase(Object, Object)}
+     *
+     * @param array the array to check for
+     * @param element the element to check with
+     * @return if the array contains the element
+     * @param <T> the element type
+     */
+    public static <T> boolean containsIgnoreCase(final Collection<? super T> array, final T element) {
+        for (Object item : array) {
+            if (ObjectUtils.equalsIgnoreCase(item, element)) return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get if the array contains the provided element
+     * ignore case. This method will make use of {@link es.karmadev.api.object.ObjectUtils#equalsIgnoreCase(Object, Object)}
+     *
+     * @param array the array to check for
+     * @param element the element to check with
+     * @return if the array contains the element
+     * @param <T> the element type
+     */
+    public static <T, A extends T> boolean containsIgnoreCase(final A[] array, final T element) {
+        for (Object item : array) {
+            if (ObjectUtils.equalsIgnoreCase(item, element)) return true;
+        }
+
+        return false;
+    }
 
     /**
      * Get if the array contains any of the
@@ -18,7 +54,7 @@ public class ArrayUtils {
      * @param <T> the element type
      */
     @SafeVarargs
-    public static <T> boolean containsAny(final Collection<T> array, final T... elements) {
+    public static <T> boolean containsAny(final Collection<? super T> array, final T... elements) {
         for (T element : elements) {
             if (array.contains(element)) return true;
         }
@@ -36,8 +72,8 @@ public class ArrayUtils {
      * @param <T> the element type
      */
     @SafeVarargs
-    public static <T> boolean containsAny(final T[] array, final T... elements) {
-        for (T arrayItem : array) {
+    public static <T, A extends T> boolean containsAny(final A[] array, final T... elements) {
+        for (A arrayItem : array) {
             if (arrayItem != null) {
                 for (T element : elements) {
                     if (element.equals(arrayItem)) return true;
@@ -58,7 +94,7 @@ public class ArrayUtils {
      * @param <T> the element type
      */
     @SafeVarargs
-    public static <T> boolean containsOnAny(final Collection<T> array, final T... elements) {
+    public static <T> boolean containsOnAny(final Collection<? super T> array, final T... elements) {
         for (T element : elements) {
             if (element == null) continue;
             return array.stream().anyMatch((s) -> s != null && s.toString().contains(element.toString()));
@@ -77,8 +113,8 @@ public class ArrayUtils {
      * @param <T> the element type
      */
     @SafeVarargs
-    public static <T> boolean containsOnAny(final T[] array, final T... elements) {
-        for (T arrayItem : array) {
+    public static <T, A extends T> boolean containsOnAny(final A[] array, final T... elements) {
+        for (A arrayItem : array) {
             if (arrayItem != null) {
                 for (T element : elements) {
                     if (arrayItem.toString().contains(element.toString())) return true;
@@ -99,7 +135,7 @@ public class ArrayUtils {
      * @param <T> the array type
      */
     @SafeVarargs
-    public static <T> T[] putAll(final T[] array, final T[]... arrays) {
+    public static <T, A extends T> T[] putAll(final A[] array, final T[]... arrays) {
         int totalLength = 0;
         for (T[] elements : arrays) {
             totalLength += elements.length;
