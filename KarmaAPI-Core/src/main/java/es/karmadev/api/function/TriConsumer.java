@@ -1,5 +1,17 @@
 package es.karmadev.api.function;
 
+/**
+ * Represents an operation that accepts three input arguments and no return result. This is the three-arity
+ * specialization of {@link java.util.function.BiConsumer}. Unlike most other functional interfaces, TriConsumer is expected to operate
+ * via side effects.
+ *
+ * <p>This is a <a href="package-summary.html">functional interface</a>
+ * whose functional method is {@link #accept(Object, Object, Object)}.
+ *
+ * @param <A> the type of the first argument to the operation
+ * @param <B> the type of the second argument to the operation
+ * @param <C> the type of the third argument to the operation
+ */
 @FunctionalInterface
 public interface TriConsumer<A, B, C> {
 

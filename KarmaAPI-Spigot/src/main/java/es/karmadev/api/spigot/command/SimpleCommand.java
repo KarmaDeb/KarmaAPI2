@@ -2,6 +2,10 @@ package es.karmadev.api.spigot.command;
 
 import es.karmadev.api.array.ArrayUtils;
 import es.karmadev.api.object.ObjectUtils;
+import es.karmadev.api.spigot.command.impl.CommandExecutor;
+import es.karmadev.api.spigot.command.impl.CommandTabCompletor;
+import lombok.Getter;
+import lombok.Setter;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -99,7 +103,7 @@ public abstract class SimpleCommand {
      * @param label  the command label
      * @param args   the command arguments
      */
-    public abstract void execute(final CommandSender sender, final String label, final String[] args);
+    protected abstract void execute(final CommandSender sender, final String label, final String[] args);
 
     /**
      * Execute the command when the executor is
@@ -109,7 +113,7 @@ public abstract class SimpleCommand {
      * @param label  the command label
      * @param args   the command arguments
      */
-    public void executeInvalid(final CommandSender sender, final String label, final String[] args) {}
+    protected void executeInvalid(final CommandSender sender, final String label, final String[] args) {}
 
     /**
      * Handle a tab completion
@@ -119,7 +123,7 @@ public abstract class SimpleCommand {
      * @param args   the command arguments
      * @return the tab completions
      */
-    public List<String> tabComplete(final CommandSender sender, final String alias, final String[] args) {
+    protected List<String> tabComplete(final CommandSender sender, final String alias, final String[] args) {
         return Collections.emptyList();
     }
 
@@ -138,8 +142,23 @@ public abstract class SimpleCommand {
      *
      * @return the bukkit command
      */
-    public org.bukkit.command.Command toCommand() {
+    public final org.bukkit.command.Command toCommand() {
         return cmd;
+    }
+
+    /**
+     * Register this command
+     * @return if the command was able to be registered
+     */
+    public boolean register() {
+        return CommandUtil.register(this);
+    }
+
+    /**
+     * Unregister this command
+     */
+    public void unregister() {
+        CommandUtil.unregister(this);
     }
 
     private final static class InternalCommand extends org.bukkit.command.Command {
