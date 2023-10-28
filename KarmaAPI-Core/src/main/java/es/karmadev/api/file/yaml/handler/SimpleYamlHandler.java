@@ -3,6 +3,8 @@ package es.karmadev.api.file.yaml.handler;
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.file.RawType;
 import es.karmadev.api.file.yaml.YamlFileHandler;
+import es.karmadev.api.strings.ListSpacer;
+import es.karmadev.api.strings.StringUtils;
 import org.jetbrains.annotations.Nullable;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
@@ -260,7 +262,7 @@ class SimpleYamlHandler implements YamlFileHandler {
 
                         return false;
                     case CHARACTER:
-                        if (str.length() >= 1) {
+                        if (!str.isEmpty()) {
                             set(path, str.substring(0, 1));
                             return true;
                         }
@@ -375,6 +377,11 @@ class SimpleYamlHandler implements YamlFileHandler {
     @Override
     public String getString(final String path, final String def) {
         Object value = get(path, def);
+        if (value instanceof List) {
+            List<String> list = getList(path);
+            return StringUtils.listToString(list, ListSpacer.NEW_LINE);
+        }
+
         if (!(value instanceof String)) return def;
 
         return (String) value;

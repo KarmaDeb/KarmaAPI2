@@ -10,7 +10,9 @@
       "id": "integer",
       "enabled": "boolean",
       "modifiers": {
-        "name": [],
+        "name": [
+          "uk"
+        ],
         "id": [
           "nn",
           "ai"
@@ -18,13 +20,24 @@
         "enabled": []
       },
       "attributes": {
-        "id": 1
+        "id": 3
       }
     },
     "records": [
       {
-        "name": "Hello world",
+        "name": "Karma",
+        "enabled": true,
         "id": 0
+      },
+      {
+        "name": "MrGonci",
+        "enabled": true,
+        "id": 1
+      },
+      {
+        "name": "DcRubik",
+        "enabled": true,
+        "id": 2
       }
     ]
   }

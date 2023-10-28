@@ -1,0 +1,8 @@
+name: KarmaAPI
+main: es.karmadev.api.spigot.PluginMain
+version: ${project.version}
+api-version: 1.13
+
+commands:
+  title_test:
+    description: Command to test title
