@@ -121,7 +121,6 @@ public class KarmaAPI {
         Path javaScript = library.resolve("MozillaScript.jar");
 
         Path reflectionAPI = library.resolve("ReflectionAPI.jar");
-        Path relocatedReflection = relocated.resolve("reflection_api.jar");
 
         Path googleGson = library.resolve("GSON.jar");
         Path relocatedGson = relocated.resolve("google_gson.jar");
@@ -290,22 +289,15 @@ public class KarmaAPI {
         //logger.send(LogLevel.INFO, "Preparing to relocate");
 
         Set<Relocation> relocations = new HashSet<>();
-        //relocations.add(new Relocation(buildPackage("org", "github", "fge"), "es.karmadev.api.shaded.fge"));
         relocations.add(new Relocation(buildPackage("org", "yaml", "snakeyaml"), "es.karmadev.api.shaded.snakeyaml"));
-        relocations.add(new Relocation(buildPackage("com", "github", "yeetmanlord", "reflection_api"), "es.karmadev.forked.reflection_api"));
         relocations.add(new Relocation(buildPackage("com", "google", "gson"), "es.karmadev.api.shaded.google.gson"));
 
         PathUtilities.createPath(relocatedSnakeYaml);
-        PathUtilities.createPath(relocatedReflection);
         PathUtilities.createPath(relocatedGson);
 
         File snakeSource = snakeYaml.toFile();
         File snakeRelocated = relocatedSnakeYaml.toFile();
         JarRelocator snakeRelocator = new JarRelocator(snakeSource, snakeRelocated, relocations);
-
-        File reflectionSource = reflectionAPI.toFile();
-        File reflectionRelocated = relocatedReflection.toFile();
-        JarRelocator reflectionRelocator = new JarRelocator(reflectionSource, reflectionRelocated, relocations);
 
         File gsonSource = googleGson.toFile();
         File gsonRelocated = relocatedGson.toFile();
@@ -313,7 +305,6 @@ public class KarmaAPI {
 
         try {
             snakeRelocator.run();
-            reflectionRelocator.run();
             gsonRelocator.run();
 
             //logger.send(LogLevel.INFO, "Successfully relocated 3 libraries [snake_yaml, reflection_api, google_gson]");
@@ -330,7 +321,7 @@ public class KarmaAPI {
         inject(lz4, tmp);
         inject(zstd, tmp);
 
-        inject(relocatedReflection, tmp);
+        inject(reflectionAPI, tmp);
     }
 
     private static String buildPackage(final String... parts) {

@@ -1,7 +1,7 @@
 package es.karmadev.api.spigot.entity.trace.ray.impl;
 
-import com.github.yeetmanlord.reflection_api.entity.NMSAxisAlignedBBReflection;
-import com.github.yeetmanlord.reflection_api.entity.NMSEntityReflection;
+import es.karmadev.api.reflection.entity.NMSAxisAlignedBBReflection;
+import es.karmadev.api.reflection.entity.NMSEntityReflection;
 import com.google.common.util.concurrent.AtomicDouble;
 import es.karmadev.api.array.ArrayUtils;
 import es.karmadev.api.schedule.task.completable.TaskCompletor;

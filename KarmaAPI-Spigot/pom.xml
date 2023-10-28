@@ -21,15 +21,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-
-                <configuration>
-                    <relocations>
-                        <relocation>
-                            <pattern>com.github.yeetmanlord.reflection_api</pattern>
-                            <shadedPattern>es.karmadev.api.shaded.yeetmanlord.reflection</shadedPattern>
-                        </relocation>
-                    </relocations>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -61,7 +52,7 @@
         </dependency>
 
         <dependency>
-            <groupId>com.github.YeetManLord</groupId>
+            <groupId>es.karmadev.reflection</groupId>
             <artifactId>ReflectionAPI</artifactId>
         </dependency>
     </dependencies>

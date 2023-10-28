@@ -93,11 +93,6 @@
                                         <pattern>org.yaml.snakeyaml</pattern>
                                         <shadedPattern>es.karmadev.api.shaded.snakeyaml</shadedPattern>
                                     </relocation>
-
-                                    <relocation>
-                                        <pattern>com.github.yeetmanlord.reflection_api</pattern>
-                                        <shadedPattern>es.karmadev.forked.reflection_api</shadedPattern>
-                                    </relocation>
                                 </relocations>
                             </configuration>
                         </execution>
@@ -203,7 +198,7 @@
         <dependencies>
             <!-- Reflection -->
             <dependency>
-                <groupId>com.github.YeetManLord</groupId>
+                <groupId>es.karmadev.reflection</groupId>
                 <artifactId>ReflectionAPI</artifactId>
                 <version>1.0.5</version>
                 <scope>provided</scope>

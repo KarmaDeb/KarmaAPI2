@@ -29,7 +29,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.github.YeetManLord</groupId>
+            <groupId>es.karmadev.reflection</groupId>
             <artifactId>ReflectionAPI</artifactId>
         </dependency>
 

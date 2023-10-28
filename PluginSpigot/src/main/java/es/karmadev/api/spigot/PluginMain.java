@@ -1,6 +1,6 @@
 package es.karmadev.api.spigot;
 
-import com.github.yeetmanlord.reflection_api.ReflectionApi;
+import es.karmadev.api.reflection.ReflectionApi;
 import es.karmadev.api.minecraft.color.ColorComponent;
 import es.karmadev.api.spigot.core.KarmaPlugin;
 import es.karmadev.api.core.source.exception.AlreadyRegisteredException;
