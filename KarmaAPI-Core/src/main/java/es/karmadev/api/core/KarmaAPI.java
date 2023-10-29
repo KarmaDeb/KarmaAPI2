@@ -346,11 +346,37 @@ public class KarmaAPI {
      */
     public static boolean inject(final Path file, final ClassLoader loader) {
         try {
+            return inject(file.toUri().toURL(), loader);
+        } catch (MalformedURLException ignored) {}
+        return false;
+    }
+
+    /**
+     * Inject a file
+     *
+     * @param file the file to inject
+     * @param loader the loader to inject at
+     */
+    public static boolean inject(final File file, final ClassLoader loader) {
+        try {
+            return inject(file.toURI().toURL(), loader);
+        } catch (MalformedURLException ignored) {}
+        return false;
+    }
+
+    /**
+     * Inject a file
+     *
+     * @param url    the file url to inject
+     * @param loader the loader to inject at
+     */
+    public static boolean inject(final URL url, final ClassLoader loader) {
+        try {
             Method method;
             if (loader instanceof URLClassLoader) {
                 method = URLClassLoader.class.getDeclaredMethod("addURL", URL.class);
                 method.setAccessible(true);
-                method.invoke(loader, file.toUri().toURL());
+                method.invoke(loader, url);
             } else {
                 method = ClassLoader.class.getDeclaredMethod("addClass", Class.class);
                 Method define = ClassLoader.class.getDeclaredMethod("defineClass", String.class, byte[].class, int.class, int.class);
@@ -359,10 +385,11 @@ public class KarmaAPI {
                 define.setAccessible(true);
                 load.setAccessible(true);
 
-                try (JarFile jarFile = new JarFile(file.toFile())) {
+                File file = new File(url.getFile().replace("%20", " "));
+                try (JarFile jarFile = new JarFile(file)) {
                     Enumeration<JarEntry> e = jarFile.entries();
 
-                    URL[] urls = {new URL("jar:file:" + PathUtilities.pathString(file, '/') + "!/")};
+                    URL[] urls = {new URL("jar:file:" + PathUtilities.pathString(file.toPath(), '/') + "!/")};
                     try (URLClassLoader cl = URLClassLoader.newInstance(urls)) {
                         while (e.hasMoreElements()) {
                             JarEntry je = e.nextElement();
