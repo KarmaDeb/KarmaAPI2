@@ -1,3 +1,5 @@
+[![Build Status](https://jenkins.karmadev.es/job/KarmaAPI/badge/icon)](https://jenkins.karmadev.es/job/KarmaAPI/)
+
 # KarmaAPI2
 KarmaAPI2 is the new version of the KarmaAPI
 
