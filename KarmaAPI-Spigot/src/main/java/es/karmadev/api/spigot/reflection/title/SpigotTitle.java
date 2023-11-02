@@ -1,7 +1,6 @@
 package es.karmadev.api.spigot.reflection.title;
 
 import es.karmadev.api.core.KarmaKore;
-import es.karmadev.api.logger.log.console.LogLevel;
 import es.karmadev.api.minecraft.color.ColorComponent;
 import es.karmadev.api.spigot.core.KarmaPlugin;
 import es.karmadev.api.object.ObjectUtils;
@@ -11,17 +10,13 @@ import es.karmadev.api.spigot.reflection.SpigotPacket;
 import es.karmadev.api.minecraft.text.Component;
 import es.karmadev.api.minecraft.text.component.AnimationComponent;
 import es.karmadev.api.minecraft.text.component.TextComponent;
-import es.karmadev.api.spigot.server.SpigotServer;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.configuration.serialization.ConfigurationSerialization;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -50,17 +45,9 @@ public class SpigotTitle implements SpigotPacket {
     private boolean running;
 
     private final static Map<UUID, SpigotTitle> titles = new ConcurrentHashMap<>();
-    private static boolean supported = true;
 
     private String currentTitle = "";
     private String currentSubtitle = "";
-
-    private final static Class<?> chatBaseComponent = SpigotServer.netMinecraftServer("IChatBaseComponent").orElse(null);
-    private final static Class<?> chatMessage = SpigotServer.netMinecraftServer("ChatMessage").orElse(null);
-    private final static Class<?> packetTitle = SpigotServer.netMinecraftServer("PacketPlayOutTitle").orElse(null);
-    private final static Class<?> enumTitleAction = SpigotServer.netMinecraftServer("PacketPlayOutTitle$EnumTitleAction").orElse(
-            SpigotServer.netMinecraftServer("EnumTitleAction").orElse(null)
-    );
 
     private final SignalHandler handler = new SignalHandler() {
         @Override
@@ -76,8 +63,6 @@ public class SpigotTitle implements SpigotPacket {
                         titleInstance.title = title;
                         titleInstance.subtitle = subtitle;
                     }
-
-                    //send(player, fadeIn, sendTick, fadeOut);
                 }
             }
         }
@@ -173,7 +158,7 @@ public class SpigotTitle implements SpigotPacket {
      *                hide
      */
     public void send(final Player player, final int fadeIn, final int showIn, final int fadeOut) {
-        if (!supported) return;
+        if (!TitleReflection.isSupported()) return;
 
         KarmaPlugin plugin = (KarmaPlugin) KarmaKore.INSTANCE();
         if (plugin == null || player == null || !player.isOnline()) return;
@@ -347,208 +332,16 @@ public class SpigotTitle implements SpigotPacket {
     }
 
     private void updateTimes(final KarmaPlugin plugin, final Player player) {
-        if (SpigotServer.isBetween(SpigotServer.v1_8_X, SpigotServer.v1_10_2)) {
-            //Class<?> packetTitle = SpigotServer.netMinecraftServer("PacketPlayOutTitle").orElse(null);
-            if (packetTitle == null) {
-                plugin.logger().send(LogLevel.WARNING, "Failed to update title times, unable to find title packet");
-                return;
-            }
-
-            Constructor<?> packetTitleConstructor = null;
-            try {
-                packetTitleConstructor = packetTitle.getConstructor(int.class, int.class, int.class);
-            } catch (NoSuchMethodException ignored) {}
-
-            if (packetTitleConstructor == null) {
-                plugin.logger().send(LogLevel.WARNING, "Failed to update title times, unable to get packet constructor");
-                return;
-            }
-
-            Object titlePacket = null;
-            try {
-                titlePacket = packetTitleConstructor.newInstance(fadeIn, 1, fadeOut);
-            } catch (IllegalAccessException | InvocationTargetException | InstantiationException | IllegalArgumentException ignored) {}
-
-            if (titlePacket == null) {
-                plugin.logger().send(LogLevel.WARNING, "Failed to update title times, unable to create packet instance");
-                return;
-            }
-
-            SpigotServer.sendPacket(player, titlePacket);
-        }
+        TitleReflection.setTimes(plugin, player, fadeIn, 1, fadeOut);
     }
 
     private void emitTitle(final KarmaPlugin plugin, final Player player, final String title, final int showIn) {
-        if (SpigotServer.isBetween(SpigotServer.v1_8_X, SpigotServer.v1_10_2)) {
-            //if (SpigotServer.isUnder(SpigotServer.v1_8_X)) return; //Minimum version
-
-            /*Class<?> chatBaseComponent = SpigotServer.netMinecraftServer("IChatBaseComponent").orElse(null);
-            Class<?> chatMessage = SpigotServer.netMinecraftServer("ChatMessage").orElse(null);
-            Class<?> packetTitle = SpigotServer.netMinecraftServer("PacketPlayOutTitle").orElse(null);
-            Class<?> enumTitleAction = SpigotServer.netMinecraftServer("PacketPlayOutTitle$EnumTitleAction").orElse(
-                    SpigotServer.netMinecraftServer("EnumTitleAction").orElse(null)
-            );*/
-
-            if (chatBaseComponent == null || chatMessage == null || packetTitle == null || enumTitleAction == null) {
-                plugin.logger().send(LogLevel.WARNING, "Couldn't find needed classes for creating title/subtitle, disabling titles support");
-                supported = false;
-                return;
-            }
-            if (!enumTitleAction.isEnum()) {
-                plugin.logger().send(LogLevel.WARNING, "Couldn't find EnumTitleAction for title/subtitle, disabling titles support");
-                supported = false;
-                return;
-            }
-
-            Enum<?> TITLE = null;
-
-            for (Object object : enumTitleAction.getEnumConstants()) {
-                if (object instanceof Enum) {
-                    Enum<?> objectEnum = (Enum<?>) object;
-                    if (objectEnum.name().equals("TITLE")) {
-                        TITLE = objectEnum;
-                    }
-                }
-
-                if (TITLE != null) {
-                    break;
-                }
-            }
-
-            if (TITLE == null) {
-                plugin.logger().send(LogLevel.WARNING, "Couldn't determine title packet types, disabling titles support");
-                supported = false;
-                return;
-            }
-
-            Constructor<?> chatMessageConstructor = null;
-            Constructor<?> packetTitleConstructor = null;
-            try {
-                chatMessageConstructor = chatMessage.getConstructor(String.class, Object[].class);
-                packetTitleConstructor = packetTitle.getConstructor(enumTitleAction, chatBaseComponent, int.class, int.class, int.class);
-            } catch (NoSuchMethodException ignored) {}
-
-            if (chatMessageConstructor == null) {
-                plugin.logger().send(LogLevel.WARNING, "Couldn't find chat message constructor, disabling titles support");
-                supported = false;
-                return;
-            }
-            if (packetTitleConstructor == null) {
-                plugin.logger().send(LogLevel.WARNING, "Couldn't find title packet constructor, disabling titles support");
-                supported = false;
-                return;
-            }
-
-            Object chatTitle = null;
-            Object titlePacket = null;
-            try {
-                chatTitle = chatMessageConstructor.newInstance(title, new Object[0]);
-                titlePacket = packetTitleConstructor.newInstance(TITLE, chatTitle, fadeIn, showIn, fadeOut);
-            } catch (IllegalAccessException | InvocationTargetException | InstantiationException | IllegalArgumentException ignored) {}
-
-            if (chatTitle == null) {
-                plugin.logger().send(LogLevel.WARNING, "Couldn't create title, disabling titles support");
-                supported = false;
-                return;
-            }
-
-            if (titlePacket == null) {
-                plugin.logger().send(LogLevel.WARNING, "Couldn't create title packet, disabling titles support");
-                supported = false;
-                return;
-            }
-
-            SpigotServer.sendPacket(player, titlePacket);
-        } else {
-            if (SpigotServer.isUnder(SpigotServer.v1_8_X)) return;
-            player.sendTitle(title, null, fadeIn, showIn, fadeOut);
-        }
-
+        TitleReflection.sendTitle(plugin, player, title, -1, showIn, -1);
         this.target = player.getUniqueId();
     }
 
     private void emitSubtitle(final KarmaPlugin plugin, final Player player, final String subtitle, final int showIn) {
-        if (SpigotServer.isBetween(SpigotServer.v1_8_X, SpigotServer.v1_10_2)) {
-            //if (SpigotServer.isUnder(SpigotServer.v1_8_X)) return; //Minimum version
-
-            /*Class<?> chatBaseComponent = SpigotServer.netMinecraftServer("IChatBaseComponent").orElse(null);
-            Class<?> chatMessage = SpigotServer.netMinecraftServer("ChatMessage").orElse(null);
-            Class<?> packetTitle = SpigotServer.netMinecraftServer("PacketPlayOutTitle").orElse(null);
-            Class<?> enumTitleAction = SpigotServer.netMinecraftServer("PacketPlayOutTitle$EnumTitleAction").orElse(
-                    SpigotServer.netMinecraftServer("EnumTitleAction").orElse(null)
-            );*/
-
-            if (chatBaseComponent == null || chatMessage == null || packetTitle == null || enumTitleAction == null) {
-                plugin.logger().send(LogLevel.WARNING, "Couldn't find needed classes for creating title/subtitle, disabling titles support");
-                supported = false;
-                return;
-            }
-            if (!enumTitleAction.isEnum()) {
-                plugin.logger().send(LogLevel.WARNING, "Couldn't find EnumTitleAction for title/subtitle, disabling titles support");
-                supported = false;
-                return;
-            }
-
-            Enum<?> SUBTITLE = null;
-
-            for (Object object : enumTitleAction.getEnumConstants()) {
-                if (object instanceof Enum) {
-                    Enum<?> objectEnum = (Enum<?>) object;
-                    if (objectEnum.name().equals("SUBTITLE")) {
-                        SUBTITLE = objectEnum;
-                    }
-                }
-            }
-
-            if (SUBTITLE == null) {
-                plugin.logger().send(LogLevel.WARNING, "Couldn't determine subtitle packet types, disabling titles support");
-                supported = false;
-                return;
-            }
-
-            Constructor<?> chatMessageConstructor = null;
-            Constructor<?> packetTitleConstructor = null;
-            try {
-                chatMessageConstructor = chatMessage.getConstructor(String.class, Object[].class);
-                packetTitleConstructor = packetTitle.getConstructor(enumTitleAction, chatBaseComponent, int.class, int.class, int.class);
-            } catch (NoSuchMethodException ignored) {}
-
-            if (chatMessageConstructor == null) {
-                plugin.logger().send(LogLevel.WARNING, "Couldn't find chat message constructor, disabling titles support");
-                supported = false;
-                return;
-            }
-            if (packetTitleConstructor == null) {
-                plugin.logger().send(LogLevel.WARNING, "Couldn't find title packet constructor, disabling titles support");
-                supported = false;
-                return;
-            }
-
-            Object chatSubtitle = null;
-            Object subtitlePacket = null;
-            try {
-                chatSubtitle = chatMessageConstructor.newInstance(subtitle, new Object[0]);
-                subtitlePacket = packetTitleConstructor.newInstance(SUBTITLE, chatSubtitle, fadeIn, showIn, fadeOut);
-            } catch (IllegalAccessException | InvocationTargetException | InstantiationException | IllegalArgumentException ignored) {}
-
-            if (chatSubtitle == null) {
-                plugin.logger().send(LogLevel.WARNING, "Couldn't create subtitle, disabling titles support");
-                supported = false;
-                return;
-            }
-
-            if (subtitlePacket == null) {
-                plugin.logger().send(LogLevel.WARNING, "Couldn't create subtitle packet, disabling titles support");
-                supported = false;
-                return;
-            }
-
-            SpigotServer.sendPacket(player, subtitlePacket);
-        } else {
-            if (SpigotServer.isUnder(SpigotServer.v1_8_X)) return;
-            player.sendTitle(null, subtitle, fadeIn, showIn, fadeOut);
-        }
-
+        TitleReflection.sendSubtitle(plugin, player, subtitle, -1, showIn, -1);
         this.target = player.getUniqueId();
     }
 

@@ -7,6 +7,7 @@ import es.karmadev.api.schedule.runner.signal.SignalHandler;
 import es.karmadev.api.schedule.runner.signal.parameter.SignalParameter;
 import es.karmadev.api.spigot.reflection.SpigotPacket;
 import es.karmadev.api.spigot.server.SpigotServer;
+import lombok.Getter;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
@@ -29,7 +30,9 @@ import java.util.concurrent.atomic.AtomicReference;
 public class SpigotActionbar implements SpigotPacket {
 
     private UUID target;
+    @Getter
     private String message;
+    @Getter
     private long endTick = 0;
     private final AtomicReference<BukkitTask> persistentTask = new AtomicReference<>();
     private final static Map<UUID, SpigotActionbar> actionbars = new ConcurrentHashMap<>();
@@ -55,15 +58,6 @@ public class SpigotActionbar implements SpigotPacket {
      */
     public SpigotActionbar(final String message) {
         this.message = ChatColor.translateAlternateColorCodes('&', message);
-    }
-
-    /**
-     * Get the actionbar message
-     *
-     * @return the actionbar message
-     */
-    public String getMessage() {
-        return message;
     }
 
     /**
@@ -209,14 +203,5 @@ public class SpigotActionbar implements SpigotPacket {
      */
     public Player getTarget() {
         return Bukkit.getServer().getPlayer(target);
-    }
-
-    /**
-     * Get the actionbar end tick
-     *
-     * @return the actionbar end tick
-     */
-    public long getEndTick() {
-        return endTick;
     }
 }

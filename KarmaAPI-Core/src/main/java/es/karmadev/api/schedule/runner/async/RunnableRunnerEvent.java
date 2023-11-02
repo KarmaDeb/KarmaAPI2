@@ -3,6 +3,7 @@ package es.karmadev.api.schedule.runner.async;
 import es.karmadev.api.schedule.runner.TaskRunner;
 import es.karmadev.api.schedule.runner.event.TaskEvent;
 import es.karmadev.api.schedule.runner.event.TaskRunnerEvent;
+import es.karmadev.api.schedule.runner.task.RunTask;
 
 class RunnableRunnerEvent implements TaskRunnerEvent<Runnable> {
 
@@ -10,7 +11,7 @@ class RunnableRunnerEvent implements TaskRunnerEvent<Runnable> {
     private final TaskEvent event;
     private final Runnable action;
 
-    public RunnableRunnerEvent(final TaskRunner<? extends Number> executor, final TaskEvent event, final Runnable action) {
+    public RunnableRunnerEvent(final TaskRunner<? extends Number> executor, final TaskEvent event, final RunTask action) {
         this.executor = executor;
         this.event = event;
         this.action = action;

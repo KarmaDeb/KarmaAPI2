@@ -1,5 +1,7 @@
 package es.karmadev.api.schedule.runner.async;
 
+import es.karmadev.api.schedule.runner.task.ConsumerTask;
+import es.karmadev.api.schedule.runner.task.RunTask;
 import es.karmadev.api.schedule.runner.TaskRunner;
 import es.karmadev.api.schedule.runner.TaskStatus;
 import es.karmadev.api.schedule.runner.event.TaskEvent;
@@ -139,7 +141,6 @@ public class AsyncTaskExecutor implements TaskRunner<Long> {
                 long timeLeft = this.timeLeft.get();
 
                 executeEvents(TaskEvent.TICK, true);
-
                 if (timeLeft == 0) {
                     if (!isRepeating.get()) {
                         future.get().cancel(true);
@@ -150,6 +151,7 @@ public class AsyncTaskExecutor implements TaskRunner<Long> {
                         executeEvents(TaskEvent.RESTART, false);
                     }
 
+                    updateTL.set(false);
                     elapsedTime.set(this.interval);
                 }
 
@@ -157,7 +159,6 @@ public class AsyncTaskExecutor implements TaskRunner<Long> {
                     this.timeLeft.set(timeLeft - this.interval);
                 }
                 updateTL.set(true);
-
                 return;
             }
 
@@ -270,9 +271,9 @@ public class AsyncTaskExecutor implements TaskRunner<Long> {
      */
     @Override
     public TaskRunnerEvent<Consumer<Long>> onAny(final BiConsumer<TaskEvent, Long> event) {
-        ConsumerRunnerEvent<Long> runnerEvent = ConsumerRunnerEvent.forType(this, null, (time) -> {
+        ConsumerRunnerEvent<Long> runnerEvent = ConsumerRunnerEvent.forType(this, null, ConsumerTask.forTask((time) -> {
             event.accept(currentContext, time);
-        });
+        }));
         taskEvents.add(runnerEvent);
 
         return runnerEvent;
@@ -286,7 +287,7 @@ public class AsyncTaskExecutor implements TaskRunner<Long> {
      */
     @Override
     public TaskRunnerEvent<Runnable> onAny(final Consumer<TaskEvent> event) {
-        RunnableRunnerEvent runnerEvent = new RunnableRunnerEvent(this, null, () -> event.accept(currentContext));
+        RunnableRunnerEvent runnerEvent = new RunnableRunnerEvent(this, null, RunTask.forTask(() -> event.accept(currentContext)));
         taskEvents.add(runnerEvent);
         return runnerEvent;
     }
@@ -300,7 +301,7 @@ public class AsyncTaskExecutor implements TaskRunner<Long> {
      */
     @Override
     public TaskRunnerEvent<Consumer<Long>> on(final TaskEvent event, final Consumer<Long> tick) {
-        ConsumerRunnerEvent<Long> runnerEvent = ConsumerRunnerEvent.forType(this, event, tick);
+        ConsumerRunnerEvent<Long> runnerEvent = ConsumerRunnerEvent.forType(this, event, ConsumerTask.forTask(tick));
         taskEvents.add(runnerEvent);
         return runnerEvent;
     }
@@ -314,7 +315,7 @@ public class AsyncTaskExecutor implements TaskRunner<Long> {
      */
     @Override
     public TaskRunnerEvent<Runnable> on(final TaskEvent event, final Runnable action) {
-        RunnableRunnerEvent runnerEvent = new RunnableRunnerEvent(this, event, action);
+        RunnableRunnerEvent runnerEvent = new RunnableRunnerEvent(this, event, RunTask.forTask(action));
         taskEvents.add(runnerEvent);
         return runnerEvent;
     }
@@ -362,11 +363,19 @@ public class AsyncTaskExecutor implements TaskRunner<Long> {
             Object runner = event.get();
             if (runner instanceof Consumer) {
                 ((Consumer<Number>) runner).accept(elapsed);
+
+                if (runner instanceof ConsumerTask) {
+                    ((ConsumerTask<Number>) runner).reset();
+                }
                 return;
             }
 
             if (runner instanceof Runnable) {
                 ((Runnable) runner).run();
+
+                if (runner instanceof RunTask) {
+                    ((RunTask) runner).reset();
+                }
             }
         });
     }

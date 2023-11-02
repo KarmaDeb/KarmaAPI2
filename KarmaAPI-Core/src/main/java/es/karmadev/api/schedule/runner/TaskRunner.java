@@ -2,6 +2,7 @@ package es.karmadev.api.schedule.runner;
 
 import es.karmadev.api.schedule.runner.event.TaskEvent;
 import es.karmadev.api.schedule.runner.event.TaskRunnerEvent;
+import es.karmadev.api.schedule.runner.task.RunTask;
 
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;

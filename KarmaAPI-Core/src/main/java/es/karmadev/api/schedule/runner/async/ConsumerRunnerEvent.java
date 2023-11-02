@@ -3,6 +3,7 @@ package es.karmadev.api.schedule.runner.async;
 import es.karmadev.api.schedule.runner.TaskRunner;
 import es.karmadev.api.schedule.runner.event.TaskEvent;
 import es.karmadev.api.schedule.runner.event.TaskRunnerEvent;
+import es.karmadev.api.schedule.runner.task.ConsumerTask;
 
 import java.util.function.Consumer;
 
@@ -12,7 +13,7 @@ class ConsumerRunnerEvent<T extends Number> implements TaskRunnerEvent<Consumer<
     private final TaskEvent event;
     private final Consumer<T> action;
 
-    private ConsumerRunnerEvent(final TaskRunner<T> executor, final TaskEvent event, final Consumer<T> action) {
+    private ConsumerRunnerEvent(final TaskRunner<T> executor, final TaskEvent event, final ConsumerTask<T> action) {
         this.executor = executor;
         this.event = event;
         this.action = action;
@@ -57,7 +58,7 @@ class ConsumerRunnerEvent<T extends Number> implements TaskRunnerEvent<Consumer<
      * @return the runner event
      * @param <T> the type
      */
-    public static <T extends Number> ConsumerRunnerEvent<T> forType(final TaskRunner<T> executor, final TaskEvent event, final Consumer<T> action) {
+    public static <T extends Number> ConsumerRunnerEvent<T> forType(final TaskRunner<T> executor, final TaskEvent event, final ConsumerTask<T> action) {
         return new ConsumerRunnerEvent<>(executor, event, action);
     }
 }
