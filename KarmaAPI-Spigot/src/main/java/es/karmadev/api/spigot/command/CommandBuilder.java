@@ -14,12 +14,15 @@ import java.util.*;
  * on {@link CommandBuilder#aliases} and {@link CommandBuilder#executors}
  * makes this class non-thread safe
  */
-@NotThreadSafe
+@NotThreadSafe @SuppressWarnings({"unused", "unchecked"})
 public final class CommandBuilder {
 
     private String name;
     private String description;
     private String permission;
+    @SuppressWarnings("FieldMayBeFinal")
+    private String permissionMessage = "&cYou're in lack of permission&7 <permission>";
+    private boolean requiresOp;
     private String usage;
     private final Set<CharSequence> aliases = new HashSet<>();
     private final Set<Class<? extends CommandSender>> executors = new HashSet<>();
@@ -75,6 +78,28 @@ public final class CommandBuilder {
      */
     public CommandBuilder permission(final String permission) {
         this.permission = permission;
+        return this;
+    }
+
+    /**
+     * Set the command permission message
+     *
+     * @param message the message
+     * @return the command builder
+     */
+    public CommandBuilder permissionMessage(final String message) {
+        this.permissionMessage = message;
+        return this;
+    }
+
+    /**
+     * Set if the command requires OP
+     *
+     * @param status the op status
+     * @return the command builder
+     */
+    public CommandBuilder requiresOp(final boolean status) {
+        this.requiresOp = status;
         return this;
     }
 
@@ -198,7 +223,7 @@ public final class CommandBuilder {
         for (int i = 0; i < tmpAliases.length; i++) aliases[i] = tmpAliases[i].toString();
 
         Class<? extends CommandSender>[] executors = this.executors.toArray(new Class[0]);
-        return new AbstractCommand(name, description, permission, usage, aliases, executors);
+        return new AbstractCommand(name, description, permission, permissionMessage, requiresOp, usage, aliases, executors);
     }
 
     /**

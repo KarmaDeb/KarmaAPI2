@@ -10,19 +10,17 @@ import java.util.HashMap;
 /**
  * Version object
  */
+@Getter
 @SuppressWarnings("unused")
 public class Version implements Comparable<Version> {
 
-    @Getter
     private final int mayor;
 
-    @Getter
     private final int minor;
 
-    @Getter
     private final int patch;
 
-    @Getter @Nullable
+    @Nullable
     private final String build;
 
     /**
@@ -33,7 +31,7 @@ public class Version implements Comparable<Version> {
      * @param patch the version patch
      * @param build the version build type
      */
-    Version(final int mayor, final int minor, final int patch, final @Nullable String build) {
+    protected Version(final int mayor, final int minor, final int patch, final @Nullable String build) {
         this.mayor = mayor;
         this.minor = minor;
         this.patch = patch;

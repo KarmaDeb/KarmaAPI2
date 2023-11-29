@@ -11,11 +11,12 @@
     <modules>
         <module>KarmaAPI-Core</module>
         <module>KarmaAPI-Spigot</module>
-        <module>KarmaAPIHologram</module>
+        <module>KarmaAPIReflect</module>
         <module>KarmaAPI-Minecraft</module>
         <module>PluginSpigot</module>
         <module>PluginBungee</module>
         <module>KarmaAPI-Bungee</module>
+        <module>KarmaAPI-Args</module>
     </modules>
 
     <properties>
@@ -324,18 +325,6 @@
     <!--
     <distributionManagement>
         <repository>
-            <id>karmadev_releases</id>
-            <url>https://nexus.karmadev.es/repository/maven-releases/</url>
-        </repository>
-        <snapshotRepository>
-            <id>karmadev_snapshots</id>
-            <url>https://nexus.karmadev.es/repository/maven-snapshots/</url>
-        </snapshotRepository>
-    </distributionManagement>
-    -->
-    <!--
-    <distributionManagement>
-        <repository>
             <id>internal.repo</id>
             <name>Internal repo</name>
             <url>file:${project.basedir}/ir/out/${project.version}</url>
@@ -347,14 +336,15 @@
         </snapshotRepository>
     </distributionManagement>
     -->
+
     <distributionManagement>
         <repository>
             <id>karmadev_releases</id>
-            <url>https://nexus.karmadev.es/repository/maven-releases/</url>
+            <url>${TARGET_RELEASES}</url>
         </repository>
         <snapshotRepository>
             <id>karmadev_snapshots</id>
-            <url>https://nexus.karmadev.es/repository/maven-snapshots/</url>
+            <url>${TARGET_SNAPSHOTS}</url>
         </snapshotRepository>
     </distributionManagement>
 </project>

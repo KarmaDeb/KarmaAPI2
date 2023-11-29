@@ -47,17 +47,17 @@ public class LogFile {
     public LogFile(final APISource source) {
         this.source = source;
         header.add(new HeaderLine("# System information"));
-        header.add(new HeaderLine(() -> "OS Name: " + JavaVirtualMachine.osName()));
-        header.add(new HeaderLine(() -> "OS Version: " + JavaVirtualMachine.osVersion()));
-        header.add(new HeaderLine(() -> "OS Model: " + JavaVirtualMachine.osArch()));
-        header.add(new HeaderLine(() -> "OS Processors: " + JavaVirtualMachine.cores()));
-        header.add(new HeaderLine(() -> "OS Memory: " + JavaVirtualMachine.totalMemory(MemoryUnit.GIGABYTES) + "GB"));
+        header.add(new HeaderLine("OS Name: " + JavaVirtualMachine.osName()));
+        header.add(new HeaderLine("OS Version: " + JavaVirtualMachine.osVersion()));
+        header.add(new HeaderLine("OS Model: " + JavaVirtualMachine.osArch()));
+        header.add(new HeaderLine("OS Processors: " + JavaVirtualMachine.cores()));
+        header.add(new HeaderLine("OS Memory: " + JavaVirtualMachine.totalMemory(MemoryUnit.GIGABYTES) + "GB"));
         header.add(new HeaderLine().lineBreak(false));
         header.add(new HeaderLine("# VM information"));
-        header.add(new HeaderLine(() -> "VM Name: " + JavaVirtualMachine.jvmName()));
-        header.add(new HeaderLine(() -> "VM Version: " + JavaVirtualMachine.jvmVersion()));
-        header.add(new HeaderLine(() -> "VM Max Memory: " + JavaVirtualMachine.allocatedMemory(MemoryUnit.GIGABYTES) + "GB"));
-        header.add(new HeaderLine(() -> "VM Free Memory: " + JavaVirtualMachine.availableMemory(MemoryUnit.KILOBYTES) + "KB"));
+        header.add(new HeaderLine("VM Name: " + JavaVirtualMachine.jvmName()));
+        header.add(new HeaderLine("VM Version: " + JavaVirtualMachine.jvmVersion()));
+        header.add(new HeaderLine("VM Max Memory: " + JavaVirtualMachine.allocatedMemory(MemoryUnit.GIGABYTES) + "GB"));
+        header.add(new HeaderLine("VM Free Memory: " + JavaVirtualMachine.availableMemory(MemoryUnit.KILOBYTES) + "KB"));
         header.add(new HeaderLine(() -> {
             Instant instant = JavaVirtualMachine.startTime();
             ZonedDateTime zdt = ZonedDateTime.ofInstant(instant, ZoneId.systemDefault());
@@ -74,15 +74,15 @@ public class LogFile {
         }));
         header.add(new HeaderLine().lineBreak(false));
         header.add(new HeaderLine("# KarmaAPI information"));
-        header.add(new HeaderLine(() -> "API Version: 2.0.0-SNAPSHOT"));
-        header.add(new HeaderLine(() -> "API Build: 1"));
-        header.add(new HeaderLine(() -> "API Compiler: 1.8.0_362"));
-        header.add(new HeaderLine(() -> "API Date: 27-03-2023 19:20:40"));
+        header.add(new HeaderLine("API Version: 2.0.0-SNAPSHOT"));
+        header.add(new HeaderLine("API Build: 1"));
+        header.add(new HeaderLine("API Compiler: 1.8.0_362"));
+        header.add(new HeaderLine("API Date: 27-03-2023 19:20:40"));
         header.add(new HeaderLine().lineBreak(false));
         header.add(new HeaderLine("# Source information"));
-        header.add(new HeaderLine(() -> "Name: " + source.sourceName()));
-        header.add(new HeaderLine(() -> "Version: " + source.sourceVersion()));
-        header.add(new HeaderLine(() -> "Description: " + source.sourceDescription()));
+        header.add(new HeaderLine("Name: " + source.sourceName()));
+        header.add(new HeaderLine("Version: " + source.sourceVersion()));
+        header.add(new HeaderLine("Description: " + source.sourceDescription()));
 
         Path fl = logFile();
         rebuildHeader(fl);

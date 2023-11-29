@@ -5,6 +5,7 @@ import lombok.Getter;
 /**
  * Most common used memory units
  */
+@Getter
 @SuppressWarnings("unused")
 public enum MemoryUnit {
     /**
@@ -28,10 +29,10 @@ public enum MemoryUnit {
      */
     GIGABYTES("GB");
 
-    @Getter
     private final String name;
-    private final static int BYTES_PER_KB = 1024;
-    private final static int BITS_PER_BYTE = 8;
+
+    private final static int bytesPerKB = 1024;
+    private final static int bitsPerByte = 8;
 
     /**
      * Initialize the memory unit
@@ -59,63 +60,63 @@ public enum MemoryUnit {
             case BITS:
                 switch (to) {
                     case BYTES:
-                        return value / BITS_PER_BYTE;
+                        return value / bitsPerByte;
                     case KILOBYTES:
-                        return (value / BITS_PER_BYTE) / BYTES_PER_KB;
+                        return (value / bitsPerByte) / bytesPerKB;
                     case MEGABYTES:
-                        return ((value / BITS_PER_BYTE) / BYTES_PER_KB) / BYTES_PER_KB;
+                        return ((value / bitsPerByte) / bytesPerKB) / bytesPerKB;
                     case GIGABYTES:
                     default:
-                        return (((value / BITS_PER_BYTE) / BYTES_PER_KB) / BYTES_PER_KB) / BYTES_PER_KB;
+                        return (((value / bitsPerByte) / bytesPerKB) / bytesPerKB) / bytesPerKB;
                 }
             case BYTES:
                 switch (to) {
                     case BITS:
-                        return value * BITS_PER_BYTE;
+                        return value * bitsPerByte;
                     case KILOBYTES:
-                        return value / BYTES_PER_KB;
+                        return value / bytesPerKB;
                     case MEGABYTES:
-                        return (value / BYTES_PER_KB) / BYTES_PER_KB;
+                        return (value / bytesPerKB) / bytesPerKB;
                     case GIGABYTES:
                     default:
-                        return ((value / BYTES_PER_KB) / BYTES_PER_KB) / BYTES_PER_KB;
+                        return ((value / bytesPerKB) / bytesPerKB) / bytesPerKB;
                 }
             case KILOBYTES:
                 switch (to) {
                     case BITS:
-                        return (value * BYTES_PER_KB) * BITS_PER_BYTE;
+                        return (value * bytesPerKB) * bitsPerByte;
                     case BYTES:
-                        return value * BYTES_PER_KB;
+                        return value * bytesPerKB;
                     case MEGABYTES:
-                        return value / BYTES_PER_KB;
+                        return value / bytesPerKB;
                     case GIGABYTES:
                     default:
-                        return (value / BYTES_PER_KB) / BYTES_PER_KB;
+                        return (value / bytesPerKB) / bytesPerKB;
                 }
             case MEGABYTES:
                 switch (to) {
                     case BITS:
-                        return ((value * BYTES_PER_KB) * BYTES_PER_KB) * BITS_PER_BYTE;
+                        return ((value * bytesPerKB) * bytesPerKB) * bitsPerByte;
                     case BYTES:
-                        return (value * BYTES_PER_KB) * BYTES_PER_KB;
+                        return (value * bytesPerKB) * bytesPerKB;
                     case KILOBYTES:
-                        return value * BYTES_PER_KB;
+                        return value * bytesPerKB;
                     case GIGABYTES:
                     default:
-                        return value / BYTES_PER_KB;
+                        return value / bytesPerKB;
                 }
             case GIGABYTES:
             default:
                 switch (to) {
                     case BITS:
-                        return (((value * BYTES_PER_KB) * BYTES_PER_KB) * BYTES_PER_KB) * BITS_PER_BYTE;
+                        return (((value * bytesPerKB) * bytesPerKB) * bytesPerKB) * bitsPerByte;
                     case BYTES:
-                        return ((value * BYTES_PER_KB) * BYTES_PER_KB) * BYTES_PER_KB;
+                        return ((value * bytesPerKB) * bytesPerKB) * bytesPerKB;
                     case KILOBYTES:
-                        return (value * BYTES_PER_KB) * BYTES_PER_KB;
+                        return (value * bytesPerKB) * bytesPerKB;
                     case MEGABYTES:
                     default:
-                        return value * BYTES_PER_KB;
+                        return value * bytesPerKB;
                 }
         }
     }

@@ -75,19 +75,23 @@ public abstract class KarmaPlugin extends JavaPlugin implements APISource {
     private SourceRuntime runtime;
 
     @SuppressWarnings("unused")
-    public KarmaPlugin() throws NoSuchFieldException, IllegalAccessException, AlreadyRegisteredException {
+    public KarmaPlugin() {
         this(false);
     }
 
-    public KarmaPlugin(final boolean protect) throws NoSuchFieldException, IllegalAccessException, AlreadyRegisteredException {
+    public KarmaPlugin(final boolean protect) {
         this(protect, false);
     }
 
-    public KarmaPlugin(final boolean protect, final boolean registerPrincipal) throws NoSuchFieldException, IllegalAccessException, AlreadyRegisteredException {
+    public KarmaPlugin(final boolean protect, final boolean registerPrincipal) {
         if (instance == null) instance = this;
 
         setNaggable(false);
-        SourceManager.register(this, protect);
+        try {
+            SourceManager.register(this, protect);
+        } catch (AlreadyRegisteredException ex) {
+            throw new RuntimeException(ex);
+        }
         logger = LogManager.getLogger(this).overrideLogFunction((string) -> {
             Bukkit.getServer().getConsoleSender().sendMessage(ChatColor.translateAlternateColorCodes('&', string));
             return null;
@@ -97,11 +101,15 @@ public abstract class KarmaPlugin extends JavaPlugin implements APISource {
 
         if (registerPrincipal && principalSet) return; //We will simply ignore the register principal task if we already have a principal source
         if (registerPrincipal) {
-            Class<SourceManager> managerClass = SourceManager.class;
-            Field principalField = managerClass.getDeclaredField("principal");
-            principalField.setAccessible(true);
-            principalField.set(managerClass, sourceName());
-            principalField.setAccessible(false);
+            try {
+                Class<SourceManager> managerClass = SourceManager.class;
+                Field principalField = managerClass.getDeclaredField("principal");
+                principalField.setAccessible(true);
+                principalField.set(managerClass, sourceName());
+                principalField.setAccessible(false);
+            } catch (NoSuchFieldException | IllegalAccessException ex) {
+                throw new RuntimeException(ex);
+            }
 
             principalSet = true;
         }

@@ -141,7 +141,7 @@ public final class APIConfiguration {
         }
 
         JsonArray printArray = consoleSettings.get("print").getAsJsonArray();
-        return printArray.contains(level.getNameElement());
+        return printArray.contains(new JsonPrimitive(level.name()));
     }
 
     /**

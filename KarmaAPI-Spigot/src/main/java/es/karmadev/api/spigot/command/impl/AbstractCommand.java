@@ -40,13 +40,16 @@ public final class AbstractCommand extends SimpleCommand {
      * @param name             the command name
      * @param description      the command description
      * @param permission       the command permission
+     * @param permissionMessage the permission message
+     * @param requiresOp       if the command requires op
      * @param usage            the command usage message
      * @param aliases          the command aliases
      * @param allowedExecutors the command allowed executors
      */
     public AbstractCommand(final String name, final String description, final String permission,
+                           final String permissionMessage, final boolean requiresOp,
                            final String usage, final String[] aliases, final Class<? extends CommandSender>[] allowedExecutors) {
-        super(name, description, permission, usage, aliases, allowedExecutors);
+        super(name, description, permission, permissionMessage, requiresOp, usage, aliases, allowedExecutors);
     }
 
     /**

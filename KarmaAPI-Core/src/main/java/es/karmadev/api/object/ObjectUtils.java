@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Object utilities
@@ -22,6 +23,19 @@ public class ObjectUtils {
      */
     public static <T> T returnOrElse(final @Nullable T instance, final @NotNull T fallback) {
         return (instance != null ? instance : fallback);
+    }
+
+    /**
+     * Return the instance or the fallback
+     * value if the instance is null
+     *
+     * @param instance the instance
+     * @param fallback the fallback value
+     * @return the value
+     * @param <T> the value type
+     */
+    public static <T> T returnOrElse(final @Nullable T instance, final @NotNull Supplier<T> fallback) {
+        return (instance != null ? instance : fallback.get());
     }
 
     /**

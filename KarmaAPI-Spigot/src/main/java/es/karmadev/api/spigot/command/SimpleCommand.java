@@ -1,13 +1,14 @@
 package es.karmadev.api.spigot.command;
 
 import es.karmadev.api.array.ArrayUtils;
+import es.karmadev.api.minecraft.text.Colorize;
 import es.karmadev.api.object.ObjectUtils;
-import es.karmadev.api.spigot.command.impl.CommandExecutor;
-import es.karmadev.api.spigot.command.impl.CommandTabCompletor;
-import lombok.Getter;
-import lombok.Setter;
+import es.karmadev.api.strings.StringUtils;
+import org.bukkit.Bukkit;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
+import org.bukkit.permissions.Permission;
+import org.bukkit.permissions.PermissionDefault;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -19,11 +20,14 @@ import java.util.List;
  * Represents a bukkit command, with all
  * the basic things a command have.
  */
+@SuppressWarnings("unchecked")
 public abstract class SimpleCommand {
 
     protected final String name;
     protected final String description;
     protected final String permission;
+    protected final String permissionMessage;
+    protected final boolean requiresOp;
     protected final String usage;
     protected final String[] aliases;
     protected final Class<? extends CommandSender>[] allowedExecutors;
@@ -47,6 +51,8 @@ public abstract class SimpleCommand {
         this.name = settings.name();
         this.description = settings.description();
         this.permission = settings.permission();
+        this.permissionMessage = settings.permissionMessage();
+        this.requiresOp = ObjectUtils.isNullOrEmpty(settings.permission()) && settings.requiresOp();
         this.usage = settings.usage();
         this.aliases = settings.aliases();
         this.allowedExecutors = settings.executors();
@@ -63,16 +69,21 @@ public abstract class SimpleCommand {
      * @param name the command name
      * @param description the command description
      * @param permission the command permission
+     * @param permissionMessage the command permission message
+     * @param requiresOp whether the command requires op
      * @param usage the command usage message
      * @param aliases the command aliases
      * @param allowedExecutors the command allowed executors
      */
     public SimpleCommand(final String name, final String description, final String permission,
+                         final String permissionMessage, final boolean requiresOp,
                          final String usage, final String[] aliases,
                          final Class<? extends CommandSender>[] allowedExecutors) {
         this.name = name;
         this.description = description;
         this.permission = permission;
+        this.permissionMessage = permissionMessage;
+        this.requiresOp = ObjectUtils.isNullOrEmpty(permission) && requiresOp;
         this.usage = usage;
         this.aliases = aliases;
         this.allowedExecutors = allowedExecutors;
@@ -89,7 +100,7 @@ public abstract class SimpleCommand {
      * @param name the command name
      */
     public SimpleCommand(final String name) {
-        this(name, "", "", "", new String[]{}, new Class[]{
+        this(name, "", "", "&cYou're in lack of permission&7 <permission>", false, "", new String[]{}, new Class[]{
                 Player.class,
                 ProxiedCommandSender.class, RemoteConsoleCommandSender.class,
                 ConsoleCommandSender.class, BlockCommandSender.class
@@ -180,16 +191,33 @@ public abstract class SimpleCommand {
          */
         @Override
         public boolean execute(final @NotNull CommandSender sender, final @NotNull String commandLabel, final @NotNull String[] args) {
-            if (!ArrayUtils.containsAny(command.allowedExecutors, sender.getClass())) {
+            Class<?> senderClass = sender.getClass();
+            if (Arrays.stream(command.allowedExecutors).noneMatch((allowed) ->
+                    allowed.isInstance(sender) || senderClass.isAssignableFrom(allowed) || allowed.isAssignableFrom(senderClass))) {
                 command.executeInvalid(sender, commandLabel, args);
                 return false;
             }
 
             String permission = command.permission;
+            if (command.requiresOp) {
+                permission = StringUtils.generateString();
+            }
+
             if (!ObjectUtils.isNullOrEmpty(permission)) {
-                if (sender.hasPermission(permission)) {
+                Permission bukkitPermission = Bukkit.getPluginManager().getPermission(permission);
+                if (bukkitPermission == null) {
+                    bukkitPermission = new Permission(permission, PermissionDefault.OP);
+                }
+
+                boolean hasPermission = sender.hasPermission(bukkitPermission) ||
+                        (bukkitPermission.getDefault().equals(PermissionDefault.OP) && sender.isOp());
+
+                if (hasPermission) {
                     run(sender, commandLabel, args);
                     return true;
+                } else if (!ObjectUtils.isNullOrEmpty(command.permissionMessage)) {
+                    sender.sendMessage(Colorize.colorize(command.permissionMessage.replace("<permission>", (command.requiresOp ?
+                            "op" : permission))));
                 }
 
                 return false;

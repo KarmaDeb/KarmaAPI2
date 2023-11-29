@@ -2,6 +2,7 @@ package es.karmadev.api.web.request;
 
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.file.util.PathUtilities;
+import lombok.Getter;
 
 import java.io.*;
 import java.net.URLEncoder;
@@ -18,9 +19,12 @@ import java.util.Map;
  */
 public final class RequestData {
 
-    private final Map<String, Object> data = new LinkedHashMap<>();
+    @Getter
     private ContentType contentType = ContentType.ENCODED;
-    private String boundary = "===" + System.currentTimeMillis() + "===";
+
+    private final Map<String, Object> data = new LinkedHashMap<>();
+    @Getter
+    private final String boundary = "===" + System.currentTimeMillis() + "===";
 
     /**
      * Create the post request
@@ -145,30 +149,12 @@ public final class RequestData {
     }
 
     /**
-     * Get the content type
-     *
-     * @return the request content type
-     */
-    public ContentType getContentType() {
-        return contentType;
-    }
-
-    /**
-     * Get the request FORM boundary
-     *
-     * @return the request boundary
-     */
-    public String getBoundary() {
-        return boundary;
-    }
-
-    /**
      * Build the request
      *
      * @return the raw request data
      * @throws UnsupportedEncodingException if the URL encoded content type fails to build
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "ResultOfMethodCallIgnored"})
     public String build() throws UnsupportedEncodingException {
         String startChar = "";
         String finalChar = "";
@@ -243,7 +229,6 @@ public final class RequestData {
                 jsonBuilder.append("}");
                 return jsonBuilder.toString();
             case FORM:
-
                 String charset = "UTF-8";
 
                 ByteArrayOutputStream outputStream = new ByteArrayOutputStream();

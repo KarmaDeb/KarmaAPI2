@@ -4,15 +4,16 @@ import es.karmadev.api.minecraft.bossbar.component.BarColor;
 import es.karmadev.api.minecraft.bossbar.component.BarFlag;
 import es.karmadev.api.minecraft.bossbar.component.BarProgress;
 import es.karmadev.api.minecraft.bossbar.component.BarType;
-import es.karmadev.api.minecraft.client.GlobalPlayer;
+import org.bukkit.entity.Player;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 /**
  * BossBar message provider
  */
 @SuppressWarnings("unused")
-public abstract class BossBarProvider {
+public abstract class BossBarProvider<BarHolder> {
 
     protected final EnumSet<BarFlag> flagSet = EnumSet.noneOf(BarFlag.class);
 
@@ -31,7 +32,7 @@ public abstract class BossBarProvider {
      * @throws UnsupportedOperationException if the boss bar doesn't support
      * color change
      */
-    public abstract BossBarProvider color(final BarColor color) throws UnsupportedOperationException;
+    public abstract BossBarProvider<BarHolder> color(final BarColor color) throws UnsupportedOperationException;
 
     /**
      * Set the boss bar type
@@ -41,7 +42,7 @@ public abstract class BossBarProvider {
      * @throws UnsupportedOperationException if the boss bar doesn't support
      * type change
      */
-    public abstract BossBarProvider type(final BarType type) throws UnsupportedOperationException;
+    public abstract BossBarProvider<BarHolder> type(final BarType type) throws UnsupportedOperationException;
 
     /**
      * Set the boss bar progress type
@@ -51,7 +52,7 @@ public abstract class BossBarProvider {
      * @throws UnsupportedOperationException if the boss bar doesn't support
      * progress change
      */
-    public abstract BossBarProvider progress(final BarProgress progress) throws UnsupportedOperationException;
+    public abstract BossBarProvider<BarHolder> progress(final BarProgress progress) throws UnsupportedOperationException;
 
     /**
      * Set the boss bar flags
@@ -59,7 +60,7 @@ public abstract class BossBarProvider {
      * @param flags the flags to add
      * @return the modified boss bar
      */
-    public final BossBarProvider setFlags(final BarFlag... flags) {
+    public BossBarProvider<BarHolder> setFlags(final BarFlag... flags) {
         Collections.addAll(flagSet, flags);
         return this;
     }
@@ -70,7 +71,7 @@ public abstract class BossBarProvider {
      * @param flags the flags to remove
      * @return the modified boss bar
      */
-    public final BossBarProvider removeFlags(final BarFlag... flags) {
+    public BossBarProvider<BarHolder> removeFlags(final BarFlag... flags) {
         Arrays.asList(flags).forEach(flagSet::remove);
         return this;
     }
@@ -81,7 +82,7 @@ public abstract class BossBarProvider {
      * @param time the new display time
      * @return the modified boss bar
      */
-    public abstract BossBarProvider displayTime(final double time);
+    public abstract BossBarProvider<BarHolder> displayTime(final long time);
 
     /**
      * Set the boss bar progress manually
@@ -91,6 +92,13 @@ public abstract class BossBarProvider {
     public abstract void setProgress(final double progress);
 
     /**
+     * Set the boss bar message
+     *
+     * @param content the message
+     */
+    public abstract void setContent(final String content);
+
+    /**
      * Cancel the boss bar message
      */
     public abstract void cancel();
@@ -98,10 +106,21 @@ public abstract class BossBarProvider {
     /**
      * Send the boss bar to the players
      *
+     * @param onTick the action to perform on each tick
      * @param players the players to send the boss bar
      *                to
      */
-    public abstract void send(final Collection<GlobalPlayer> players);
+    public abstract void send(final Consumer<BarHolder> onTick, final Collection<BarHolder> players);
+
+    /**
+     * Send the boss bar to the player
+     *
+     * @param players the player to send the actionbar to
+     * @param onTick the action to perform on each tick
+     */
+    public void send(final Consumer<BarHolder> onTick, final BarHolder... players) {
+        send(onTick, Arrays.asList(players));
+    }
 
     /**
      * Send the boss bar to the players
@@ -109,23 +128,26 @@ public abstract class BossBarProvider {
      * @param players the players to send the boss bar
      *                to
      */
-    public abstract void send(final GlobalPlayer[] players);
+    public void send(final Collection<BarHolder> players) {
+        send((player) -> {}, players);
+    }
 
     /**
      * Send the boss bar to the player
      *
-     * @param player the player to send the actionbar to
+     * @param players the player to send the actionbar to
      */
-    public abstract void send(final GlobalPlayer player);
+    public void send(final BarHolder... players) {
+        send((player) -> {}, Arrays.asList(players));
+    }
 
     /**
-     * Update the boss bar text
+     * Update the boss bar
      *
-     * @param newMessage the new boss bar message
      * @param resetProgress if reset the boss bar progress
      * @return if the boss bar was able to be updated
      */
-    public abstract boolean update(final String newMessage, final boolean resetProgress);
+    public abstract boolean update(final boolean resetProgress);
 
     /**
      * Check if the boss bar is valid
@@ -182,7 +204,9 @@ public abstract class BossBarProvider {
      *
      * @return the bar flags
      */
-    public abstract BarFlag[] getFlags();
+    public BarFlag[] getFlags() {
+        return flagSet.toArray(new BarFlag[0]).clone();
+    }
 
     /**
      * Check if the boss bar has the specified

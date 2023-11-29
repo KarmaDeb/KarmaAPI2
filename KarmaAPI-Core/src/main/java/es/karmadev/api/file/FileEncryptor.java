@@ -1,5 +1,6 @@
 package es.karmadev.api.file;
 
+import es.karmadev.api.file.util.PathUtilities;
 import es.karmadev.api.strings.StringUtils;
 
 import javax.crypto.*;
@@ -99,7 +100,8 @@ public class FileEncryptor {
      * @throws BadPaddingException as part of implementation
      */
     protected void transform(final int mode, final IvParameterSpec iv) throws IOException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
-        Path tmp = Files.createTempFile("file_encryptor" + StringUtils.generateString(), ".tmp");
+        Path tmp = file.getParent().resolve(String.format("%s.enc.%s",
+                PathUtilities.getName(file), PathUtilities.getExtension(file)));
 
         Cipher cipher = Cipher.getInstance("AES");
         cipher.init(mode, key);

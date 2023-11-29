@@ -1,6 +1,6 @@
 package es.karmadev.api.spigot.inventory.helper.option;
 
-import es.karmadev.api.minecraft.color.ColorComponent;
+import es.karmadev.api.minecraft.text.Colorize;
 import es.karmadev.api.spigot.core.KarmaPlugin;
 import es.karmadev.api.spigot.inventory.helper.func.ItemFunction;
 import es.karmadev.api.spigot.inventory.helper.option.func.OptionItemFunction;
@@ -34,7 +34,7 @@ public class OptionsInventory<T> implements InventoryHolder, Listener {
     protected boolean canClose = false;
 
     public OptionsInventory(final String title, final int size) {
-        inventory = Bukkit.createInventory(this, size, ColorComponent.parse(title));
+        inventory = Bukkit.createInventory(this, size, Colorize.colorize(title));
 
         KarmaPlugin plugin = KarmaPlugin.getInstance();
         Bukkit.getPluginManager().registerEvent(InventoryClickEvent.class, this, EventPriority.HIGHEST, (listener, event) -> {

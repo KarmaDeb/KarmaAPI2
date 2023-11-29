@@ -1,7 +1,7 @@
 package es.karmadev.api.logger.log.console;
 
 import es.karmadev.api.core.KarmaKore;
-import es.karmadev.api.logger.log.BoundedLogger;
+import es.karmadev.api.strings.StringUtils;
 import es.karmadev.api.strings.placeholder.PlaceholderEngine;
 import lombok.Getter;
 
@@ -14,111 +14,110 @@ import java.util.regex.Pattern;
 /**
  * Console colors
  */
+@Getter
 @SuppressWarnings("unused")
 public enum ConsoleColor {
     /**
      * Console color
      */
-    BLACK('0', "\033[0;38;2;0;0;0m", "\u001B[30m"),
+    BLACK('0', "[0;38;2;0;0;0m", "[30m"),
     /**
      * Console color
      */
-    DARK_BLUE('1', "\033[0;38;2;0;0;128m", "\u001B[34m"),
+    DARK_BLUE('1', "[0;38;2;0;0;128m", "[34m"),
     /**
      * Console color
      */
-    DARK_GREEN('2', "\033[0;38;2;0;128;0m", "\u001B[32m"),
+    DARK_GREEN('2', "[0;38;2;0;128;0m", "[32m"),
     /**
      * Console color
      */
-    DARK_AQUA('3', "\033[0;38;2;0;128;128m", "\u001B[36m"),
+    DARK_AQUA('3', "[0;38;2;0;128;128m", "[36m"),
     /**
      * Console color
      */
-    DARK_RED('4', "\033[0;38;2;128;0;0m", "\u001B[31m"),
+    DARK_RED('4', "[0;38;2;128;0;0m", "[31m"),
     /**
      * Console color
      */
-    DARK_PURPLE('5', "\033[0;38;2;128;0;128m", "\u001B[35m"),
+    DARK_PURPLE('5', "[0;38;2;128;0;128m", "[35m"),
     /**
      * Console color
      */
-    DARK_YELLOW('6', "\033[0;38;2;128;128;0m", "\u001B[33m"),
+    DARK_YELLOW('6', "[0;38;2;128;128;0m", "[33m"),
     /**
      * Console color
      */
-    GRAY('7', "\033[0;38;2;192;192;192m", "\u001B[37m"),
+    GRAY('7', "[0;38;2;192;192;192m", "[37m"),
     /**
      * Console color
      */
-    DARK_GRAY('8', "\033[0;38;2;128;128;128m", "\u001B[90m"),
+    DARK_GRAY('8', "[0;38;2;128;128;128m", "[90m"),
     /**
      * Console color
      */
-    BLUE('9', "\033[0;38;2;0;95;255m", "\u001B[94m"),
+    BLUE('9', "[0;38;2;0;95;255m", "94m"),
     /**
      * Console color
      */
-    GREEN('a', "\033[0;38;2;0;255;0m", "\u001B[92m"),
+    GREEN('a', "[0;38;2;0;255;0m", "[92m"),
     /**
      * Console color
      */
-    AQUA('b', "\033[0;38;2;0;255;255m", "\u001B[96m"),
+    AQUA('b', "[0;38;2;0;255;255m", "[96m"),
     /**
      * Console color
      */
-    RED('c', "\033[0;38;2;255;0;0m", "\u001B[91m"),
+    RED('c', "[0;38;2;255;0;0m", "[91m"),
     /**
      * Console color
      */
-    PURPLE('d', "\033[0;38;2;255;0;255m", "\u001B[95m"),
+    PURPLE('d', "[0;38;2;255;0;255m", "[95m"),
     /**
      * Console color
      */
-    YELLOW('e', "\033[0;38;2;255;255;0m", "\u001B[93m"),
+    YELLOW('e', "[0;38;2;255;255;0m", "[93m"),
     /**
      * Console color
      */
-    WHITE('f', "\033[0;38;2;255;255;255m", "\u001B[97m"),
+    WHITE('f', "[0;38;2;255;255;255m", "[97m"),
     /**
      * Console color
      */
-    RESET('r', "\033[0m", "\u001B[0m"),
+    RESET('r', "[0m", "[0m"),
     /**
      * Console color
      */
-    BOLD('l', "\033[1m", "\u001B[1m"),
+    BOLD('l', "[1m", "[1m"),
     /**
      * Console color
      */
-    UNDERLINE('n', "\033[4m", "\u001B[4m"),
+    UNDERLINE('n', "[4m", "[4m"),
     /**
      * Console color
      */
-    ITALIC('o', "\033[3m", "\u001B[3m"),
+    ITALIC('o', "[3m", "[3m"),
     /**
      * Console color
      */
-    STRIKETHROUGH('m', "\033[9m", "\u001B[9m");
+    STRIKETHROUGH('m', "[9m", "[9m");
 
     @SuppressWarnings("NonFinalFieldInEnum")
     public static boolean forceOtherOs = false;
     @SuppressWarnings("NonFinalFieldInEnum")
     public static char ignoreCharacter = '\\';
 
-    @Getter
     private final char code;
-    @Getter
     private final char colorCode;
-    @Getter
     private final String unixCode;
-    @Getter
     private final String winCode;
 
     private final static Map<Character, String> winCodes = new ConcurrentHashMap<>();
     private final static Map<Character, String> unixCodes = new ConcurrentHashMap<>();
 
     private final static Map<Character, ConsoleColor> codes = new ConcurrentHashMap<>();
+
+    private final static Pattern colorPattern = Pattern.compile("&(?<code>[0-9a-f]|l|r|n|o|m)");
 
 
     static {
@@ -137,12 +136,10 @@ public enum ConsoleColor {
      * @param win the windows code
      */
     ConsoleColor(final char code, final String unix, final String win) {
-        String os = System.getProperty("os.name").toLowerCase();
-
         this.code = code;
-        this.colorCode = (os.contains("windows") ? '\u001B' : '\033');
-        unixCode = unix;
-        winCode = win;
+        this.colorCode = '\u001B';
+        unixCode = colorCode + unix;
+        winCode = colorCode + win;
     }
 
     /**
@@ -244,80 +241,35 @@ public enum ConsoleColor {
         String os = System.getProperty("os.name").toLowerCase();
         String str = message.replace("§", "&") + "&r";
 
-        Pattern pattern = Pattern.compile("&[0-9a-flrnom]");
-        Map<String, String> replacements = new HashMap<>();
+        StringBuilder builder = new StringBuilder();
+        Matcher matcher = colorPattern.matcher(str);
 
-        Matcher matcher = pattern.matcher(str);
-
-        /*StringBuilder builder = new StringBuilder();
-        boolean ignoreNext = false;
-        for (int i = 0; i < str.length(); i++) {
-            char character = str.charAt(i);
-            String append = null;
-
-            if (character == '&') {
-                if (!ignoreNext) {
-                    char next = '\0';
-                    boolean hasNext = false;
-                    if (i + 1 < str.length()) {
-                        next = str.charAt(i + 1);
-                        hasNext = true;
-                    }
-
-                    if (hasNext) {
-                        if (codes.containsKey(next)) {
-                            ConsoleColor color = codes.get(next);
-                            append = color.toOsCode();
-                            i++;
-                        }
-                    }
-                }
-
-                ignoreNext = false;
-            }
-            if (character == ignoreCharacter) {
-                ignoreNext = true;
-                append = ""; //append nothing
-            }
-            if (append == null) append = String.valueOf(character);
-
-            builder.append(append);
-        }*/
-
+        int source = 0;
+        boolean parsed = false;
         while (matcher.find()) {
-            int pre = Math.max(matcher.start() - 1, 0);
+            parsed = true;
             int start = matcher.start();
             int end = matcher.end();
 
-            if (start != pre) {
-                char character = str.charAt(pre);
-                if (character == ignoreCharacter) {
-                    String part = str.substring(pre, end);
-                    replacements.put(part, str.substring(start, end));
-                    continue;
-                }
-            }
+            builder.append(str, source, start);
 
-            String part = str.substring(start, end);
-            char code = part.charAt(1);
+            char code = matcher.group("code").charAt(0);
+            String osCode = (os.contains("windows") ? winCodes.get(code) : unixCodes.get(code));
 
-            String osCode;
-            if (os.contains("windows")) {
-                osCode = (forceOtherOs ? unixCodes.get(code) : winCodes.get(code));
-            } else {
-                osCode = (forceOtherOs ? winCodes.get(code) : unixCodes.get(code));
-            }
-
-            replacements.put(part, osCode);
+            if (osCode == null) continue; //Non-existent, skip
+            builder.append(osCode);
+            source = end;
         }
 
-        for (String key : replacements.keySet()) {
-            String value = replacements.get(key);
-            str = str.replace(key, value);
+        if (parsed) {
+            if (source < str.length()) {
+                builder.append(str, source, str.length());
+            }
+        } else {
+            builder.append(str);
         }
 
-        return str;
-        //return builder.toString();
+        return builder.toString();
     }
 
     /**
@@ -327,38 +279,41 @@ public enum ConsoleColor {
      * @return the uncolored message
      */
     public static String strip(final String message) {
-        String str = message;
-        if (str.contains("§")) {
-            str = str.replace("§", "&");
+        String os = System.getProperty("os.name").toLowerCase();
+        String str = message.replace("§", "&");
+
+        for (Character code : codes.keySet()) {
+            String winCode = winCodes.get(code);
+            String unixCode = unixCodes.get(code);
+
+            str = str.replace(winCode, "&" + code)
+                    .replace(unixCode, "&" + code);
         }
 
-        Pattern pattern = Pattern.compile("&[0-9a-flrnom]");
-        Matcher matcher = pattern.matcher(str);
+        StringBuilder builder = new StringBuilder();
+        Matcher matcher = colorPattern.matcher(str);
 
-        Map<String, String> parts = new ConcurrentHashMap<>();
+        int source = 0;
+        boolean parsed = false;
+
         while (matcher.find()) {
-            int pre = Math.max(matcher.start() - 1, 0);
+            parsed = true;
             int start = matcher.start();
             int end = matcher.end();
 
-            if (start != pre) {
-                char character = str.charAt(pre);
-                if (character == ignoreCharacter) {
-                    String part = str.substring(pre, end);
-                    parts.put(part, str.substring(start, end));
-                    continue;
-                }
-            }
-
-            String part = str.substring(start, end);
-            parts.put(part, "");
+            builder.append(str, source, start);
+            source = end;
         }
 
-        for (String unixValue : unixCodes.values()) str = str.replace(unixValue, "");
-        for (String winValue : winCodes.values()) str = str.replace(winValue, "");
-        for (String part : parts.keySet()) str = str.replace(part, parts.get(part));
+        if (parsed) {
+            if (source < str.length()) {
+                builder.append(str, source, str.length());
+            }
+        } else {
+            builder.append(str);
+        }
 
-        return str;
+        return builder.toString();
     }
 
     /**
@@ -368,10 +323,7 @@ public enum ConsoleColor {
      * @return the message colors
      */
     public static String[] colors(final String message) {
-        String str = message;
-        if (str.contains("§")) {
-            str = str.replace("§", "&");
-        }
+        String str = message.replace("§", "&");
 
         Set<String> parts = new LinkedHashSet<>();
         for (char cCode : codes.keySet()) {

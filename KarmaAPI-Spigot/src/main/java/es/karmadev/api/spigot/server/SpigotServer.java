@@ -1,18 +1,15 @@
 package es.karmadev.api.spigot.server;
 
+import es.karmadev.api.minecraft.MinecraftVersion;
 import es.karmadev.api.version.Version;
-import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
-import org.bukkit.scheduler.BukkitScheduler;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Spigot server utilities
@@ -20,101 +17,14 @@ import java.util.concurrent.TimeUnit;
 @SuppressWarnings("unused")
 public class SpigotServer {
 
-    public final static Version v1_7_X = Version.of(1, 7, 0);
-    public final static Version v1_7_2 = Version.of(1, 7, 2);
-    public final static Version v1_7_4 = Version.of(1, 7, 4);
-    public final static Version v1_7_5 = Version.of(1, 7, 5);
-    public final static Version v1_7_6 = Version.of(1, 7, 6);
-    public final static Version v1_7_7 = Version.of(1, 7, 7);
-    public final static Version v1_7_8 = Version.of(1, 7, 8);
-    public final static Version v1_7_9 = Version.of(1, 7, 9);
-    public final static Version v1_7_10 = Version.of(1, 7, 10);
-    public final static Version v1_8_X = Version.of(1, 8, 0);
-    public final static Version v1_8_1 = Version.of(1, 8, 1);
-    public final static Version v1_8_2 = Version.of(1, 8, 2);
-    public final static Version v1_8_3 = Version.of(1, 8, 3);
-    public final static Version v1_8_4 = Version.of(1, 8, 4);
-    public final static Version v1_8_5 = Version.of(1, 8, 5);
-    public final static Version v1_8_6 = Version.of(1, 8, 6);
-    public final static Version v1_8_7 = Version.of(1, 8, 7);
-    public final static Version v1_8_8 = Version.of(1, 8, 8);
-    public final static Version v1_8_9 = Version.of(1, 8, 9);
-    public final static Version v1_9_X = Version.of(1, 9, 0);
-    public final static Version v1_9_1 = Version.of(1, 9, 1);
-    public final static Version v1_9_2 = Version.of(1, 9, 2);
-    public final static Version v1_9_3 = Version.of(1, 9, 3);
-    public final static Version v1_9_4 = Version.of(1, 9, 4);
-    public final static Version v1_10_X = Version.of(1, 10, 0);
-    public final static Version v1_10_1 = Version.of(1, 10, 1);
-    public final static Version v1_10_2 = Version.of(1, 10, 2);
-    public final static Version v1_11_X = Version.of(1, 11, 0);
-    public final static Version v1_11_1 = Version.of(1, 11, 1);
-    public final static Version v1_11_2 = Version.of(1, 11, 2);
-    public final static Version v1_12_X = Version.of(1, 12, 0);
-    public final static Version v1_12_1 = Version.of(1, 12, 1);
-    public final static Version v1_12_2 = Version.of(1, 12, 2);
-    public final static Version v1_13_X = Version.of(1, 13, 0);
-    public final static Version v1_13_1 = Version.of(1, 13, 1);
-    public final static Version v1_13_2 = Version.of(1, 13, 2);
-    public final static Version v1_14_X = Version.of(1, 14, 0);
-    public final static Version v1_14_1 = Version.of(1, 14, 1);
-    public final static Version v1_14_2 = Version.of(1, 14, 2);
-    public final static Version v1_14_3 = Version.of(1, 14, 3);
-    public final static Version v1_14_4 = Version.of(1, 14, 4);
-    public final static Version v1_15_X = Version.of(1, 15, 0);
-    public final static Version v1_15_1 = Version.of(1, 15, 1);
-    public final static Version v1_15_2 = Version.of(1, 15, 2);
-    public final static Version v1_16_X = Version.of(1, 16, 0);
-    public final static Version v1_16_1 = Version.of(1, 16, 1);
-    public final static Version v1_16_2 = Version.of(1, 16, 2);
-    public final static Version v1_16_3 = Version.of(1, 16, 3);
-    public final static Version v1_16_4 = Version.of(1, 16, 4);
-    public final static Version v1_16_5 = Version.of(1, 16, 5);
-    public final static Version v1_17_X = Version.of(1, 17, 0);
-    public final static Version v1_17_1 = Version.of(1, 17, 1);
-    public final static Version v1_18_X = Version.of(1, 18, 0);
-    public final static Version v1_18_1 = Version.of(1, 18, 1);
-    public final static Version v1_18_2 = Version.of(1, 18, 2);
-    public final static Version v1_19_X = Version.of(1, 19, 0);
-    public final static Version v1_19_1 = Version.of(1, 19, 1);
-    public final static Version v1_19_2 = Version.of(1, 19, 2);
-    public final static Version v1_19_3 = Version.of(1, 19, 3);
-    public final static Version v1_19_4 = Version.of(1, 19, 4);
-    public final static Version v1_20_X = Version.of(1, 20, 0);
-    public final static Version v1_20_1 = Version.of(1, 20, 1);
-
     private final static Server server = Bukkit.getServer();
-
-    /**
-     * -- GETTER --
-     *  Get the current tick
-     */
-    @Getter
-    private static long currentTick = 0;
-
-    /**
-     * Start counting the tick
-     *
-     * @param owner the plugin owning the tick counter
-     * @return if the task could be started
-     */
-    public static boolean startTickCount(final Plugin owner) {
-        if (currentTick == 0) {
-            BukkitScheduler scheduler = Bukkit.getScheduler();
-
-            scheduler.runTaskTimer(owner, () -> currentTick++, 0, 1);
-            return true;
-        }
-
-        return false;
-    }
 
     /**
      * Get the spigot server version
      *
      * @return the server version
      */
-    public static Version getVersion() {
+    public static MinecraftVersion getVersion() {
         String bukkitVersion = server.getBukkitVersion(); //For example: 1.19.4-R0.1-SNAPSHOT
         String[] data = bukkitVersion.split("-");
 
@@ -133,7 +43,7 @@ public class SpigotServer {
             patch = Integer.parseInt(versionData[2]);
         }
 
-        return Version.of(mayor, minor, patch, info);
+        return MinecraftVersion.of(mayor, minor, patch, info);
     }
 
     /**
@@ -184,6 +94,21 @@ public class SpigotServer {
     }
 
     /**
+     * Get if the server version is at or
+     * over the provided version
+     *
+     * @param other the version to check with
+     * @return if the server version is over
+     * the specified version
+     */
+    public static boolean atOrOver(final Version other) {
+        Version current = getVersion();
+        int comparator = current.compareTo(other);
+
+        return comparator >= 0;
+    }
+
+    /**
      * Get if the server version is over the
      * provided version
      *
@@ -195,7 +120,22 @@ public class SpigotServer {
         Version current = getVersion();
         int comparator = current.compareTo(other);
 
-        return comparator >= 1;
+        return comparator > 0;
+    }
+
+    /**
+     * Get if the server version is at or
+     * under the provided version
+     *
+     * @param other the version to check with
+     * @return if the server version is under
+     * the specified version
+     */
+    public static boolean atOrUnder(final Version other) {
+        Version current = getVersion();
+        int comparator = current.compareTo(other);
+
+        return comparator <= 0;
     }
 
     /**
@@ -210,7 +150,7 @@ public class SpigotServer {
         Version current = getVersion();
         int comparator = current.compareTo(other);
 
-        return comparator <= -1;
+        return comparator < 0;
     }
 
     /**
@@ -222,6 +162,31 @@ public class SpigotServer {
      * the specified version
      */
     public static boolean isSameAs(final Version other) {
+        if (other.equals(MinecraftVersion.v1_8_R1)) {
+            try {
+                Class.forName("org.bukkit.craftbukkit.v1_8_R1.entity.CraftPlayer");
+                return true;
+            } catch (NoClassDefFoundError | ClassNotFoundException ex) {
+                return false;
+            }
+        }
+        if (other.equals(MinecraftVersion.v1_8_R2)) {
+            try {
+                Class.forName("org.bukkit.craftbukkit.v1_8_R2.entity.CraftPlayer");
+                return true;
+            } catch (NoClassDefFoundError | ClassNotFoundException ex) {
+                return false;
+            }
+        }
+        if (other.equals(MinecraftVersion.v1_8_R3)) {
+            try {
+                Class.forName("org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer");
+                return true;
+            } catch (NoClassDefFoundError | ClassNotFoundException ex) {
+                return false;
+            }
+        }
+
         Version current = getVersion();
         int comparator = current.compareTo(other);
 
@@ -247,24 +212,10 @@ public class SpigotServer {
      */
     public static VersionType packageVersion() {
         String version = server.getClass().getPackage().getName().replace(".", ",").split(",")[3];
-        if (isUnder(v1_7_2)) return VersionType.LEGACY;
-        if (isOver(v1_20_1)) return VersionType.FUTURE;
+        if (isUnder(MinecraftVersion.v1_7_2)) return VersionType.LEGACY;
+        if (isOver(MinecraftVersion.LATEST)) return VersionType.FUTURE;
 
         return VersionType.valueOf(version);
-    }
-
-    /**
-     * Get a future tick
-     *
-     * @param plusTime the time to add
-     * @param unit the time unit to add as
-     * @return the future tick
-     */
-    public static long getFutureTick(final long plusTime, final TimeUnit unit) {
-        long current = currentTick;
-        long seconds = TimeUnit.SECONDS.convert(plusTime, unit);
-
-        return current + (seconds * 20); //Each 20 ticks is 1 second
     }
 
     /**
@@ -323,8 +274,8 @@ public class SpigotServer {
      */
     public static Optional<Class<?>> netMinecraftServer(final String name, final String... route) {
         String version = server.getClass().getPackage().getName().replace(".", ",").split(",")[3];
-        String classLocation = "net.minecraft.server";
-        if (isUnder(v1_19_X)) { //When mojang stopped using net.minecraft.server.<version>
+        String classLocation = "net.minecraft";
+        if (isUnder(MinecraftVersion.v1_19_X)) { //When mojang stopped using net.minecraft.server.<version>
             classLocation += "." + version;
         }
 

@@ -2,7 +2,7 @@ package es.karmadev.api.spigot.inventory;
 
 import com.google.gson.*;
 import es.karmadev.api.file.util.PathUtilities;
-import es.karmadev.api.minecraft.color.ColorComponent;
+import es.karmadev.api.minecraft.text.Colorize;
 import es.karmadev.api.spigot.core.KarmaPlugin;
 import es.karmadev.api.strings.StringUtils;
 import lombok.AccessLevel;
@@ -15,10 +15,8 @@ import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -151,7 +149,7 @@ public class InventorySerializer {
 
         int size = sizeData.getAsInt();
 
-        Inventory inventory = Bukkit.createInventory(null, size, ColorComponent.parse(title));
+        Inventory inventory = Bukkit.createInventory(null, size, Colorize.colorize(title));
 
         if (!object.has("slots") || !object.get("slots").isJsonArray()) return null;
         JsonArray slotsData = object.getAsJsonArray("slots");

@@ -38,6 +38,24 @@ public @interface Command {
     String permission() default "";
 
     /**
+     * The message to send when the
+     * executor does not have the specified
+     * permission
+     *
+     * @return the permission message
+     */
+    String permissionMessage() default "&cYou're in lack of permission&7 <permission>";
+
+    /**
+     * Set if the command execution requires
+     * OP. THIS SETTING GETS OVERWRITE BY
+     * {@link #permission()}
+     *
+     * @return if the command execution requires OP
+     */
+    boolean requiresOp() default false;
+
+    /**
      * The command usage message
      *
      * @return the command usage message

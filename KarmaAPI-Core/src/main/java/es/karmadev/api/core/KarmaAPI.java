@@ -34,6 +34,8 @@ public class KarmaAPI {
 
     public final static Properties properties = new LockedProperties();
 
+    private static boolean negateSetup = false;
+
     static {
         try(InputStream stream = KarmaAPI.class.getResourceAsStream("/api.properties")) {
             if (stream != null) {
@@ -78,10 +80,21 @@ public class KarmaAPI {
     }
 
     /**
+     * Set the API setup negation status
+     *
+     * @param negate the negate status
+     */
+    public static void setNegateSetup(final boolean negate) {
+        KarmaAPI.negateSetup = negate;
+    }
+
+    /**
      * Set up the API
      * @throws URISyntaxException if the application fails to find the install location
      */
     public static void setup() throws URISyntaxException {
+        if (negateSetup) return;
+
         Class<?> clazz = KarmaAPI.class;
         ProtectionDomain domain = clazz.getProtectionDomain();
         if (domain == null) return;

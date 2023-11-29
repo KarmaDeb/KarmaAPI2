@@ -1,6 +1,6 @@
 package es.karmadev.api.spigot.inventory.helper.infinity;
 
-import es.karmadev.api.minecraft.color.ColorComponent;
+import es.karmadev.api.minecraft.text.Colorize;
 import es.karmadev.api.spigot.core.KarmaPlugin;
 import es.karmadev.api.spigot.inventory.helper.exceptions.NoIndexPageException;
 import es.karmadev.api.spigot.inventory.helper.func.Action;
@@ -74,17 +74,17 @@ public final class InventoryPage implements FunctionalInventory, InventoryHolder
         this.title = title;
 
         KarmaPlugin registrar = KarmaPlugin.getInstance();
-        inventory = registrar.getServer().createInventory(this, 54, ColorComponent.parse(title));
+        inventory = registrar.getServer().createInventory(this, 54, Colorize.colorize(title));
 
         if (NEXT == null || PREV == null) {
             NEXT = SkullBuilder.createSkull(NEXT_VALUE, NEXT_SIGNATURE, (meta) -> {
-                meta.setDisplayName(ColorComponent.parse("&aNext"));
+                meta.setDisplayName(Colorize.colorize("&aNext"));
                 meta.addItemFlags(ItemFlag.values());
 
                 return meta;
             });
             PREV = SkullBuilder.createSkull(PREV_VALUE, PREV_SIGNATURE, (meta) -> {
-                meta.setDisplayName(ColorComponent.parse("&cPrevious"));
+                meta.setDisplayName(Colorize.colorize("&cPrevious"));
                 meta.addItemFlags(ItemFlag.values());
 
                 return meta;
@@ -101,7 +101,7 @@ public final class InventoryPage implements FunctionalInventory, InventoryHolder
         }
         ItemMeta meta = spacer.getItemMeta();
         assert meta != null;
-        meta.setDisplayName(ColorComponent.parse("&0 "));
+        meta.setDisplayName(Colorize.colorize("&0 "));
         meta.addItemFlags(ItemFlag.values());
 
         spacer.setItemMeta(meta);
@@ -200,7 +200,7 @@ public final class InventoryPage implements FunctionalInventory, InventoryHolder
         ItemMeta meta = NEXT.getItemMeta();
         assert meta != null;
 
-        meta.setDisplayName(ColorComponent.parse(name));
+        meta.setDisplayName(Colorize.colorize(name));
         NEXT.setItemMeta(meta);
 
         setItem(53, NEXT).onClick(BookAction.nextPage(0));
@@ -217,7 +217,7 @@ public final class InventoryPage implements FunctionalInventory, InventoryHolder
         ItemMeta meta = PREV.getItemMeta();
         assert meta != null;
 
-        meta.setDisplayName(ColorComponent.parse(name));
+        meta.setDisplayName(Colorize.colorize(name));
         PREV.setItemMeta(meta);
 
         setItem(45, PREV).onClick(BookAction.previousPage(0));
@@ -278,11 +278,11 @@ public final class InventoryPage implements FunctionalInventory, InventoryHolder
                 for (HumanEntity entity : viewers) {
                     if (entity instanceof Player) {
                         Player player = (Player) entity;
-                        InventoryUpdate.updateInventory(plugin, player, ColorComponent.parse(title));
+                        InventoryUpdate.updateInventory(plugin, player, Colorize.colorize(title));
                     }
                 }
             } catch (Throwable ex) {
-                Inventory n_inventory = plugin.getServer().createInventory(this, 54, ColorComponent.parse(title));
+                Inventory n_inventory = plugin.getServer().createInventory(this, 54, Colorize.colorize(title));
                 for (int i = 0; i < inventory.getSize(); i++) {
                     ItemStack item = inventory.getItem(i);
                     if (item != null) {

@@ -1,74 +1,82 @@
 package es.karmadev.api.spigot.reflection.bossbar;
 
-import es.karmadev.api.core.ExceptionCollector;
-import es.karmadev.api.core.KarmaKore;
-import es.karmadev.api.spigot.core.KarmaPlugin;
-import es.karmadev.api.logger.log.console.ConsoleColor;
+import es.karmadev.api.minecraft.MinecraftVersion;
 import es.karmadev.api.minecraft.bossbar.BossBarProvider;
 import es.karmadev.api.minecraft.bossbar.component.BarColor;
 import es.karmadev.api.minecraft.bossbar.component.BarFlag;
 import es.karmadev.api.minecraft.bossbar.component.BarProgress;
 import es.karmadev.api.minecraft.bossbar.component.BarType;
-import es.karmadev.api.minecraft.client.GlobalPlayer;
-import es.karmadev.api.minecraft.client.exception.NonAvailableException;
-import es.karmadev.api.object.ObjectUtils;
-import es.karmadev.api.schedule.runner.TaskRunner;
-import es.karmadev.api.schedule.runner.async.AsyncTaskExecutor;
-import es.karmadev.api.schedule.runner.event.TaskEvent;
+import es.karmadev.api.minecraft.text.Colorize;
+import es.karmadev.api.spigot.core.KarmaPlugin;
+import es.karmadev.api.spigot.reflection.bossbar.nms.Boss;
+import es.karmadev.api.spigot.reflection.bossbar.nms.ModernBoss;
 import es.karmadev.api.spigot.server.SpigotServer;
+import lombok.NonNull;
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.World;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.boss.BossBar;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.jetbrains.annotations.NotNull;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.function.Consumer;
 
-@SuppressWarnings("unused")
-public class SpigotBossBar extends BossBarProvider {
-
-    private final static Map<UUID, Queue<SpigotBossBar>> ques = new ConcurrentHashMap<>();
-    private final static Map<UUID, TaskRunner<Long>> runners = new ConcurrentHashMap<>();
-    private final static Map<UUID, Integer> displayBars = new ConcurrentHashMap<>();
+public class SpigotBossBar extends BossBarProvider<Player> {
 
     private static int globalId = 0;
     private final int id = globalId++;
-    private BarColor color = BarColor.PURPLE;
-    private BarType type = BarType.SOLID;
-    private BarProgress progress = BarProgress.STATIC;
-    private double time = 10d;
-    private double health = 1.0d;
-    private double livedTime = 0d;
-    private boolean cancelled = false;
+
+    private final static Map<UUID, Set<BarTask>> bars = new ConcurrentHashMap<>();
+    private final static Map<UUID, Queue<BarTask>> barsQue = new ConcurrentHashMap<>();
+
+    @NonNull
+    private String contentCache;
+    @NonNull
     private String content;
-    private TaskRunner<Long> barTimer;
 
-    private static boolean packetCompatible = false;
-    private static boolean useHealth = false;
-    private static Class<?> craftWorldClass;
-    private static Constructor<?> packetPlayOutEntityDestroy;
-    private static Constructor<?> witherConstructor;
-    private static Constructor<?> entityLivingConstructor;
-    private static Constructor<?> packetTeleportConstructor;
-    private static Constructor<?> packetPlayOutMetadata;
+    private BarColor barColorCache = BarColor.PURPLE;
+    private BarColor barColor = BarColor.PURPLE;
+    private BarType barTypeCache = BarType.SEGMENTED_6;
+    private BarType barType = BarType.SEGMENTED_6;
+    private BarProgress barProgressCache = BarProgress.STATIC;
+    private BarProgress barProgress = BarProgress.STATIC;
 
-    private static Method craftWorldHandle;
-    private static Method witherSetLocation;
-    private static Method witherSetProgress;
-    private static Method witherSetInvisible;
-    private static Method witherSetCustomNameVisible;
-    private static Method witherGetId;
+    private long displayTime = 10;
+    private long remainingTime = displayTime;
+    private double progressCache = 1.0;
+    private double progress = 1.0;
+    private boolean cancelled = false;
+    private final EnumSet<BarFlag> flagSetCache = EnumSet.noneOf(BarFlag.class);
 
-    static {
-        buildReflection();
+    /*
+    The global wither might not be supported
+    by all versions, specially 1.8. As in those
+    versions BossBar API was not a thing, each
+    client must have a different boss bar
+     */
+    private Boss globalWither = null;
+
+    private final Map<UUID, Boss> bosses = new ConcurrentHashMap<>();
+
+    /**
+     * Create a new boss bar
+     */
+    @SuppressWarnings("unused")
+    public SpigotBossBar() {
+        this("");
+    }
+
+    /**
+     * Create a new boss bar
+     *
+     * @param content the boss bar content
+     */
+    public SpigotBossBar(final @NonNull String content) {
+        this.content = content;
+        this.contentCache = content;
     }
 
     /**
@@ -90,8 +98,10 @@ public class SpigotBossBar extends BossBarProvider {
      *                                       color change
      */
     @Override
-    public BossBarProvider color(final BarColor color) throws UnsupportedOperationException {
-        this.color = color;
+    public BossBarProvider<Player> color(final BarColor color) throws UnsupportedOperationException {
+        this.barColorCache = color;
+
+        if (bosses.isEmpty()) this.barColor = color;
         return this;
     }
 
@@ -104,8 +114,10 @@ public class SpigotBossBar extends BossBarProvider {
      *                                       type change
      */
     @Override
-    public BossBarProvider type(final BarType type) throws UnsupportedOperationException {
-        this.type = type;
+    public BossBarProvider<Player> type(final BarType type) throws UnsupportedOperationException {
+        this.barTypeCache = type;
+
+        if (bosses.isEmpty()) this.barType = type;
         return this;
     }
 
@@ -118,8 +130,10 @@ public class SpigotBossBar extends BossBarProvider {
      *                                       progress change
      */
     @Override
-    public BossBarProvider progress(final BarProgress progress) throws UnsupportedOperationException {
-        this.progress = progress;
+    public BossBarProvider<Player> progress(final BarProgress progress) throws UnsupportedOperationException {
+        this.barProgressCache = progress;
+
+        if (bosses.isEmpty()) this.barProgress = progress;
         return this;
     }
 
@@ -130,19 +144,56 @@ public class SpigotBossBar extends BossBarProvider {
      * @return the modified boss bar
      */
     @Override
-    public BossBarProvider displayTime(final double time) {
-        this.time = time;
+    public BossBarProvider<Player> displayTime(final long time) {
+        if (time < 0) {
+            this.displayTime = -1;
+            this.remainingTime = -1; //Infinite
+            return this;
+        }
+
+        this.displayTime = Math.max(1, time);
+        this.remainingTime = displayTime;
         return this;
     }
 
     /**
      * Set the boss bar progress manually
      *
-     * @param health the boss bar progress
+     * @param progress the boss bar progress
      */
     @Override
-    public void setProgress(final double health) {
-        this.health = health;
+    public void setProgress(final double progress) {
+        double value = progress;
+
+        if (value < 0) {
+            value = 0;
+        } else if (value > 1.0) {
+            if (value >= 100) {
+                if (value <= 300) {
+                    //We perform the conversion from 0-300 health scale
+                    value = value / 300.0d;
+                } else {
+                    value = 1.0d;
+                }
+            } else {
+                //We perform the conversion from 0-100 % scale
+                value = value / 100.0d;
+            }
+        }
+
+        this.progressCache = value;
+        if (bosses.isEmpty()) this.progress = value;
+    }
+
+    /**
+     * Set the boss bar message
+     *
+     * @param content the message
+     */
+    @Override
+    public void setContent(final String content) {
+        this.contentCache = content;
+        if (bosses.isEmpty()) this.content = content;
     }
 
     /**
@@ -157,256 +208,232 @@ public class SpigotBossBar extends BossBarProvider {
     /**
      * Send the boss bar to the players
      *
+     * @param onTick  the action to perform on each tick
      * @param players the players to send the boss bar
      *                to
      */
     @Override
-    public void send(final Collection<GlobalPlayer> players) {
-        players.forEach(this::send);
-    }
-
-    /**
-     * Send the boss bar to the players
-     *
-     * @param players the players to send the boss bar
-     *                to
-     */
-    @Override
-    public void send(final GlobalPlayer[] players) {
-        Arrays.asList(players).forEach(this::send);
+    public void send(final Consumer<Player> onTick, final Collection<Player> players) {
+        if (cancelled) return;
+        for(Player player : players) {
+            sendTo(player, onTick);
+        }
     }
 
     /**
      * Send the boss bar to the player
      *
-     * @param player the player to send the actionbar to
+     * @param player the player to send the
+     *               boss bar to
      */
-    @Override
-    public void send(final GlobalPlayer player) {
-        KarmaPlugin plugin = (KarmaPlugin) KarmaKore.INSTANCE();
-        if (plugin == null) return;
+    private void sendTo(final Player player, final Consumer<Player> onTick) {
+        Set<BarTask> activeBars = bars.computeIfAbsent(player.getUniqueId(), (s) -> ConcurrentHashMap.newKeySet());
+        Queue<BarTask> barQueue = barsQue.computeIfAbsent(player.getUniqueId(), (q) -> new ConcurrentLinkedDeque<>());
 
-        Queue<SpigotBossBar> que = ques.computeIfAbsent(player.getUUID(), (barQue) -> new ConcurrentLinkedQueue<>());
-        int initialMaxBars = 4;
-        if (SpigotServer.isUnder(SpigotServer.v1_13_X)) {
-            initialMaxBars = 1;
-            if (!packetCompatible) return; //We don't support boss bar
+        BarTask task = BarTask.of(this, onTick);
+        int maxBars = 4;
+        if (SpigotServer.atOrUnder(MinecraftVersion.v1_8_9)) {
+            maxBars = 1;
         }
-
-        final int maxBars = initialMaxBars;
-        que.add(this);
-        ques.put(player.getUUID(), que);
-
-        TaskRunner<Long> runner = runners.getOrDefault(player.getUUID(), null);
-        if (runner == null) {
-            runner = new AsyncTaskExecutor(1, TimeUnit.SECONDS);
-            runner.setRepeating(true);
-
-            runner.on(TaskEvent.RESTART, () -> {
-                if (player.isOnline()) {
-                    int displayBars = SpigotBossBar.displayBars.getOrDefault(player.getUUID(), 0);
-                    if (displayBars < maxBars) {
-                        Queue<SpigotBossBar> updatedQue = ques.computeIfAbsent(player.getUUID(), (barQue) -> new ConcurrentLinkedQueue<>());
-                        SpigotBossBar next = updatedQue.poll();
-
-                        if (next != null && !next.cancelled) {
-                            next.display(plugin, player);
-                        }
-                    }
-                }
-            });
+        if (activeBars.size() >= maxBars) {
+            barQueue.add(task);
+            barsQue.put(player.getUniqueId(), barQueue);
+            return;
         }
+        activeBars.add(task);
+        bars.put(player.getUniqueId(), activeBars);
 
-        runners.put(player.getUUID(), runner);
-    }
+        Boss boss = Boss.getBoss();
+        boolean schedule = !(boss instanceof ModernBoss);
 
-    /**
-     * Display the boss bar
-     *
-     * @param plugin the plugin
-     * @param player the player to display to
-     */
-    @SuppressWarnings("PrimitiveArrayArgumentToVarargsMethod")
-    private void display(final KarmaPlugin plugin, final GlobalPlayer player) {
-        switch (progress) {
-            case PLAYER:
-                //NOT YET IMPLEMENTED
-            case STATIC:
-                //NOT YET IMPLEMENTED
-            case STATIC_RANDOM:
-                //NOT YET IMPLEMENTED
-            case RANDOM:
-                //NOT YET IMPLEMENTED
-            case HEALTH_UP:
-                livedTime = 0;
-                break;
-            case HEALTH_DOWN:
-                livedTime = time;
-                break;
-        }
+        if (boss instanceof ModernBoss && globalWither == null) {
+            globalWither = boss;
+            schedule = true;
 
-        if (SpigotServer.isUnder(SpigotServer.v1_13_X)) {
-            try {
-                int initialBars = displayBars.getOrDefault(player.getUUID(), 0);
-                initialBars++;
-                displayBars.put(player.getUUID(), initialBars);
+            ModernBoss modern = (ModernBoss) boss;
+            BossBar bar = modern.getWither();
 
-                World world = plugin.getServer().getWorld(player.getWorld());
-                double x = player.getX();
-                double y = player.getY();
-                double z = player.getZ();
-                float yaw = player.getYaw();
-                float pitch = player.getPitch();
-
-                Location location = new Location(world, x, y, z);
-                location.setYaw(yaw);
-                location.setPitch(pitch);
-
-                Object craftWorld = craftWorldClass.cast(world);
-                Object worldServer = craftWorldHandle.invoke(craftWorld);
-
-                Object playerHandle = player.getHandler();
-                Player initialPlayerInstance = null;
-                if (playerHandle instanceof Player) {
-                    initialPlayerInstance = (Player) playerHandle;
-                }
-                if (playerHandle instanceof OfflinePlayer) {
-                    if (player.isOnline()) {
-                        initialPlayerInstance = ((OfflinePlayer) playerHandle).getPlayer();
-                    }
-                }
-                if (initialPlayerInstance == null) return;
-                Player playerInstance = initialPlayerInstance;
-
-                Object wither = witherConstructor.newInstance(worldServer);
-
-                witherSetCustomNameVisible.invoke(wither, true);
-                witherSetInvisible.invoke(wither, false);
-                witherSetLocation.invoke(wither, x, y - 10, z, yaw, pitch);
-                setCustomName(wither, content);
-
-                Object packetPlayOutEntityLiving = entityLivingConstructor.newInstance(wither);
-                SpigotServer.sendPacket(playerInstance, packetPlayOutEntityLiving);
-                updateMetadata(playerInstance, wither);
-
-                barTimer = new AsyncTaskExecutor((long) time, TimeUnit.SECONDS);
-                barTimer.on(TaskEvent.TICK, (time) -> {
-                    if (time >= 2) {
-                        Bukkit.getServer().getScheduler().runTask(plugin, () -> {
-                            try {
-                                Location newLocation = playerInstance.getLocation().clone()
-                                        .add(playerInstance.getLocation().getDirection().multiply(20));
-
-                                witherSetLocation.invoke(wither,
-                                        newLocation.getX(),
-                                        newLocation.getY() - 10,
-                                        newLocation.getZ(),
-                                        newLocation.getYaw(),
-                                        newLocation.getPitch());
-
-                                Object packetPlayOutEntityTeleport = packetTeleportConstructor.newInstance(wither);
-                                SpigotServer.sendPacket(playerInstance, packetPlayOutEntityTeleport);
-                            } catch (InvocationTargetException | IllegalAccessException | InstantiationException ex) {
-                                ExceptionCollector.catchException(SpigotBossBar.class, ex);
-                            }
-                        });
-                    }
-                });
-                barTimer.on(TaskEvent.END, () -> Bukkit.getServer().getScheduler().runTask(plugin, () -> {
-                    cancelled = true;
-                    try {
-                        int id = (int) witherGetId.invoke(wither);
-                        Object packetPLayOutEntityDestroy = packetPlayOutEntityDestroy.newInstance(new int[]{id});
-
-                        SpigotServer.sendPacket(playerInstance, packetPLayOutEntityDestroy);
-                        int bars = displayBars.getOrDefault(player.getUUID(), 0);
-                        bars--;
-                        displayBars.put(player.getUUID(), bars);
-                    } catch (InvocationTargetException | IllegalAccessException | InstantiationException ex) {
-                        ExceptionCollector.catchException(SpigotBossBar.class, ex);
-                    }
-                }));
-                barTimer.on(TaskEvent.STOP, () -> Bukkit.getServer().getScheduler().runTask(plugin, () -> {
-                    cancelled = true;
-                    try {
-                        int id = (int) witherGetId.invoke(wither);
-                        Object packetPLayOutEntityDestroy = packetPlayOutEntityDestroy.newInstance(new int[]{id});
-
-                        SpigotServer.sendPacket(playerInstance, packetPLayOutEntityDestroy);
-                        int bars = displayBars.getOrDefault(player.getUUID(), 0);
-                        bars--;
-                        displayBars.put(player.getUUID(), bars);
-                    } catch (InvocationTargetException | IllegalAccessException | InstantiationException ex) {
-                        ExceptionCollector.catchException(SpigotBossBar.class, ex);
-                    }
-                }));
-
-                TaskRunner<Long> hpTimer = new AsyncTaskExecutor(1, TimeUnit.SECONDS);
-                hpTimer.setRepeating(true);
-
-                hpTimer.on(TaskEvent.RESTART, () -> Bukkit.getServer().getScheduler().runTask(plugin, () -> {
-                    if (cancelled || !playerInstance.isOnline()) {
-                        barTimer.stop();
-                        hpTimer.stop();
-                        return;
-                    }
-
-                    double percentage = 1000;
-                    switch (progress) {
-                        case PLAYER:
-                            //NOT YET IMPLEMENTED
-                        case STATIC:
-                            //NOT YET IMPLEMENTED
-                        case STATIC_RANDOM:
-                            //NOT YET IMPLEMENTED
-                        case RANDOM:
-                            //NOT YET IMPLEMENTED
-                        case HEALTH_UP:
-                            percentage = livedTime / time;
-                            livedTime++;
-                            break;
-                        case HEALTH_DOWN:
-                            percentage = livedTime / time;
-                            livedTime--;
-                            break;
-                    }
-                    percentage = Math.max(0, percentage);
-                    if (useHealth) {
-                        percentage *= 300;
-                    }
-
-                    try {
-                        witherSetProgress.invoke(wither, percentage);
-                    } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException ex) {
-                        try {
-                            witherSetProgress.invoke(wither, (float) percentage);
-                        } catch (IllegalAccessException | InvocationTargetException ex2) {
-                            ExceptionCollector.catchException(SpigotBossBar.class, ex2);
-                        }
-                    }
-
-                    updateMetadata(playerInstance, wither);
-                }));
-
-                barTimer.start();
-                hpTimer.start();
-            } catch (NonAvailableException | InvocationTargetException |
-                    IllegalAccessException | InstantiationException ex) {
-                ExceptionCollector.catchException(SpigotBossBar.class, ex);
+            for (BarFlag bFlag : flagSet) {
+                org.bukkit.boss.BarFlag flag = org.bukkit.boss.BarFlag.valueOf(bFlag.getBukkitName());
+                bar.addFlag(flag);
             }
+
+            org.bukkit.boss.BarColor bukkitColor = org.bukkit.boss.BarColor.valueOf(barColor.name());
+            bar.setColor(bukkitColor);
+
+            BarStyle bukkitStyle = BarStyle.valueOf(barType.name());
+            bar.setStyle(bukkitStyle);
         }
+
+        if (globalWither == null) {
+            boss.add(player);
+            bosses.put(player.getUniqueId(), boss);
+        } else {
+            if (!boss.equals(globalWither)) {
+                boss.destroyWither();
+            }
+
+            globalWither.add(player);
+            bosses.put(player.getUniqueId(), globalWither);
+        }
+
+        if (!schedule) return;
+
+        boss.setName(Colorize.colorize(content));
+        applyProgress(player, boss);
+        if (barProgress.equals(BarProgress.STATIC_RANDOM)) {
+            progress = Math.random();
+        }
+        if (onTick != null) {
+            onTick.accept(player);
+        }
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                UUID playerId = player.getUniqueId();
+                Player online = Bukkit.getPlayer(playerId);
+                if (online == null || !online.isOnline()) {
+                    boss.remove(player);
+                    bosses.remove(playerId);
+                }
+
+                long rm = remainingTime--;
+                if (boss.isEmpty() || rm == 0 || cancelled) {
+                    activeBars.remove(task);
+
+                    activeBars.remove(task);
+                    boss.destroyWither();
+                    cancel();
+
+                    if (online != null) {
+                        BarTask next = barQueue.poll();
+                        if (next != null) {
+                            next.getBar().sendTo(online, next.getOnTick());
+                        }
+                    }
+                    return;
+                }
+
+                if (onTick != null) {
+                    onTick.accept(player);
+                }
+
+                boss.setName(Colorize.colorize(content));
+                applyProgress(player, boss);
+            }
+        }.runTaskTimer(KarmaPlugin.getInstance(), 20, 20);
     }
 
     /**
      * Update the boss bar text
      *
-     * @param newMessage    the new boss bar message
      * @param resetProgress if reset the boss bar progress
      * @return if the boss bar was able to be updated
      */
     @Override
-    public boolean update(final String newMessage, final boolean resetProgress) {
-        return false;
+    public boolean update(final boolean resetProgress) {
+        if (cancelled) return false;
+
+        boolean updated = false;
+
+        if (this.barColor.equals(this.barColorCache) && this.barType.equals(barTypeCache) && this.barProgress.equals(this.barProgressCache) &&
+                this.content.equals(this.contentCache) && this.progress == this.progressCache && contentEquals(flagSet, flagSetCache)) {
+            return false; //Nothing to update
+        }
+
+        this.barColor = barColorCache;
+        this.barType = barTypeCache;
+        this.barProgress = barProgressCache;
+        this.content = contentCache;
+        this.progress = progressCache;
+        this.flagSet.clear();
+        this.flagSet.addAll(flagSetCache);
+
+        for (UUID id : bosses.keySet()) {
+            Player player = Bukkit.getPlayer(id);
+            Boss boss = bosses.get(id);
+
+            if (player == null || !player.isOnline()) {
+                boss.destroyWither();
+                bosses.remove(id);
+
+                continue;
+            }
+
+            updated = true;
+
+            boss.setName(Colorize.colorize(content));
+            if (resetProgress) {
+                remainingTime = displayTime;
+
+                /*if (barProgress == BarProgress.STATIC_RANDOM || barProgress == BarProgress.RANDOM) {
+                    progress = Math.random();
+                }
+
+                applyProgress(player, boss);*/
+                boss.setHealth(progress);
+            }
+
+            if (boss instanceof ModernBoss) {
+                ModernBoss modern = (ModernBoss) boss;
+                BossBar bar = modern.getWither();
+
+                for (BarFlag bFlag : flagSet) {
+                    org.bukkit.boss.BarFlag flag = org.bukkit.boss.BarFlag.valueOf(bFlag.getBukkitName());
+                    bar.addFlag(flag);
+                }
+
+                org.bukkit.boss.BarColor bukkitColor = org.bukkit.boss.BarColor.valueOf(barColor.name());
+                bar.setColor(bukkitColor);
+
+                BarStyle bukkitStyle = BarStyle.valueOf(barType.name());
+                bar.setStyle(bukkitStyle);
+            }
+        }
+
+        return updated;
+    }
+
+    private <T> boolean contentEquals(final Collection<T> collection1, final Collection<T> collection2) {
+        if (collection1 == null && collection2 == null) return true;
+        if (collection1 == null || collection2 == null) return false;
+
+        for (T element : collection1) {
+            if (!collection2.contains(element)) return false;
+        }
+
+        return true;
+    }
+
+    @SuppressWarnings("deprecation")
+    private void applyProgress(final Player player, final Boss boss) {
+        switch (barProgress) {
+            case HEALTH_UP:
+                double t = remainingTime;
+                double diff = displayTime - t;
+
+                progress = diff / displayTime;
+                break;
+            case HEALTH_DOWN:
+                progress = (double) (remainingTime) / displayTime;
+                break;
+            case RANDOM:
+                progress = Math.random() + 0.1;
+                break;
+            case PLAYER:
+                double maxHealth = player.getMaxHealth();
+                double health = player.getHealth();
+
+                progress = health / maxHealth;
+                break;
+            case STATIC_RANDOM:
+            case STATIC:
+            default:
+                break;
+        }
+
+        boss.setHealth(Math.max(0, Math.min(1.0, progress)));
     }
 
     /**
@@ -416,7 +443,7 @@ public class SpigotBossBar extends BossBarProvider {
      */
     @Override
     public boolean isValid() {
-        return false;
+        return !bosses.isEmpty();
     }
 
     /**
@@ -436,7 +463,7 @@ public class SpigotBossBar extends BossBarProvider {
      * @return the content
      */
     @Override
-    public String getContent() {
+    public @NotNull String getContent() {
         return content;
     }
 
@@ -447,7 +474,7 @@ public class SpigotBossBar extends BossBarProvider {
      */
     @Override
     public BarColor getColor() {
-        return color;
+        return barColor;
     }
 
     /**
@@ -457,7 +484,7 @@ public class SpigotBossBar extends BossBarProvider {
      */
     @Override
     public BarType getType() {
-        return type;
+        return barType;
     }
 
     /**
@@ -467,7 +494,7 @@ public class SpigotBossBar extends BossBarProvider {
      */
     @Override
     public BarProgress getProgressType() {
-        return progress;
+        return barProgress;
     }
 
     /**
@@ -477,194 +504,34 @@ public class SpigotBossBar extends BossBarProvider {
      */
     @Override
     public double getProgress() {
-        return health;
+        return progress;
     }
 
     /**
-     * Get the boss bar flags
+     * Set the boss bar flags
      *
-     * @return the bar flags
+     * @param flags the flags to add
+     * @return the modified boss bar
      */
     @Override
-    public BarFlag[] getFlags() {
-        return flagSet.toArray(new BarFlag[0]).clone();
+    public BossBarProvider<Player> setFlags(final BarFlag... flags) {
+        flagSetCache.addAll(Arrays.asList(flags));
+
+        if (bosses.isEmpty()) super.setFlags(flags);
+        return this;
     }
 
     /**
-     * Build the reflection methods
-     */
-    @SuppressWarnings("DataFlowIssue")
-    private static void buildReflection() {
-        packetCompatible = false; //Reset
-        craftWorldClass = SpigotServer.orgBukkitCraftbukkit("CraftWorld").orElse(null);
-        if (craftWorldClass == null) return;
-
-        Class<?> entityWither = SpigotServer.netMinecraftServer("EntityWither").orElse(null);
-        Class<?> world = SpigotServer.netMinecraftServer("World").orElse(null);
-        Class<?> spawnEntityLiving = SpigotServer.netMinecraftServer("PacketPlayOutSpawnEntityLiving").orElse(null);
-        Class<?> entityLiving = SpigotServer.netMinecraftServer("EntityLiving").orElse(null);
-        Class<?> packet = SpigotServer.netMinecraftServer("Packet").orElse(null);
-        Class<?> packetDestroy = SpigotServer.netMinecraftServer("PacketPlayOutEntityDestroy").orElse(null);
-        Class<?> dataWatcher = SpigotServer.netMinecraftServer("DataWatcher").orElse(null);
-        Class<?> packetMetadata = SpigotServer.netMinecraftServer("PacketPlayOutEntityMetadata").orElse(null);
-        Class<?> packetTeleport = SpigotServer.netMinecraftServer("PacketPlayOutEntityTeleport").orElse(null);
-        Class<?> entity = SpigotServer.netMinecraftServer("Entity").orElse(null);
-
-        if (ObjectUtils.areNullOrEmpty(false, entityWither, world, spawnEntityLiving,
-                entityLiving, packet, packetDestroy, dataWatcher, packetMetadata, packetTeleport,
-                entity)) return;
-
-        Constructor<?> witherConstructor = null;
-        try {
-            witherConstructor = entityWither.getConstructor(world);
-        } catch (NoSuchMethodException ignored) {}
-        if (witherConstructor == null) return;
-        SpigotBossBar.witherConstructor = witherConstructor;
-
-        Constructor<?> entityLivingConstructor = null;
-        try {
-            entityLivingConstructor = spawnEntityLiving.getConstructor(entityLiving);
-        } catch (NoSuchMethodException ignored) {}
-        if (entityLivingConstructor == null) return;
-        SpigotBossBar.entityLivingConstructor = entityLivingConstructor;
-
-        Constructor<?> destroyConstructor = null;
-        try {
-            destroyConstructor = packetDestroy.getConstructor(int[].class);
-        } catch (NoSuchMethodException ignored) {}
-        if (destroyConstructor == null) return;
-        packetPlayOutEntityDestroy = destroyConstructor;
-
-        Constructor<?> packetPlayMetadataConstructor = null;
-        try {
-            packetPlayMetadataConstructor = packetMetadata.getConstructor(int.class, dataWatcher, boolean.class);
-        } catch (NoSuchMethodException ignored) {}
-        if (packetPlayMetadataConstructor == null) return;
-        packetPlayOutMetadata = packetPlayMetadataConstructor;
-
-        Constructor<?> teleportConstructor = null;
-        try {
-            teleportConstructor = packetTeleport.getConstructor(entity);
-        } catch (NoSuchMethodException ignored) {}
-        if (teleportConstructor == null) return;
-        packetTeleportConstructor = teleportConstructor;
-
-        Method getWorldHandle = null;
-        try {
-            getWorldHandle = craftWorldClass.getMethod("getHandle");
-        } catch (NoSuchMethodException ignored) {}
-        if (getWorldHandle == null) return;
-        craftWorldHandle = getWorldHandle;
-
-        Method setLocationMethod = null;
-        try {
-            setLocationMethod = entityWither.getMethod("setLocation", double.class, double.class, double.class, float.class, float.class);
-        } catch (NoSuchMethodException ignored) {}
-        if (setLocationMethod == null) return;
-        witherSetLocation = setLocationMethod;
-
-        Method setInvisibleMethod = null;
-        try {
-            setInvisibleMethod = entityWither.getMethod("setInvisible", boolean.class);
-        } catch (NoSuchMethodException ignored) {}
-        if (setInvisibleMethod == null) return;
-        witherSetInvisible = setInvisibleMethod;
-
-        Method setCustomNameMethod = null;
-        try {
-            setCustomNameMethod = entityWither.getMethod("setCustomNameVisible", boolean.class);
-        } catch (NoSuchMethodException ignored) {}
-        if (setCustomNameMethod == null) return;
-        witherSetCustomNameVisible = setCustomNameMethod;
-
-        Method getIdMethod = null;
-        try {
-            getIdMethod = entityWither.getMethod("getId");
-        } catch (NoSuchMethodException ignored) {}
-        if (getIdMethod == null) return;
-        witherGetId = getIdMethod;
-
-        Method setProgress = null;
-        try {
-            setProgress = entityWither.getMethod("setProgress", double.class);
-        } catch (Throwable ex) {
-            try {
-                setProgress = entityWither.getMethod("setProgress", float.class);
-            } catch (Throwable ex2) {
-                useHealth = true;
-                try {
-                    setProgress = entityWither.getMethod("setHealth", double.class);
-                } catch (Throwable ex3) {
-                    try {
-                        setProgress = entityWither.getMethod("setHealth", float.class);
-                    } catch (NoSuchMethodException ignored) {}
-                }
-            }
-        }
-        if (setProgress == null) return;
-
-        witherSetProgress = setProgress;
-        packetCompatible = true;
-    }
-
-    /**
-     * Set the custom name of the wither
+     * Remove the boss bar flags
      *
-     * @param wither the wither object
-     * @param message the name
-     * @throws InvocationTargetException as part of the method
-     * @throws IllegalAccessException as part of the method
+     * @param flags the flags to remove
+     * @return the modified boss bar
      */
-    private void setCustomName(final Object wither, final String message) throws InvocationTargetException, IllegalAccessException {
-        AtomicReference<Method> customName = new AtomicReference<>();
-        AtomicBoolean component = new AtomicBoolean(false);
-        try {
-            customName.set(wither.getClass().getMethod("setCustomName", String.class));
-        } catch (NoSuchMethodException e) {
-            SpigotServer.netMinecraftServer("IChatBaseComponent").ifPresent((IChatBaseComponent) -> {
-                try {
-                    customName.set(wither.getClass().getMethod("setCustomName", IChatBaseComponent));
-                    component.set(true);
-                } catch (NoSuchMethodException ex) {
-                    ExceptionCollector.catchException(SpigotBossBar.class, ex);
-                }
-            });
-        }
+    @Override
+    public BossBarProvider<Player> removeFlags(final BarFlag... flags) {
+        Arrays.asList(flags).forEach(flagSetCache::remove);
 
-        if (customName.get() != null) {
-            if (component.get()) {
-                SpigotServer.netMinecraftServer("ChatMessage").ifPresent((ChatMessage) -> {
-                    try {
-                        Constructor<?> constructor = ChatMessage.getConstructor(String.class, Object[].class);
-                        Object chatMessageComponent = constructor.newInstance(ConsoleColor.parse(message), new Object[0]);
-                        customName.get().invoke(wither, chatMessageComponent);
-                    } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException ex) {
-                        ExceptionCollector.catchException(SpigotBossBar.class, ex);
-                    }
-                });
-            } else {
-                customName.get().invoke(wither, ConsoleColor.parse(message));
-            }
-        }
-    }
-
-    /**
-     * Update the boss bar metadata
-     *
-     * @param player the player to send the packet to
-     * @param wither the wither entity
-     */
-    private void updateMetadata(final Player player, final Object wither) {
-        try {
-            Method getId = wither.getClass().getMethod("getId");
-            Method getDataWatcher = wither.getClass().getMethod("getDataWatcher");
-            int id = (int) getId.invoke(wither);
-            Object dataWatcher = getDataWatcher.invoke(wither);
-
-            Object packetPlayOutEntityMetadata = packetPlayOutMetadata.newInstance(id, dataWatcher, true);
-            SpigotServer.sendPacket(player, packetPlayOutEntityMetadata);
-        } catch (Throwable ex) {
-            ExceptionCollector.catchException(SpigotBossBar.class, ex);
-        }
+        if (bosses.isEmpty()) super.removeFlags(flags);
+        return this;
     }
 }

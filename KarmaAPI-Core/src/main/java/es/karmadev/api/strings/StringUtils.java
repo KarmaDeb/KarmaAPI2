@@ -3,6 +3,7 @@ package es.karmadev.api.strings;
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.core.KarmaKore;
 import es.karmadev.api.core.source.APISource;
+import es.karmadev.api.object.ObjectUtils;
 import es.karmadev.api.strings.placeholder.PlaceholderEngine;
 import org.jetbrains.annotations.Nullable;
 
@@ -22,6 +23,86 @@ public class StringUtils {
             {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',  'Y', 'Z'},
             {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
     };
+
+    /**
+     * Get if the strings starts with the
+     * given string ignoring cases
+     *
+     * @param sequence the sequence to check if starts with
+     * @param startsWith the content to check with
+     * @return if the string starts with the given string
+     */
+    public static boolean startsWithIgnoreCase(final CharSequence sequence, final CharSequence startsWith) {
+        if (sequence == null || startsWith == null) return false;
+        if (startsWith.length() == sequence.length()) return ObjectUtils.equalsIgnoreCase(sequence, startsWith);
+        //If both sequences are the same size, we can just compare
+
+        if (startsWith.length() > sequence.length()) return false;
+
+        for (int i = 0; i < startsWith.length(); i++) {
+            char character = startsWith.charAt(i);
+            char sequenceCharacter = sequence.charAt(i);
+            if (Character.toLowerCase(character) != Character.toLowerCase(sequenceCharacter)) return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Get if the strings ends with the
+     * given string ignoring cases
+     *
+     * @param sequence the sequence to check if ends with
+     * @param endsWith the content to check with
+     * @return if the string ends with the given string
+     */
+    public static boolean endsWithIgnoreCase(final CharSequence sequence, final CharSequence endsWith) {
+        if (sequence == null || endsWith == null) return false;
+        if (endsWith.length() == sequence.length()) return ObjectUtils.equalsIgnoreCase(sequence, endsWith);
+        //If both sequences are the same size, we can just compare
+
+        if (endsWith.length() > sequence.length()) return false;
+
+        int offset = sequence.length() - endsWith.length();
+        for (int i = endsWith.length() - 1; i >= 0; i--) {
+            char character = endsWith.charAt(i);
+            char sequenceCharacter = sequence.charAt(offset + i);
+
+            if (Character.toLowerCase(character) != Character.toLowerCase(sequenceCharacter)) return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Get if the string contains the
+     * given string ignoring cases
+     *
+     * @param sequence the sequence to check if contains
+     * @param contains the content to check with
+     * @return if the string contains the given string
+     */
+    public static boolean containsIgnoreCase(final CharSequence sequence, final CharSequence contains) {
+        if (sequence == null || contains == null) return false;
+        if (contains.length() == sequence.length()) return ObjectUtils.equalsIgnoreCase(sequence, contains);
+        if (contains.length() > sequence.length()) return false;
+
+        int matchIndex = 0;
+        for (int i = 0; i < sequence.length(); i++) {
+            if (matchIndex >= contains.length()) return true;
+
+            char character = sequence.charAt(i);
+            char containsCharacter = contains.charAt(matchIndex);
+
+            if (Character.toLowerCase(character) == Character.toLowerCase(containsCharacter)) {
+                matchIndex++;
+            } else {
+                matchIndex = 0;
+            }
+        }
+
+        return matchIndex >= contains.length();
+    }
 
     /**
      * Get the next word of a sequence
@@ -83,6 +164,60 @@ public class StringUtils {
         }
 
         return builder.toString();
+    }
+
+    /**
+     * Get all the matching strings in the
+     * regex. For example; MY NAME IS *, will
+     * return John if we call this method with "My name is John"
+     * <p/>
+     * #findMatches("MY NAME IS *", "My name is John", '*') => ["John"];
+     *
+     * @param regex the regex
+     * @param text the text to find at
+     * @param matchCharacter the matching character
+     * @return the found matches
+     */
+    public static Collection<String> findMatches(final String regex, final String text, final char matchCharacter) {
+        List<String> matches = new ArrayList<>();
+
+        StringBuilder builder = new StringBuilder();
+        boolean escaped = false;
+        int lastIndex = 0;
+        List<String> groups = new ArrayList<>();
+        for (int i = 0; i < regex.length(); i++) {
+            char character = regex.charAt(i);
+            if (character == '\\') {
+                if (!escaped) {
+                    escaped = true;
+                } else {
+                    i += 2;
+                    escaped = false;
+                }
+
+                continue;
+            }
+
+            escaped = false;
+            if (character == matchCharacter) {
+                String groupName = "group" + (groups.size() + 1);
+                builder.append(regex, lastIndex, i).append("(?<").append(groupName).append(">.*)");
+                lastIndex = i + 1;
+
+                groups.add(groupName);
+            }
+        }
+
+        Pattern pattern = Pattern.compile(builder.toString(), Pattern.MULTILINE);
+        Matcher matcher = pattern.matcher(text);
+
+        while (matcher.find()) {
+            for (int i = 1; i <= matcher.groupCount(); i++) {
+                matches.add(matcher.group(i));
+            }
+        }
+
+        return matches;
     }
 
     /**
@@ -555,20 +690,23 @@ public class StringUtils {
 
         while (matcher.find()) {
             String raw = matcher.group();
-            if (raw.contains(",") || raw.contains(".")) {
+
+            try {
+                numbers.add(Short.parseShort(raw));
+            } catch (NumberFormatException ex) {
                 try {
-                    numbers.add(Float.parseFloat(raw.replace(",", "")));
-                } catch (NumberFormatException ex) {
-                    numbers.add(Double.parseDouble(raw.replace(",", "")));
-                }
-            } else {
-                try {
-                    numbers.add(Short.parseShort(raw));
-                } catch (NumberFormatException ex) {
+                    numbers.add(Integer.parseInt(raw));
+                } catch (NumberFormatException ex2) {
                     try {
-                        numbers.add(Integer.parseInt(raw));
-                    } catch (NumberFormatException ex2) {
                         numbers.add(Long.parseLong(raw));
+                    } catch (NumberFormatException ex3) {
+                        try {
+                            numbers.add(Float.parseFloat(raw));
+                        } catch (NumberFormatException ex4) {
+                            try {
+                                numbers.add(Double.parseDouble(raw));
+                            } catch (NumberFormatException ignored) {}
+                        }
                     }
                 }
             }

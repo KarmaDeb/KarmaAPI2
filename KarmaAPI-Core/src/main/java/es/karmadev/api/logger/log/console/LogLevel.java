@@ -1,7 +1,5 @@
 package es.karmadev.api.logger.log.console;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonPrimitive;
 import lombok.Getter;
 
 import java.util.logging.Level;
@@ -47,8 +45,6 @@ public enum LogLevel {
      */
     @Getter
     private final String prefix;
-    @Getter
-    private final JsonElement nameElement;
     private final Level level;
 
     /**
@@ -60,7 +56,6 @@ public enum LogLevel {
     LogLevel(final String raw, final String prefix, final Level level) {
         this.raw = raw;
         this.prefix = prefix;
-        this.nameElement = new JsonPrimitive(this.name());
         this.level = level;
     }
 

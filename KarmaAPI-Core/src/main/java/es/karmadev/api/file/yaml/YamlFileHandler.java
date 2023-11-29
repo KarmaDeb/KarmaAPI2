@@ -344,6 +344,194 @@ public interface YamlFileHandler {
     boolean isSet(final String path);
 
     /**
+     * Check if none of the paths are set. If the
+     * paths are empty, it will return true if the file
+     * is empty (has no keys defined)
+     *
+     * @param paths the paths
+     * @return if the paths are set
+     */
+    default boolean isNoneSet(final String... paths) {
+        return isNoneSet(Arrays.asList(paths));
+    }
+
+    /**
+     * Check if none of the paths are set. If the
+     * paths are empty, it will return true if the file
+     * is empty (has no keys defined)
+     *
+     * @param paths the paths
+     * @return if the paths are set
+     */
+    default boolean isNoneSet(final Collection<String> paths) {
+        if (paths.isEmpty()) return getKeys(true).isEmpty();
+
+        for (String path : paths) {
+            if (isSet(path)) return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if all the paths are set. If the
+     * paths are empty, it will return false if the file
+     * is empty (has no keys defined)
+     *
+     * @param paths the paths
+     * @return if the paths are set
+     */
+    default boolean isAllSet(final String... paths) {
+        return isNoneSet(Arrays.asList(paths));
+    }
+
+    /**
+     * Check if all the paths are set. If the
+     * paths are empty, it will return false if the file
+     * is empty (has no keys defined)
+     *
+     * @param paths the paths
+     * @return if the paths are set
+     */
+    default boolean isAllSet(final Collection<String> paths) {
+        if (paths.isEmpty()) return !getKeys(true).isEmpty();
+
+        for (String path : paths) {
+            if (!isSet(path)) return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if any of the paths are not set. If the
+     * paths are empty, it will return true if the file
+     * is empty (has no keys defined)
+     *
+     * @param paths the paths
+     * @return if any of the paths are not set
+     */
+    default boolean isAnyMissing(final String... paths) {
+        return isNoneSet(Arrays.asList(paths));
+    }
+
+    /**
+     * Check if any of the paths are not set. If the
+     * paths are empty, it will return true if the file
+     * is empty (has no keys defined)
+     *
+     * @param paths the paths
+     * @return if any of the paths are not set
+     */
+    default boolean isAnyMissing(final Collection<String> paths) {
+        if (paths.isEmpty()) return getKeys(true).isEmpty();
+
+        for (String path : paths) {
+            if (!isSet(path)) return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if any the paths are set. If the
+     * paths are empty, it will return false if the file
+     * is empty (has no keys defined)
+     *
+     * @param paths the paths
+     * @return if any of the paths are set
+     */
+    default boolean isAnySet(final String... paths) {
+        return isNoneSet(Arrays.asList(paths));
+    }
+
+    /**
+     * Check if any the paths are set. If the
+     * paths are empty, it will return false if the file
+     * is empty (has no keys defined)
+     *
+     * @param paths the paths
+     * @return if any of the paths are set
+     */
+    default boolean isAnySet(final Collection<String> paths) {
+        if (paths.isEmpty()) return !getKeys(true).isEmpty();
+
+        for (String path : paths) {
+            if (isSet(path)) return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns the first path which is set. If the paths
+     * are empty, it will return always null. If no path is
+     * found, it will also return null
+     *
+     * @param paths the paths
+     * @return the first set path
+     */
+    @Nullable
+    default String getFirstAvailable(final String... paths) {
+        return getFirstAvailable(Arrays.asList(paths));
+    }
+
+    /**
+     * Returns the first path which is set. If the paths
+     * are empty, it will return always null. If no path is
+     * found, it will also return null
+     *
+     * @param paths the paths
+     * @return the first set path
+     */
+    @Nullable
+    default String getFirstAvailable(final Collection<String> paths) {
+        if (paths.isEmpty()) return null;
+
+        for (String path : paths) {
+            if (isSet(path)) {
+                return path;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Returns the first path which is not set. If the paths
+     * are empty, it will return always null. If all paths are
+     * found, it will also return null
+     *
+     * @param paths the paths
+     * @return the first missing path
+     */
+    @Nullable
+    default String getFirstMissing(final String... paths) {
+        return getFirstAvailable(Arrays.asList(paths));
+    }
+
+    /**
+     * Returns the first path which is not set. If the paths
+     * are empty, it will return always null. If all paths are
+     * found, it will also return null
+     *
+     * @param paths the paths
+     * @return the first missing path
+     */
+    @Nullable
+    default String getFirstMissing(final Collection<String> paths) {
+        if (paths.isEmpty()) return null;
+
+        for (String path : paths) {
+            if (!isSet(path)) {
+                return path;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Check if the path is a section
      *
      * @param path the path
