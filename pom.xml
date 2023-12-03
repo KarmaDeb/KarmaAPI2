@@ -17,6 +17,7 @@
         <module>PluginBungee</module>
         <module>KarmaAPI-Bungee</module>
         <module>KarmaAPI-Args</module>
+        <module>KarmaAPI-Collect</module>
     </modules>
 
     <properties>
