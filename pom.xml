@@ -18,6 +18,8 @@
         <module>KarmaAPI-Bungee</module>
         <module>KarmaAPI-Args</module>
         <module>KarmaAPI-Collect</module>
+        <module>KarmaAPI-Channels</module>
+        <module>KarmaAPI-Kson</module>
     </modules>
 
     <properties>
@@ -278,6 +280,12 @@
             <dependency>
                 <groupId>es.karmadev</groupId>
                 <artifactId>KarmaAPI-Minecraft</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>es.karmadev</groupId>
+                <artifactId>KarmaAPI-Kson</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
