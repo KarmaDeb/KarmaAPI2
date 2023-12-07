@@ -122,6 +122,19 @@ public final class NativeNumber implements JsonNative {
     }
 
     /**
+     * Clone the element on the new path and
+     * the new path separator
+     *
+     * @param newPath       the path
+     * @param pathSeparator the path separator
+     * @return the new instance
+     */
+    @Override
+    public JsonInstance clone(final String newPath, final char pathSeparator) {
+        return new NativeNumber(newPath, pathSeparator, number);
+    }
+
+    /**
      * Returns whether the element
      * is a string
      *

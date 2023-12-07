@@ -132,7 +132,7 @@ public interface JsonObject extends JsonInstance, Iterable<JsonInstance> {
      * @param value the string
      */
     default void put(final String path, final String value) {
-        put(path, JsonNative.forSequence(value));
+        put(path, JsonNative.forSequence(path, value));
     }
 
     /**
@@ -142,7 +142,7 @@ public interface JsonObject extends JsonInstance, Iterable<JsonInstance> {
      * @param number the number
      */
     default void put(final String path, final Number number) {
-        put(path, JsonNative.forNumber(number));
+        put(path, JsonNative.forNumber(path, number));
     }
 
     /**
@@ -152,7 +152,7 @@ public interface JsonObject extends JsonInstance, Iterable<JsonInstance> {
      * @param bool the boolean
      */
     default void put(final String path, final Boolean bool) {
-        put(path, JsonNative.forBoolean(bool));
+        put(path, JsonNative.forBoolean(path, bool));
     }
 
     /**

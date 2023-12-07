@@ -111,6 +111,19 @@ public class SimpleObject implements JsonObject {
     }
 
     /**
+     * Clone the element on the new path and
+     * the new path separator
+     *
+     * @param newPath       the path
+     * @param pathSeparator the path separator
+     * @return the new instance
+     */
+    @Override
+    public JsonInstance clone(final String newPath, final char pathSeparator) {
+        return new SimpleObject(newPath, pathSeparator, instances);
+    }
+
+    /**
      * Get the object sanitized path
      *
      * @return the sanitized path
@@ -228,7 +241,9 @@ public class SimpleObject implements JsonObject {
     @Override
     public void put(final String path, final JsonInstance element) {
         String finalPath = this.path + pathSeparator + path;
-        instances.put(finalPath, element);
+        JsonInstance clone = element.clone(finalPath, pathSeparator);
+
+        instances.put(finalPath, clone);
     }
 
     /**

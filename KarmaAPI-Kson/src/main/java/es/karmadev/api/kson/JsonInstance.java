@@ -217,4 +217,14 @@ public interface JsonInstance {
         jsonWriter.export(writer);
         return writer.toString();
     }
+
+    /**
+     * Clone the element on the new path and
+     * the new path separator
+     *
+     * @param newPath the path
+     * @param pathSeparator the path separator
+     * @return the new instance
+     */
+    JsonInstance clone(final String newPath, final char pathSeparator);
 }

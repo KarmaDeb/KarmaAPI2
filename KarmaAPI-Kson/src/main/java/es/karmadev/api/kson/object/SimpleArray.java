@@ -305,6 +305,19 @@ public class SimpleArray implements JsonArray {
     }
 
     /**
+     * Clone the element on the new path and
+     * the new path separator
+     *
+     * @param newPath       the path
+     * @param pathSeparator the path separator
+     * @return the new instance
+     */
+    @Override
+    public JsonInstance clone(final String newPath, final char pathSeparator) {
+        return new SimpleArray(newPath, pathSeparator, childElements);
+    }
+
+    /**
      * Returns an iterator over elements of type {@code T}.
      *
      * @return an Iterator.
