@@ -108,9 +108,7 @@ public final class UUIDFetcher {
         }
 
         UUID offline = UUID.nameUUIDFromBytes(("OfflinePlayer:" + name).getBytes());
-        System.out.println("Offline: " + offline);
         if (type.equals(UUIDType.OFFLINE)) {
-            System.out.println("Returning offline");
             return offline;
         }
 

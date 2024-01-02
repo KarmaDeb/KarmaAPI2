@@ -1,5 +1,6 @@
 package es.karmadev.api.strings;
 
+import es.karmadev.api.array.ArrayUtils;
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.core.KarmaKore;
 import es.karmadev.api.core.source.APISource;
@@ -23,6 +24,112 @@ public class StringUtils {
             {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',  'Y', 'Z'},
             {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
     };
+
+    private final static char[] DELIMITER_CHARACTERS = {
+            ' ',
+            '_'
+    };
+
+    /**
+     * Parse a string into snake_case. This cannot detect words, so
+     * it won't convert a string without spaces to snake_case.
+     *
+     * @param sequence the text
+     * @return the snake_case string
+     */
+    public static String toSnakeCase(final CharSequence sequence) {
+        return toSnakeCase(sequence, DELIMITER_CHARACTERS);
+    }
+
+    /**
+     * Parse a string into camelCase. This cannot detect words, so
+     * it won't convert a string without spaces to camelCase.
+     *
+     * @param sequence the text
+     * @return the camelCase string
+     */
+    public static String toCamelCase(final CharSequence sequence) {
+        return toCamelCase(sequence, DELIMITER_CHARACTERS);
+    }
+
+    /**
+     * Parse a string into snake_case.
+     *
+     * @param sequence the text
+     * @param delimiters the delimiters to use when
+     *                   splitting the string
+     * @return the snake_case string
+     */
+    public static String toSnakeCase(final CharSequence sequence, final char[] delimiters) {
+        if (sequence == null) return "";
+        String text = sequence.toString();
+
+        if (!text.contains(" ")) return text;
+
+        StringBuilder builder = new StringBuilder();
+        char[] characters = text.toCharArray();
+
+        char previousChar = '\0';
+        for (char character : characters) {
+            if (character == '_') character = ' ';
+
+            if (previousChar == '\0') {
+                previousChar = character;
+            }
+
+            if (ArrayUtils.contains(delimiters, character)) {
+                if (ArrayUtils.contains(delimiters, previousChar)) continue;
+
+                builder.append('_');
+                continue;
+            }
+
+            if (Character.isLetterOrDigit(character)) {
+                builder.append(Character.toLowerCase(character));
+            }
+        }
+
+        return builder.toString();
+    }
+
+    /**
+     * Parse a string into camelCase. This cannot detect words, so
+     * it won't convert a string without spaces to camelCase.
+     *
+     * @param sequence the text
+     * @param delimiters the delimiters to use when
+     *                   splitting the string
+     * @return the camelCase string
+     */
+    public static String toCamelCase(final CharSequence sequence, final char[] delimiters) {
+        if (sequence == null) return "";
+        String text = sequence.toString();
+
+        if (!text.contains(" ")) return text;
+
+        StringBuilder builder = new StringBuilder();
+        char[] characters = text.toCharArray();
+
+        boolean upper = false;
+        for (char character : characters) {
+            if (ArrayUtils.contains(delimiters, character)) {
+                upper = true;
+                continue;
+            }
+
+            if (Character.isLetterOrDigit(character)) {
+                char value = Character.toLowerCase(character);
+                if (upper) {
+                    value = Character.toUpperCase(character);
+                    upper = false;
+                }
+
+                builder.append(value);
+            }
+        }
+
+        return builder.toString();
+    }
 
     /**
      * Get if the strings starts with the

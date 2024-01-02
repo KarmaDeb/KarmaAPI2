@@ -8,6 +8,7 @@ import org.bukkit.command.SimpleCommandMap;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
@@ -167,13 +168,19 @@ public final class CommandUtil {
 
     @SuppressWarnings("unchecked")
     private static Map<String, org.bukkit.command.Command> getKnownCommands() {
+        System.out.println(commandMap.getClass());
         try {
             Field knownCommands = commandMap.getClass().getDeclaredField("knownCommands");
             knownCommands.setAccessible(true);
 
             return (Map<String, org.bukkit.command.Command>) knownCommands.get(commandMap);
         } catch (ReflectiveOperationException ex) {
-            throw new RuntimeException(ex);
+            try {
+                Method getKnownCommands = commandMap.getClass().getMethod("getKnownCommands");
+                return (Map<String, org.bukkit.command.Command>) getKnownCommands.invoke(commandMap);
+            } catch (ReflectiveOperationException ex2) {
+                throw new RuntimeException(ex2);
+            }
         }
     }
 }

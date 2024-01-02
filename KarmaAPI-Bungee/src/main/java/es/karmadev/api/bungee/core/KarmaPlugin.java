@@ -2,19 +2,14 @@ package es.karmadev.api.bungee.core;
 
 import es.karmadev.api.core.CoreModule;
 import es.karmadev.api.core.DefaultRuntime;
-import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.core.KarmaAPI;
 import es.karmadev.api.core.source.APISource;
-import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.core.source.SourceManager;
 import es.karmadev.api.core.source.exception.AlreadyRegisteredException;
 import es.karmadev.api.core.source.runtime.SourceRuntime;
 import es.karmadev.api.database.DatabaseManager;
 import es.karmadev.api.database.model.JsonDatabase;
 import es.karmadev.api.database.model.json.JsonConnection;
-import es.karmadev.api.file.util.NamedStream;
-import es.karmadev.api.file.util.PathUtilities;
-import es.karmadev.api.file.util.StreamUtils;
 import es.karmadev.api.logger.LogManager;
 import es.karmadev.api.logger.SourceLogger;
 import es.karmadev.api.logger.log.UnboundedLogger;
@@ -22,7 +17,6 @@ import es.karmadev.api.logger.log.console.LogLevel;
 import es.karmadev.api.object.ObjectUtils;
 import es.karmadev.api.schedule.task.TaskScheduler;
 import es.karmadev.api.schedule.task.scheduler.BalancedScheduler;
-import es.karmadev.api.strings.StringFilter;
 import es.karmadev.api.strings.StringUtils;
 import es.karmadev.api.strings.placeholder.PlaceholderEngine;
 import es.karmadev.api.strings.placeholder.engine.SimpleEngine;
@@ -35,20 +29,12 @@ import net.md_5.bungee.api.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.file.Path;
-import java.security.CodeSource;
-import java.security.ProtectionDomain;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
 
 /**
  * KarmaAPI spigot karma source
@@ -327,150 +313,6 @@ public abstract class KarmaPlugin extends Plugin implements APISource {
     }
 
     /**
-     * Find a resource inside the source file
-     *
-     * @param resourceName the resource name
-     * @return the resource
-     */
-    @Override
-    public final @Nullable NamedStream findResource(final String resourceName) {
-        JarFile jarHandle = null;
-        NamedStream stream = null;
-        try {
-            Class<? extends KarmaPlugin> clazz = getClass();
-            ProtectionDomain domain = clazz.getProtectionDomain();
-            if (domain == null) return null;
-
-            CodeSource source = domain.getCodeSource();
-            if (source == null) return null;
-
-            URL location = source.getLocation();
-            if (location == null) return null;
-
-            String filePath = location.getFile().replaceAll("%20", " ");
-            File file = new File(filePath);
-
-            jarHandle = new JarFile(file);
-
-            JarEntry entry = jarHandle.getJarEntry(resourceName);
-            if (entry == null || entry.isDirectory()) return null;
-
-            InputStream streamHandle = jarHandle.getInputStream(entry);
-            stream = NamedStream.newStream(entry.getName(), StreamUtils.clone(streamHandle, true));
-        } catch (IOException ex) {
-            ExceptionCollector.catchException(KarmaSource.class, ex);
-        } finally {
-            if (jarHandle != null) {
-                try {
-                    jarHandle.close();
-                } catch (IOException ignored) {}
-            }
-        }
-
-        return stream;
-    }
-
-    /**
-     * Get all the resources inside the source file folder
-     *
-     * @param resourceName the resources directory name
-     * @param filter       the resource name filter
-     * @return the resources
-     */
-    @Override
-    public final @NotNull NamedStream[] findResources(final String resourceName, @Nullable final StringFilter filter) {
-        JarFile jarHandle = null;
-        List<NamedStream> handles = new ArrayList<>();
-        try {
-            Class<? extends KarmaPlugin> clazz = getClass();
-            ProtectionDomain domain = clazz.getProtectionDomain();
-            if (domain == null) return null;
-
-            CodeSource source = domain.getCodeSource();
-            if (source == null) return null;
-
-            URL location = source.getLocation();
-            if (location == null) return null;
-
-            String filePath = location.getFile().replaceAll("%20", " ");
-            File file = new File(filePath);
-
-            jarHandle = new JarFile(file);
-            Enumeration<JarEntry> entries = jarHandle.entries();
-
-            do {
-                JarEntry entry = entries.nextElement();
-                if (entry.isDirectory()) continue;
-
-                String name = entry.getName();
-                if (filter == null || filter.accept(name)) {
-                    try (InputStream stream = jarHandle.getInputStream(entry)) {
-                        handles.add(NamedStream.newStream(name, stream));
-                    }
-                }
-            } while (entries.hasMoreElements());
-        } catch (IOException ex) {
-            ExceptionCollector.catchException(KarmaSource.class, ex);
-        } finally {
-            if (jarHandle != null) {
-                try {
-                    jarHandle.close();
-                } catch (IOException ignored) {}
-            }
-        }
-
-        return handles.toArray(new NamedStream[0]);
-    }
-
-    /**
-     * Get all the resources inside the source file
-     *
-     * @return all the source resources
-     */
-    @Override
-    public final NamedStream[] findResources() {
-        return APISource.super.findResources();
-    }
-
-    /**
-     * Export a resource into the specified
-     * path
-     *
-     * @param resourceName the resource name
-     * @param target       the file to export to
-     * @return if the file was able to be export
-     */
-    @SuppressWarnings("TryFinallyCanBeTryWithResources")
-    @Override
-    public final boolean export(final String resourceName, final Path target) {
-        try (NamedStream single = findResource(resourceName)) {
-            if (single != null) {
-                return tryExport(single, target);
-            }
-        } catch (IOException ex) {
-            ExceptionCollector.catchException(KarmaSource.class, ex);
-        }
-
-        NamedStream[] streams = findResources(resourceName, null);
-        if (streams.length == 0) return false; //We export nothing
-
-        int success = 0;
-        for (NamedStream stream : streams) {
-            try {
-                if (tryExport(stream, target)) {
-                    success++;
-                }
-            } finally {
-                try {
-                    stream.close();
-                } catch (IOException ignored) {}
-            }
-        }
-
-        return success == streams.length;
-    }
-
-    /**
      * Get the source logger.
      * If the source is not ready, an {@link UnboundedLogger unbounded logger} will
      * be return, which can only print to console or log if is lately bind to a source
@@ -528,24 +370,5 @@ public abstract class KarmaPlugin extends Plugin implements APISource {
         } catch (ClassNotFoundException ignored) {}
 
         return false;
-    }
-
-    private boolean tryExport(final NamedStream stream, final Path directory) {
-        String name = stream.getName();
-        Path targetFile = directory;
-        if (name.contains("/")) {
-            String[] data = name.split("/");
-            for (String dir : data) {
-                //Are we the start route?
-                if (!ObjectUtils.isNullOrEmpty(dir)) {
-                    targetFile = targetFile.resolve(dir);
-                }
-            }
-        } else {
-            targetFile = targetFile.resolve(name);
-        }
-
-        String raw = StreamUtils.streamToString(stream);
-        return PathUtilities.write(targetFile, raw);
     }
 }

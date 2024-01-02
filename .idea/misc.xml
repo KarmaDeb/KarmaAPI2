@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="EntryPointsManager">
     <list size="2">
@@ -19,11 +20,16 @@
     </option>
     <option name="ignoredFiles">
       <set>
+        <option value="$PROJECT_DIR$/KarmaAPI-Args/pom.xml" />
+        <option value="$PROJECT_DIR$/KarmaAPI-Channels/pom.xml" />
+        <option value="$PROJECT_DIR$/KarmaAPI-Collect/pom.xml" />
         <option value="$PROJECT_DIR$/KarmaAPI-File/pom.xml" />
+        <option value="$PROJECT_DIR$/KarmaAPI-Kson/pom.xml" />
         <option value="$PROJECT_DIR$/KarmaAPI-Logger/pom.xml" />
         <option value="$PROJECT_DIR$/KarmaAPIHologram/v1_7_R3/pom.xml" />
       </set>
     </option>
+    <option name="workspaceImportForciblyTurnedOn" value="true" />
   </component>
   <component name="ProjectRootManager" version="2" languageLevel="JDK_1_8" project-jdk-name="corretto-1.8" project-jdk-type="JavaSDK">
     <output url="file://$PROJECT_DIR$/out" />

@@ -1,9 +1,13 @@
 package es.karmadev.api.core.source;
 
 import es.karmadev.api.core.CoreModule;
+import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.core.source.runtime.SourceRuntime;
 import es.karmadev.api.file.util.NamedStream;
+import es.karmadev.api.file.util.PathUtilities;
+import es.karmadev.api.file.util.StreamUtils;
 import es.karmadev.api.logger.SourceLogger;
+import es.karmadev.api.object.ObjectUtils;
 import es.karmadev.api.schedule.task.TaskScheduler;
 import es.karmadev.api.strings.StringFilter;
 import es.karmadev.api.strings.placeholder.PlaceholderEngine;
@@ -11,8 +15,20 @@ import es.karmadev.api.version.Version;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
+import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.CodeSource;
+import java.security.ProtectionDomain;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 /**
  * KarmaAPI source
@@ -110,7 +126,42 @@ public interface APISource {
      * @param resourceName the resource name
      * @return the resource
      */
-    @Nullable NamedStream findResource(final String resourceName);
+    default @Nullable NamedStream findResource(final String resourceName) {
+        JarFile jarHandle = null;
+        NamedStream stream = null;
+        try {
+            Class<? extends APISource> clazz = getClass();
+            ProtectionDomain domain = clazz.getProtectionDomain();
+            if (domain == null) return null;
+
+            CodeSource source = domain.getCodeSource();
+            if (source == null) return null;
+
+            URL location = source.getLocation();
+            if (location == null) return null;
+
+            String filePath = location.getFile().replaceAll("%20", " ");
+            File file = new File(filePath);
+
+            jarHandle = new JarFile(file);
+
+            JarEntry entry = jarHandle.getJarEntry(resourceName);
+            if (entry == null || entry.isDirectory()) return null;
+
+            InputStream streamHandle = jarHandle.getInputStream(entry);
+            stream = NamedStream.newStream(entry.getName(), StreamUtils.clone(streamHandle, true));
+        } catch (IOException ex) {
+            ExceptionCollector.catchException(KarmaSource.class, ex);
+        } finally {
+            if (jarHandle != null) {
+                try {
+                    jarHandle.close();
+                } catch (IOException ignored) {}
+            }
+        }
+
+        return stream;
+    }
 
     /**
      * Get all the resources inside the source file folder
@@ -119,7 +170,49 @@ public interface APISource {
      * @param filter the resource name filter
      * @return the resources
      */
-    @NotNull NamedStream[] findResources(final String resourceName, final @Nullable StringFilter filter);
+    default @NotNull NamedStream[] findResources(final String resourceName, final @Nullable StringFilter filter) {
+        JarFile jarHandle = null;
+        List<NamedStream> handles = new ArrayList<>();
+        try {
+            Class<? extends APISource> clazz = getClass();
+            ProtectionDomain domain = clazz.getProtectionDomain();
+            if (domain == null) return null;
+
+            CodeSource source = domain.getCodeSource();
+            if (source == null) return null;
+
+            URL location = source.getLocation();
+            if (location == null) return null;
+
+            String filePath = location.getFile().replaceAll("%20", " ");
+            File file = new File(filePath);
+
+            jarHandle = new JarFile(file);
+            Enumeration<JarEntry> entries = jarHandle.entries();
+
+            do {
+                JarEntry entry = entries.nextElement();
+                if (entry.isDirectory()) continue;
+
+                String name = entry.getName();
+                if (filter == null || filter.accept(name)) {
+                    try (InputStream stream = jarHandle.getInputStream(entry)) {
+                        handles.add(NamedStream.newStream(name, stream));
+                    }
+                }
+            } while (entries.hasMoreElements());
+        } catch (IOException ex) {
+            ExceptionCollector.catchException(KarmaSource.class, ex);
+        } finally {
+            if (jarHandle != null) {
+                try {
+                    jarHandle.close();
+                } catch (IOException ignored) {}
+            }
+        }
+
+        return handles.toArray(new NamedStream[0]);
+    }
 
     /**
      * Get all the resources inside the source file
@@ -142,7 +235,34 @@ public interface APISource {
      * @param target the file to export to
      * @return if the file was able to be export
      */
-    boolean export(final String resourceName, final Path target);
+    default boolean export(final String resourceName, final Path target) {
+        try (NamedStream single = findResource(resourceName)) {
+            if (single != null) {
+                return copyStream(single, target);
+            }
+        } catch (IOException ex) {
+            ExceptionCollector.catchException(KarmaSource.class, ex);
+        }
+
+        NamedStream[] streams = findResources(resourceName, (seq) -> resourceName.startsWith(seq.toString()) ||
+                resourceName.endsWith(seq.toString()));
+        if (streams.length == 0) return false; //We export nothing
+
+        int success = 0;
+        for (NamedStream stream : streams) {
+            try {
+                if (copyStream(stream, target)) {
+                    success++;
+                }
+            } finally {
+                try {
+                    stream.close();
+                } catch (IOException ignored) {}
+            }
+        }
+
+        return success == streams.length;
+    }
 
     /**
      * Get the source logger.
@@ -195,5 +315,36 @@ public interface APISource {
      */
     default void saveIdentifier() {
         saveIdentifier("DEFAULT");
+    }
+
+    /**
+     * Copy a stream to the specified resource
+     * directory
+     *
+     * @param stream the stream to export
+     * @param targetFile the resource directory
+     * @return if copy was success
+     */
+    default boolean copyStream(final NamedStream stream, final Path targetFile) {
+        if (Files.isDirectory(targetFile)) {
+            String name = stream.getName();
+            Path target = targetFile;
+            if (name.contains("/")) {
+                String[] data = name.split("/");
+                for (String dir : data) {
+                    //Are we the start route?
+                    if (!ObjectUtils.isNullOrEmpty(dir)) {
+                        target = targetFile.resolve(dir);
+                    }
+                }
+            } else {
+                target = targetFile.resolve(name);
+            }
+
+            String raw = StreamUtils.streamToString(stream);
+            return PathUtilities.write(target, raw);
+        } else {
+            return PathUtilities.write(targetFile, StreamUtils.streamToString(stream));
+        }
     }
 }

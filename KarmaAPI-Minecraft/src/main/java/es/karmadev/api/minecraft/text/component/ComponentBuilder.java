@@ -1,7 +1,7 @@
 package es.karmadev.api.minecraft.text.component;
 
 import com.google.gson.*;
-import es.karmadev.api.minecraft.text.Color;
+import es.karmadev.api.minecraft.component.Color;
 import es.karmadev.api.minecraft.text.TextMessageType;
 import es.karmadev.api.minecraft.text.component.exception.NotComponentException;
 import es.karmadev.api.minecraft.text.component.message.AnimatedComponent;
@@ -159,7 +159,7 @@ public class ComponentBuilder {
         try {
             Component component = fromJson(content);
             return new Component[]{component};
-        } catch (NotComponentException ignored) {}
+        } catch (NotComponentException | JsonSyntaxException ignored) {}
 
         List<Component> components = new ArrayList<>();
         if (content.contains("\n")) {

@@ -16,10 +16,6 @@
         <module>PluginSpigot</module>
         <module>PluginBungee</module>
         <module>KarmaAPI-Bungee</module>
-        <module>KarmaAPI-Args</module>
-        <module>KarmaAPI-Collect</module>
-        <module>KarmaAPI-Channels</module>
-        <module>KarmaAPI-Kson</module>
     </modules>
 
     <properties>
@@ -219,7 +215,7 @@
             <dependency>
                 <groupId>es.karmadev.reflection</groupId>
                 <artifactId>ReflectionAPI</artifactId>
-                <version>1.0.5</version>
+                <version>1.0.6-SNAPSHOT</version>
                 <scope>provided</scope>
             </dependency>
 
@@ -284,12 +280,6 @@
             </dependency>
 
             <dependency>
-                <groupId>es.karmadev</groupId>
-                <artifactId>KarmaAPI-Kson</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <dependency>
                 <groupId>org.spigotmc</groupId>
                 <artifactId>spigot-api</artifactId>
                 <version>1.20-R0.1-SNAPSHOT</version>
@@ -298,6 +288,12 @@
             <dependency>
                 <groupId>net.md-5</groupId>
                 <artifactId>bungeecord-api</artifactId>
+                <version>1.20-R0.1-SNAPSHOT</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>net.md-5</groupId>
+                <artifactId>bungeecord-chat</artifactId>
                 <version>1.20-R0.1-SNAPSHOT</version>
                 <scope>provided</scope>
             </dependency>

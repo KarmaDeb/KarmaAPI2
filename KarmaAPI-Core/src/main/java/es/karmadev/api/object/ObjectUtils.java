@@ -175,6 +175,7 @@ public class ObjectUtils {
      * @throws NullPointerException if the objects are null or empty
      */
     public static void assertNullOrEmpty(final Object[] objects, final String message, final boolean checkAll) throws NullPointerException {
+
         int nulls = 0;
         for (Object object : objects) {
             if (object == null) {
