@@ -26,14 +26,6 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.2.0</version>
-                <configuration>
-                    <archive>
-                        <manifest>
-                            <addClasspath>true</addClasspath>
-                            <mainClass>es.karmadev.app.Main</mainClass>
-                        </manifest>
-                    </archive>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -47,6 +39,7 @@
     </build>
 
     <dependencies>
+        <!--
         <dependency>
             <groupId>org.burningwave</groupId>
             <artifactId>core</artifactId>
@@ -55,6 +48,7 @@
             <groupId>io.github.toolfactory</groupId>
             <artifactId>jvm-driver</artifactId>
         </dependency>
+        -->
 
         <dependency>
             <groupId>org.yaml</groupId>

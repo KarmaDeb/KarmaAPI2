@@ -38,7 +38,6 @@
                     <configuration>
                         <source>8</source>
                         <target>8</target>
-                        <!--
                         <annotationProcessorPaths>
                             <path>
                                 <groupId>org.openjdk.jmh</groupId>
@@ -48,10 +47,14 @@
                             <path>
                                 <groupId>org.projectlombok</groupId>
                                 <artifactId>lombok</artifactId>
-                                <version>1.18.21</version>
+                                <version>1.18.28</version>
+                            </path>
+                            <path>
+                                <groupId>org.jetbrains</groupId>
+                                <artifactId>annotations</artifactId>
+                                <version>24.0.1</version>
                             </path>
                         </annotationProcessorPaths>
-                        -->
                     </configuration>
                 </plugin>
                 <plugin>
@@ -81,8 +84,6 @@
                                         <pattern>com.github.fge</pattern>
                                         <shadedPattern>es.karmadev.api.shaded.fge</shadedPattern>
                                     </relocation>
-
-                                    <!-- json schema validator -->
 
                                     <relocation>
                                         <pattern>com.google.gson</pattern>
@@ -227,19 +228,21 @@
                 <scope>provided</scope>
             </dependency>
 
+            <!--
             <dependency>
                 <groupId>org.burningwave</groupId>
                 <artifactId>core</artifactId>
                 <version>12.39.6</version>
                 <scope>provided</scope>
             </dependency>
-            <!-- https://mvnrepository.com/artifact/io.github.toolfactory/jvm-driver -->
+
             <dependency>
                 <groupId>io.github.toolfactory</groupId>
                 <artifactId>jvm-driver</artifactId>
                 <version>8.7.5</version>
                 <scope>provided</scope>
             </dependency>
+            -->
 
             <!-- Google -->
             <dependency>
@@ -326,21 +329,6 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-
-    <!--
-    <distributionManagement>
-        <repository>
-            <id>internal.repo</id>
-            <name>Internal repo</name>
-            <url>file:${project.basedir}/ir/out/${project.version}</url>
-        </repository>
-        <snapshotRepository>
-            <id>internal.repo</id>
-            <name>Internal repo</name>
-            <url>file:${project.basedir}/ir/out/${project.version}</url>
-        </snapshotRepository>
-    </distributionManagement>
-    -->
 
     <distributionManagement>
         <repository>

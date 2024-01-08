@@ -10,9 +10,7 @@ import es.karmadev.api.web.url.URLUtilities;
 import me.lucko.jarrelocator.JarRelocator;
 import me.lucko.jarrelocator.Relocation;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -23,8 +21,6 @@ import java.nio.file.Paths;
 import java.security.*;
 import java.util.*;
 import java.util.function.Supplier;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
 
 /**
  * KarmaAPI information
@@ -255,44 +251,7 @@ public class KarmaAPI {
             }
         }
 
-        ClassLoader tmp = null;
-        try {
-            APISource principal = SourceManager.getPrincipal();
-            if (principal != null) {
-                tmp = principal.getClass().getClassLoader();
-            }
-        } catch (ClassCastException | UnknownProviderException ignored) {}
-        if (tmp == null) tmp = Thread.currentThread().getContextClassLoader();
-
-        try {
-            URL[] urls = {
-                    new URL("jar:file:" + burningWave + "!/"),
-                    new URL("jar:file:" + jvmDriver + "!/")};
-
-            try (URLClassLoader cl = new URLClassLoader(urls, tmp)) {
-                Class<?> loader = cl.loadClass("org.burningwave.core.assembler.StaticComponentContainer");
-
-                Field modules = loader.getDeclaredField("Modules");
-                Object module = modules.get(null);
-                if (module != null) {
-                    Class<?> modClass = module.getClass();
-
-                    Method exportAllToAll = modClass.getDeclaredMethod("exportAllToAll");
-                    exportAllToAll.setAccessible(true);
-
-                    exportAllToAll.invoke(module);
-                    //logger.send(LogLevel.SUCCESS, "Successfully injected with BurningWave");
-                }
-            }
-        } catch (ClassNotFoundException |
-                 NoSuchFieldException |
-                 IllegalAccessException |
-                 NoSuchMethodException |
-                 InvocationTargetException |
-                 IOException ex) {
-            //logger.send(ex, "Failed to inject BurningWave");
-            throw new RuntimeException(ex);
-        }
+        ClassLoader tmp = detectClassLoader(burningWave, jvmDriver);
 
         inject(relocatorASM, tmp);
         inject(asmTree, tmp);
@@ -337,6 +296,48 @@ public class KarmaAPI {
         inject(reflectionAPI, tmp);
     }
 
+    private static ClassLoader detectClassLoader(Path burningWave, Path jvmDriver) {
+        ClassLoader tmp = null;
+        try {
+            APISource principal = SourceManager.getPrincipal();
+            if (principal != null) {
+                tmp = principal.getClass().getClassLoader();
+            }
+        } catch (ClassCastException | UnknownProviderException ignored) {}
+        if (tmp == null) tmp = KarmaAPI.class.getClassLoader();
+
+        try {
+            URL[] urls = {
+                    new URL("jar:file:" + burningWave + "!/"),
+                    new URL("jar:file:" + jvmDriver + "!/")};
+
+            try (URLClassLoader cl = new URLClassLoader(urls, tmp)) {
+                Class<?> loader = cl.loadClass("org.burningwave.core.assembler.StaticComponentContainer");
+
+                Field modules = loader.getDeclaredField("Modules");
+                Object module = modules.get(null);
+                if (module != null) {
+                    Class<?> modClass = module.getClass();
+
+                    Method exportAllToAll = modClass.getDeclaredMethod("exportAllToAll");
+                    exportAllToAll.setAccessible(true);
+
+                    exportAllToAll.invoke(module);
+                    //logger.send(LogLevel.SUCCESS, "Successfully injected with BurningWave");
+                }
+            }
+        } catch (ClassNotFoundException |
+                 NoSuchFieldException |
+                 IllegalAccessException |
+                 NoSuchMethodException |
+                 InvocationTargetException |
+                 IOException ex) {
+            //logger.send(ex, "Failed to inject BurningWave");
+            throw new RuntimeException(ex);
+        }
+        return tmp;
+    }
+
     private static String buildPackage(final String... parts) {
         StringBuilder builder = new StringBuilder();
 
@@ -360,7 +361,9 @@ public class KarmaAPI {
     public static boolean inject(final Path file, final ClassLoader loader) {
         try {
             return inject(file.toUri().toURL(), loader);
-        } catch (MalformedURLException ignored) {}
+        } catch (MalformedURLException ex) {
+            ExceptionCollector.catchException(KarmaAPI.class, ex);
+        }
         return false;
     }
 
@@ -391,46 +394,15 @@ public class KarmaAPI {
                 method.setAccessible(true);
                 method.invoke(loader, url);
             } else {
-                method = ClassLoader.class.getDeclaredMethod("addClass", Class.class);
-                Method define = ClassLoader.class.getDeclaredMethod("defineClass", String.class, byte[].class, int.class, int.class);
-                Method load = ClassLoader.class.getMethod("loadClassData", String.class);
+                method = loader.getClass().getDeclaredMethod("appendToClassPathForInstrumentation", String.class);
                 method.setAccessible(true);
-                define.setAccessible(true);
-                load.setAccessible(true);
-
-                File file = new File(url.getFile().replace("%20", " "));
-                try (JarFile jarFile = new JarFile(file)) {
-                    Enumeration<JarEntry> e = jarFile.entries();
-
-                    URL[] urls = {new URL("jar:file:" + PathUtilities.pathString(file.toPath(), '/') + "!/")};
-                    try (URLClassLoader cl = URLClassLoader.newInstance(urls)) {
-                        while (e.hasMoreElements()) {
-                            JarEntry je = e.nextElement();
-                            if (je.isDirectory() || !je.getName().endsWith(".class")) {
-                                continue;
-                            }
-
-                            String className = je.getName().substring(0, je.getName().length() - 6);
-                            if (!className.endsWith("module-info")) {
-                                Class<?> clazz = cl.loadClass(className);
-                                method.invoke(loader, clazz);
-                                byte[] data = (byte[]) load.invoke(loader, className);
-                                define.invoke(loader, className, data, 0, data.length);
-                            }
-                        }
-
-                        load.setAccessible(false);
-                        define.setAccessible(false);
-                    }
-                }
+                method.invoke(loader, url.getFile());
             }
 
             return true;
         } catch (NoSuchMethodException |
                  InvocationTargetException |
-                 ClassNotFoundException |
-                 IllegalAccessException |
-                 IOException ex) {
+                 IllegalAccessException ex) {
             ExceptionCollector.catchException(KarmaAPI.class, ex);
         }
 

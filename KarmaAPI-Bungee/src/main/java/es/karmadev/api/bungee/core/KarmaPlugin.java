@@ -41,6 +41,14 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public abstract class KarmaPlugin extends Plugin implements APISource {
 
+    static {
+        try {
+            KarmaAPI.setup();
+        } catch (URISyntaxException ex) {
+            throw new RuntimeException();
+        }
+    }
+
     private static boolean principalSet = false;
     private static boolean securityWarning = false;
 
@@ -79,14 +87,6 @@ public abstract class KarmaPlugin extends Plugin implements APISource {
             principalField.setAccessible(false);
 
             principalSet = true;
-        }
-
-        if (registerPrincipal) {
-            try {
-                KarmaAPI.setup();
-            } catch (URISyntaxException ex) {
-                throw new RuntimeException();
-            }
         }
 
         runtime = new DefaultRuntime(this);
