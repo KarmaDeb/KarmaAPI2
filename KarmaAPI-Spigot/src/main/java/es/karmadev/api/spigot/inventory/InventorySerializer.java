@@ -1,7 +1,11 @@
 package es.karmadev.api.spigot.inventory;
 
-import com.google.gson.*;
 import es.karmadev.api.file.util.PathUtilities;
+import es.karmadev.api.kson.JsonArray;
+import es.karmadev.api.kson.JsonInstance;
+import es.karmadev.api.kson.JsonNative;
+import es.karmadev.api.kson.JsonObject;
+import es.karmadev.api.kson.io.JsonReader;
 import es.karmadev.api.minecraft.text.Colorize;
 import es.karmadev.api.spigot.core.KarmaPlugin;
 import es.karmadev.api.strings.StringUtils;
@@ -62,37 +66,34 @@ public class InventorySerializer {
         Path data = plugin.workingDirectory().resolve(simple).resolve("data.json");
 
         if (Files.exists(data)) {
-            Gson gson = new GsonBuilder().create();
-            JsonElement element = gson.fromJson(PathUtilities.read(data), JsonElement.class);
+            JsonInstance element = JsonReader.read(PathUtilities.read(data));
 
-            if (element != null && element.isJsonObject()) return false; //Already exists
+            if (element.isObjectType()) return false; //Already exists
         }
 
-        JsonObject object = new JsonObject();
-        object.addProperty("title", title.replaceAll("§", "&"));
-        object.addProperty("size", inventory.getSize());
+        JsonObject object = JsonObject.newObject("", "");
+        object.put("title", title.replaceAll("§", "&"));
+        object.put("size", inventory.getSize());
 
-        JsonArray slots = new JsonArray();
+        JsonArray slots = JsonArray.newArray("", "slots");
         for (int slot = 0; slot < inventory.getSize(); slot++) {
             ItemStack item = inventory.getItem(slot);
             if (item != null && !item.getType().equals(Material.AIR)) {
                 Map<String, Object> itemData = item.serialize();
 
-                JsonObject slotObject = new JsonObject();
-                slotObject.addProperty("slot", slot);
-                slotObject.addProperty("data", StringUtils.serializeUnsafe(itemData));
+                JsonObject slotObject = JsonObject.newObject("", "");
+                slotObject.put("slot", slot);
+                slotObject.put("data", StringUtils.serializeUnsafe(itemData));
 
                 slots.add(slotObject);
             }
         }
 
-        object.add("slots", slots);
+        object.put("slots", slots);
 
         if (!PathUtilities.createPath(data)) return false;
 
-        Gson gson = new GsonBuilder().setPrettyPrinting().serializeNulls().disableHtmlEscaping().create();
-        String raw = gson.toJson(object);
-
+        String raw = object.toString();
         return PathUtilities.write(data, raw);
     }
 
@@ -130,45 +131,44 @@ public class InventorySerializer {
         Path data = plugin.workingDirectory().resolve(simple).resolve("data.json");
         if (!Files.exists(data)) return null;
 
-        Gson gson = new GsonBuilder().create();
-        JsonElement element = gson.fromJson(PathUtilities.read(data), JsonElement.class);
-        if (element == null || !element.isJsonObject()) return null;
+        JsonInstance element = JsonReader.read(PathUtilities.read(data));
+        if (!element.isObjectType()) return null;
 
-        JsonObject object = element.getAsJsonObject();
-        if (!object.has("title") || !object.get("title").isJsonPrimitive()) return null;
+        JsonObject object = element.asObject();
+        if (!object.hasChild("title") || !object.getChild("title").isNativeType()) return null;
 
-        JsonPrimitive titleData = object.getAsJsonPrimitive("title");
+        JsonNative titleData = object.getChild("title").asNative();
         if (!titleData.isString()) return null;
 
         String title = titleData.getAsString();
 
-        if (!object.has("size") || !object.get("size").isJsonPrimitive()) return null;
+        if (!object.hasChild("size") || !object.getChild("size").isNativeType()) return null;
 
-        JsonPrimitive sizeData = object.getAsJsonPrimitive("size");
+        JsonNative sizeData = object.getChild("size").asNative();
         if (!sizeData.isNumber()) return null;
 
-        int size = sizeData.getAsInt();
+        int size = sizeData.asInteger();
 
         Inventory inventory = Bukkit.createInventory(null, size, Colorize.colorize(title));
 
-        if (!object.has("slots") || !object.get("slots").isJsonArray()) return null;
-        JsonArray slotsData = object.getAsJsonArray("slots");
+        if (!object.hasChild("slots") || !object.getChild("slots").isArrayType()) return null;
+        JsonArray slotsData = object.getChild("slots").asArray();
 
 
-        for (JsonElement slotData : slotsData) {
-            if (!slotData.isJsonObject()) continue;
+        for (JsonInstance slotData : slotsData) {
+            if (!slotData.isObjectType()) continue;
 
-            JsonObject slotObject = slotData.getAsJsonObject();
-            if (!slotObject.has("slot") || !slotObject.get("slot").isJsonPrimitive()) continue;
+            JsonObject slotObject = slotData.asObject();
+            if (!slotObject.hasChild("slot") || !slotObject.getChild("slot").isNativeType()) continue;
 
-            JsonPrimitive slotPrimitive = slotObject.get("slot").getAsJsonPrimitive();
+            JsonNative slotPrimitive = slotObject.getChild("slot").asNative();
             if (!slotPrimitive.isNumber()) continue;
 
-            int slotIndex = slotPrimitive.getAsInt();
+            int slotIndex = slotPrimitive.asInteger();
 
-            if (!slotObject.has("data") || !slotObject.get("data").isJsonPrimitive()) continue;
+            if (!slotObject.hasChild("data") || !slotObject.getChild("data").isNativeType()) continue;
 
-            JsonPrimitive itemData = slotObject.get("data").getAsJsonPrimitive();
+            JsonNative itemData = slotObject.getChild("data").asNative();
             if (!itemData.isString()) continue;
 
             Map<String, Object> itemMap = StringUtils.loadAndCast(itemData.getAsString());

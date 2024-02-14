@@ -1,7 +1,7 @@
 package es.karmadev.api.spigot;
 
 import es.karmadev.api.logger.log.console.LogLevel;
-import es.karmadev.api.minecraft.MinecraftVersion;
+import es.karmadev.api.minecraft.BukkitVersion;
 import es.karmadev.api.minecraft.bossbar.component.BarProgress;
 import es.karmadev.api.minecraft.bossbar.component.BarType;
 import es.karmadev.api.minecraft.component.Color;
@@ -13,10 +13,10 @@ import es.karmadev.api.minecraft.text.Colorize;
 import es.karmadev.api.spigot.command.CommandBuilder;
 import es.karmadev.api.spigot.command.impl.AbstractCommand;
 import es.karmadev.api.spigot.core.KarmaPlugin;
+import es.karmadev.api.spigot.reflection.HologramManager;
 import es.karmadev.api.spigot.reflection.bossbar.SpigotBossBar;
 import es.karmadev.api.spigot.reflection.bossbar.nms.BossProvider;
 import es.karmadev.api.spigot.reflection.packet.MessagePacket;
-import es.karmadev.api.spigot.server.SpigotServer;
 import es.karmadev.api.spigot.tracker.ConstantProperty;
 import es.karmadev.api.spigot.tracker.stand.TrackerStand;
 import es.karmadev.api.spigot.v1_8_R1.boss.V1_8_R1BossProvider;
@@ -45,31 +45,31 @@ public class PluginMain extends KarmaPlugin {
      */
     @Override
     public void enable() {
-        //SpigotServer.startTickCount(this);
         ReflectionApi.init(this);
 
-        if (SpigotServer.isSameAs(MinecraftVersion.v1_8_R1)) {
-            BossProvider.setProvider(new V1_8_R1BossProvider());
-            V1_8_R1HologramManager manager = new V1_8_R1HologramManager(this);
-            manager.register();
+        BukkitVersion version = BukkitVersion.getCurrent();
+        if (version != null) {
+            HologramManager manager = null;
 
-            logger().send(LogLevel.WARNING, "Initialized minecraft 1.8 R1 reflection");
-        }
+            switch (version.toEnum()) {
+                case v1_8_R1:
+                    BossProvider.setProvider(new V1_8_R1BossProvider());
+                    manager = new V1_8_R1HologramManager(this);
+                    break;
+                case v1_8_R2:
+                    BossProvider.setProvider(new V1_8_R2BossProvider());
+                    manager = new V1_8_R2HologramManager(this);
+                    break;
+                case v1_8_R3:
+                    BossProvider.setProvider(new V1_8_R3BossProvider());
+                    manager = new V1_8_R3HologramManager(this);
+                    break;
+            }
 
-        if (SpigotServer.isSameAs(MinecraftVersion.v1_8_R2)) {
-            BossProvider.setProvider(new V1_8_R2BossProvider());
-            V1_8_R2HologramManager manager = new V1_8_R2HologramManager(this);
-            manager.register();
-
-            logger().send(LogLevel.WARNING, "Initialized minecraft 1.8 R2 reflection");
-        }
-
-        if (SpigotServer.isSameAs(MinecraftVersion.v1_8_R3)) {
-            BossProvider.setProvider(new V1_8_R3BossProvider());
-            V1_8_R3HologramManager manager = new V1_8_R3HologramManager(this);
-            manager.register();
-
-            logger().send(LogLevel.WARNING, "Initialized minecraft 1.8 R3 reflection");
+            if (manager != null) {
+                manager.register();
+                logger().send(LogLevel.WARNING, "Initialized minecraft 1.8 {0} reflection", version.getReleaseVersion());
+            }
         }
 
         Permission titlePermission = new Permission("karmaapi.title.test", PermissionDefault.OP);

@@ -26,6 +26,8 @@
         <maven.build.timestamp.format>dd-MM-yyyy HH:mm:ss</maven.build.timestamp.format>
         <api.today>${maven.build.timestamp}</api.today>
         <api.build>1</api.build>
+
+        <dependencies.version>v2</dependencies.version>
     </properties>
 
     <build>
@@ -83,11 +85,6 @@
                                     <relocation>
                                         <pattern>com.github.fge</pattern>
                                         <shadedPattern>es.karmadev.api.shaded.fge</shadedPattern>
-                                    </relocation>
-
-                                    <relocation>
-                                        <pattern>com.google.gson</pattern>
-                                        <shadedPattern>es.karmadev.api.shaded.google.gson</shadedPattern>
                                     </relocation>
 
                                     <relocation>
@@ -228,28 +225,11 @@
                 <scope>provided</scope>
             </dependency>
 
-            <!--
             <dependency>
-                <groupId>org.burningwave</groupId>
-                <artifactId>core</artifactId>
-                <version>12.39.6</version>
-                <scope>provided</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>io.github.toolfactory</groupId>
-                <artifactId>jvm-driver</artifactId>
-                <version>8.7.5</version>
-                <scope>provided</scope>
-            </dependency>
-            -->
-
-            <!-- Google -->
-            <dependency>
-                <groupId>com.google.code.gson</groupId>
-                <artifactId>gson</artifactId>
-                <version>2.10.1</version>
-                <scope>provided</scope>
+                <groupId>es.karmadev</groupId>
+                <artifactId>KSon</artifactId>
+                <version>1.0.4-SNAPSHOT</version>
+                <scope>compile</scope>
             </dependency>
             <dependency>
                 <groupId>com.github.erosb</groupId>

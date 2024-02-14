@@ -1,9 +1,6 @@
 package es.karmadev.api.file.serializer;
 
 import com.github.luben.zstd.Zstd;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
 import es.karmadev.api.MemoryUnit;
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.core.KarmaKore;
@@ -11,6 +8,8 @@ import es.karmadev.api.core.source.APISource;
 import es.karmadev.api.file.serializer.serialized.SerializedDictionary;
 import es.karmadev.api.file.serializer.serialized.SerializedFile;
 import es.karmadev.api.file.util.PathUtilities;
+import es.karmadev.api.kson.JsonObject;
+import es.karmadev.api.kson.io.JsonReader;
 import es.karmadev.api.logger.log.console.LogLevel;
 import es.karmadev.api.schedule.task.completable.BiTaskCompletor;
 import es.karmadev.api.schedule.task.completable.late.BiLateTask;
@@ -180,19 +179,18 @@ public class FileSerializer {
                                 break;
                         }
 
-                        JsonObject sizes = new JsonObject();
-                        JsonObject thisData = new JsonObject();
+                        JsonObject sizes = JsonObject.newObject("", "");
+                        JsonObject thisData = JsonObject.newObject("", name);
                         Path sizesPath = kore.workingDirectory().resolve("serializer").resolve("dictionary").resolve("data.json");
-                        Gson gson = new GsonBuilder().create();
 
                         if (Files.exists(sizesPath)) {
-                            sizes = gson.fromJson(PathUtilities.read(sizesPath), JsonObject.class);
+                            sizes = JsonReader.read(PathUtilities.read(sizesPath)).asObject();
                         }
 
-                        thisData.addProperty("size", raw.length);
-                        thisData.addProperty("method", compressor.name());
-                        sizes.add(name, thisData);
-                        String json = gson.toJson(sizes);
+                        thisData.put("size", raw.length);
+                        thisData.put("method", compressor.name());
+                        sizes.put(name, thisData);
+                        String json = sizes.toString();
                         PathUtilities.write(sizesPath, json);
 
                         PathUtilities.write(destination, compressed);

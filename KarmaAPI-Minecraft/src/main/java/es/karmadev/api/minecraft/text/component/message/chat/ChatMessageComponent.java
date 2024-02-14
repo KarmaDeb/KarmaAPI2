@@ -1,6 +1,9 @@
 package es.karmadev.api.minecraft.text.component.message.chat;
 
-import com.google.gson.*;
+import es.karmadev.api.kson.JsonArray;
+import es.karmadev.api.kson.JsonInstance;
+import es.karmadev.api.kson.JsonObject;
+import es.karmadev.api.kson.io.JsonReader;
 import es.karmadev.api.minecraft.text.TextMessageType;
 import es.karmadev.api.minecraft.text.component.Component;
 import es.karmadev.api.minecraft.text.component.text.ChatComponent;
@@ -186,58 +189,49 @@ public class ChatMessageComponent implements ChatComponent {
      */
     @Override
     public String toJson(final boolean pretty) {
-        GsonBuilder builder = new GsonBuilder();
-        if (pretty) {
-            builder.setPrettyPrinting();
-        }
+        JsonObject object = JsonObject.newObject("", "");
+        object.put("type", TextMessageType.CHAT.name());
+        object.put("content", content);
 
-        Gson gson = builder.serializeNulls()
-                .disableHtmlEscaping()
-                .create();
-
-        JsonObject object = new JsonObject();
-        object.addProperty("type", TextMessageType.CHAT.name());
-        object.addProperty("content", content);
-
-        JsonObject hover = new JsonObject();
-        JsonObject click = new JsonObject();
-        JsonArray extras = new JsonArray();
+        JsonObject hover = JsonObject.newObject("", "");
+        JsonObject click = JsonObject.newObject("", "");
+        JsonArray extras = JsonArray.newArray("", "");
 
         if (hoverAction != null) {
-            hover.addProperty("trigger", hoverAction.getAction().name());
-            hover.addProperty("content", hoverAction.getContent());
+            hover.put("trigger", hoverAction.getAction().name());
+            hover.put("content", hoverAction.getContent());
             if (hoverAction.getAction().equals(HoverAction.SHOW_ENTITY)) {
-                JsonObject entityObject = new JsonObject();
-                entityObject.addProperty("id", hoverAction.getEntityId());
-                entityObject.addProperty("name", hoverAction.getEntityName());
+                JsonObject entityObject = JsonObject.newObject("", "");
+                entityObject.put("id", hoverAction.getEntityId());
+                entityObject.put("name", hoverAction.getEntityName());
 
-                hover.add("entity", entityObject);
+                hover.put("entity", entityObject);
             }
         }
 
         if (clickAction != null) {
-            click.addProperty("trigger", clickAction.getAction().name());
-            click.addProperty("content", clickAction.getContent());
+            click.put("trigger", clickAction.getAction().name());
+            click.put("content", clickAction.getContent());
         }
 
         for (int index = 0; index < extra.size(); index++) {
             Component extraComponent = extra.get(index);
             if (extraComponent == null) continue;
 
-            JsonElement extraObject = gson.fromJson(extraComponent.toJson(pretty), JsonElement.class);
-            if (extraObject == null) continue;
+            JsonInstance extraObject = JsonReader.read(extraComponent.toJson(pretty));
+            if (!extraObject.isObjectType()) continue;
 
-            JsonObject extra = new JsonObject();
-            extra.addProperty("index", index);
-            extra.add("component", extraObject);
+            JsonObject extra = JsonObject.newObject("", "");
+            extra.put("index", index);
+            extra.put("component", extraObject);
 
             extras.add(extra);
         }
 
-        object.add("hover", hover);
-        object.add("click", click);
-        object.add("extra", extras);
+        object.put("hover", hover);
+        object.put("click", click);
+        object.put("extra", extras);
 
-        return gson.toJson(object);
+        return object.toString(pretty);
     }
 }

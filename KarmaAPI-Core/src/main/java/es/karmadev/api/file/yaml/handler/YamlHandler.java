@@ -3,6 +3,7 @@ package es.karmadev.api.file.yaml.handler;
 import es.karmadev.api.file.util.PathUtilities;
 import es.karmadev.api.file.util.StreamUtils;
 import es.karmadev.api.file.yaml.YamlFileHandler;
+import es.karmadev.api.kson.JsonObject;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.BufferedReader;
@@ -141,7 +142,6 @@ public class YamlHandler implements ResourceLoader {
      */
     public static YamlFileHandler load(final Path file, final YamlReader source) throws IOException {
         if (!Files.exists(file)) {
-            System.out.println("Does not exists");
             PathUtilities.createPath(file);
             String raw = source.parse(false);
 

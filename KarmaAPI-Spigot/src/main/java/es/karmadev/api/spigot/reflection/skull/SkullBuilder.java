@@ -1,13 +1,26 @@
 package es.karmadev.api.spigot.reflection.skull;
 
+import es.karmadev.api.core.source.SourceManager;
+import es.karmadev.api.kson.JsonObject;
+import es.karmadev.api.kson.io.JsonReader;
+import es.karmadev.api.strings.StringOptions;
+import es.karmadev.api.strings.StringUtils;
+import es.karmadev.api.web.url.URLUtilities;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.profile.PlayerProfile;
+import org.bukkit.profile.PlayerTextures;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URL;
+import java.util.Base64;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
@@ -71,19 +84,23 @@ public final class SkullBuilder {
      * @throws IllegalAccessException as part of {@link Constructor#newInstance(Object...)} and {@link Method#invoke(Object, Object...)}
      */
     private static Object createGameProfile(final Object properties) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
-        Class<?> gameProfile = null;
+        String rand = StringUtils.generateString(8, StringOptions.LOWERCASE);
+        UUID id = UUID.nameUUIDFromBytes(("OfflinePlayer:" + rand).getBytes());
+        Class<?> gameProfile;
         try {
             gameProfile = Class.forName("com.mojang.authlib.GameProfile");
         } catch (Throwable ex) {
             try {
                 gameProfile = Class.forName("net.minecraft.util.com.mojang.authlib.GameProfile");
-            } catch (Throwable ignored) {}
+            } catch (Throwable ex2) {
+                throw new RuntimeException(ex);
+            }
         }
 
         Constructor<?> profileConstructor = gameProfile.getConstructor(UUID.class, String.class);
         profileConstructor.setAccessible(true);
 
-        Object profile = profileConstructor.newInstance(UUID.randomUUID(), null);
+        Object profile = profileConstructor.newInstance(id, rand);
 
         Method getProperties = profile.getClass().getMethod("getProperties");
         getProperties.setAccessible(true);
@@ -111,9 +128,15 @@ public final class SkullBuilder {
      */
     public static ItemStack createSkull(final String value, final String signature) {
         try {
+            return buildModernSkull(value);
+        } catch (Throwable ex) {
+            SourceManager.getUnsafePrincipal().logger().send(ex, "Failed to create skull");
+        }
+
+        try {
             return createSkull(createGameProfile(createProperty(value, signature)), null);
         } catch (Throwable ex) {
-            return null;
+            throw new RuntimeException(ex);
         }
     }
 
@@ -137,9 +160,15 @@ public final class SkullBuilder {
      */
     public static ItemStack createSkull(final String value, final String signature, final Function<SkullMeta, SkullMeta> custom_meta) {
         try {
+            return buildModernSkull(value);
+        } catch (Throwable ex) {
+            SourceManager.getUnsafePrincipal().logger().send(ex, "Failed to create skull");
+        }
+
+        try {
             return createSkull(createGameProfile(createProperty(value, signature)), custom_meta);
         } catch (Throwable ex) {
-            return null;
+            throw new RuntimeException(ex);
         }
     }
 
@@ -151,16 +180,7 @@ public final class SkullBuilder {
      * @return the skull
      */
     public static ItemStack createSkull(final Object profile, final Function<SkullMeta, SkullMeta> custom_meta) {
-        ItemStack item;
-        try {
-            item = new ItemStack(Material.PLAYER_HEAD, 1);
-        } catch (Throwable ex) {
-            try {
-                item = new ItemStack(Objects.requireNonNull(Material.matchMaterial("SKULL_ITEM", true)), 1, (short) 3);
-            } catch (Throwable ex2) {
-                item = new ItemStack(Objects.requireNonNull(Material.matchMaterial("SKULL_ITEM")), 1, (short) 3);
-            }
-        }
+        ItemStack item = createSkullItem();
 
         SkullMeta meta = (SkullMeta) item.getItemMeta();
         assert meta != null;
@@ -178,6 +198,46 @@ public final class SkullBuilder {
         } catch (Throwable ignored) {}
 
         item.setItemMeta(meta);
+        return item;
+    }
+
+    private static ItemStack buildModernSkull(final String value) {
+        String random = StringUtils.generateString(8);
+
+        PlayerProfile playerProfile = Bukkit.createPlayerProfile(random);
+
+        byte[] raw = Base64.getDecoder().decode(value);
+        JsonObject json = JsonReader.parse(raw).asObject();
+
+        String rawURL = json.getChild("textures.SKIN.url").asString();
+
+        if (rawURL == null) throw new IllegalStateException("Invalid skin value");
+        URL skinURL = URLUtilities.fromString(rawURL);
+
+        playerProfile.getTextures().setSkin(skinURL);
+
+        ItemStack item = createSkullItem();
+        SkullMeta meta = (SkullMeta) item.getItemMeta();
+        assert meta != null;
+
+        meta.setOwnerProfile(playerProfile);
+        item.setItemMeta(meta);
+
+        return item;
+    }
+
+    private static ItemStack createSkullItem() {
+        ItemStack item;
+        try {
+            item = new ItemStack(Material.PLAYER_HEAD, 1);
+        } catch (Throwable ex) {
+            try {
+                item = new ItemStack(Objects.requireNonNull(Material.matchMaterial("SKULL_ITEM", true)), 1, (short) 3);
+            } catch (Throwable ex2) {
+                item = new ItemStack(Objects.requireNonNull(Material.matchMaterial("SKULL_ITEM")), 1, (short) 3);
+            }
+        }
+
         return item;
     }
 }

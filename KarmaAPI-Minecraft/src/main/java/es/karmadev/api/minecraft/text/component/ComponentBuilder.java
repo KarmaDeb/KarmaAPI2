@@ -1,6 +1,7 @@
 package es.karmadev.api.minecraft.text.component;
 
-import com.google.gson.*;
+import es.karmadev.api.kson.*;
+import es.karmadev.api.kson.io.JsonReader;
 import es.karmadev.api.minecraft.component.Color;
 import es.karmadev.api.minecraft.text.TextMessageType;
 import es.karmadev.api.minecraft.text.component.exception.NotComponentException;
@@ -147,11 +148,10 @@ public class ComponentBuilder {
      * represent a component
      */
     public static Component fromJson(final String json) throws NotComponentException {
-        Gson gson = new GsonBuilder().create();
-        JsonElement element = gson.fromJson(json, JsonElement.class);
-        if (element == null || !element.isJsonObject()) throw new NotComponentException(json);
+        JsonInstance element = JsonReader.read(json);
+        if (!element.isObjectType()) throw new NotComponentException(json);
 
-        JsonObject object = element.getAsJsonObject();
+        JsonObject object = element.asObject();
         return parse(object);
     }
 
@@ -159,7 +159,7 @@ public class ComponentBuilder {
         try {
             Component component = fromJson(content);
             return new Component[]{component};
-        } catch (NotComponentException | JsonSyntaxException ignored) {}
+        } catch (NotComponentException | KsonException ignored) {}
 
         List<Component> components = new ArrayList<>();
         if (content.contains("\n")) {
@@ -659,7 +659,7 @@ public class ComponentBuilder {
         if (missesAny(object, "type")) throw new NotComponentException(object);
         if (someNotString(object, "type")) throw new NotComponentException(object);
 
-        String rawType = object.get("type").getAsString();
+        String rawType = object.getChild("type").asString();
         if (StringUtils.startsWithIgnoreCase(rawType, "seq_")) {
             TextMessageType type;
             try {
@@ -672,26 +672,26 @@ public class ComponentBuilder {
             if (someNotNumber(object, "size", "interval", "repeats")) throw new NotComponentException(object);
             if (someNotArray(object, "sequence")) throw new NotComponentException(object);
 
-            int size = object.get("size").getAsInt();
-            long interval = object.get("interval").getAsLong();
-            int repeats = object.get("repeats").getAsInt();
+            int size = object.getChild("size").asInteger();
+            long interval = object.getChild("interval").asLong();
+            int repeats = object.getChild("repeats").asInteger();
 
             AnimatedComponent animation = new AnimatedComponent(repeats, Times.exact(interval), type);
             if (size <= 0) {
                 return animation;
             }
 
-            JsonArray sequence = object.get("sequence").getAsJsonArray();
+            JsonArray sequence = object.getChild("sequence").asArray();
             Map<Integer, Component> componentMap = new HashMap<>();
 
-            for (JsonElement element : sequence) {
-                if (element.isJsonObject()) {
-                    JsonObject elementObject = element.getAsJsonObject();
+            for (JsonInstance element : sequence) {
+                if (element.isObjectType()) {
+                    JsonObject elementObject = element.asObject();
                     if (someNotNumber(elementObject, "index")) continue;
                     if (someNotObject(elementObject, "component")) continue;
 
-                    int index = elementObject.get("index").getAsInt();
-                    JsonObject child = elementObject.getAsJsonObject("component");
+                    int index = elementObject.getChild("index").asInteger();
+                    JsonObject child = elementObject.getChild("component").asObject();
                     try {
                         Component parsed = parse(child);
                         componentMap.put(index, parsed);
@@ -723,27 +723,27 @@ public class ComponentBuilder {
         switch (type) {
             case ACTIONBAR:
                 if (someNotString(object, "content")) throw new NotComponentException(object);
-                String barContent = object.get("content").getAsString();
+                String barContent = object.getChild("content").asString();
 
                 return new SimpleMessageComponent(barContent, TextMessageType.ACTIONBAR);
             case TITLE:
                 if (someNotString(object, "content")) throw new NotComponentException(object);
-                String titleContent = object.get("content").getAsString();
+                String titleContent = object.getChild("content").asString();
 
                 return new SimpleMessageComponent(titleContent, TextMessageType.TITLE);
             case SUBTITLE:
                 if (someNotString(object, "content")) throw new NotComponentException(object);
-                String subtitleContent = object.get("content").getAsString();
+                String subtitleContent = object.getChild("content").asString();
 
                 return new SimpleMessageComponent(subtitleContent, TextMessageType.SUBTITLE);
             case TIMES:
                 if (someNotObject(object, "times")) throw new NotComponentException(object);
-                JsonObject times = object.getAsJsonObject("times");
+                JsonObject times = object.getChild("times").asObject();
                 if (someNotNumber(times, "fadeIn", "stay", "fadeOut")) throw new NotComponentException(object);
 
-                long fadeIn = times.get("fadeIn").getAsLong();
-                long show = times.get("stay").getAsLong();
-                long fadeOut = times.get("fadeOut").getAsLong();
+                long fadeIn = times.getChild("fadeIn").asLong();
+                long show = times.getChild("stay").asLong();
+                long fadeOut = times.getChild("fadeOut").asLong();
 
                 Times t1 = Times.exact(fadeIn);
                 Times t2 = Times.exact(show);
@@ -755,35 +755,35 @@ public class ComponentBuilder {
                 if (someNotString(object, "content")) throw new NotComponentException(object);
                 if (someNotObject(object, "hover", "click")) throw new NotComponentException(object);
                 if (someNotArray(object, "extra")) throw new NotComponentException(object);
-                String chatContent = object.get("content").getAsString();
+                String chatContent = object.getChild("content").asString();
 
                 ChatMessageComponent chatMessage = new ChatMessageComponent(chatContent);
                 if (!someNotObject(object, "hover")) {
-                    JsonObject hover = object.getAsJsonObject("hover");
+                    JsonObject hover = object.getChild("hover").asObject();
                     HoverEvent event = getHoverEvent(hover);
                     if (event != null) {
                         chatMessage.onHover(event);
                     }
                 }
                 if (!someNotObject(object, "click")) {
-                    JsonObject click = object.getAsJsonObject("click");
+                    JsonObject click = object.getChild("click").asObject();
                     ClickEvent event = getClickEvent(click);
                     if (event != null) {
                         chatMessage.onClick(event);
                     }
                 }
                 if (!someNotArray(object, "extra")) {
-                    JsonArray array = object.getAsJsonArray("extra");
+                    JsonArray array = object.getChild("extra").asArray();
                     Map<Integer, Component> componentMap = new HashMap<>();
 
-                    for (JsonElement element : array) {
-                        if (element.isJsonObject()) {
-                            JsonObject elementObject = element.getAsJsonObject();
+                    for (JsonInstance element : array) {
+                        if (element.isObjectType()) {
+                            JsonObject elementObject = element.asObject();
                             if (someNotNumber(elementObject, "index")) continue;
                             if (someNotObject(elementObject, "component")) continue;
 
-                            int index = elementObject.get("index").getAsInt();
-                            JsonObject child = elementObject.getAsJsonObject("component");
+                            int index = elementObject.getChild("index").asInteger();
+                            JsonObject child = elementObject.getChild("component").asObject();
                             try {
                                 Component parsed = parse(child);
                                 componentMap.put(index, parsed);
@@ -805,7 +805,7 @@ public class ComponentBuilder {
 
     private static boolean missesAny(final JsonObject object, final String... keys) {
         for (String key : keys) {
-            if (!object.has(key)) return true;
+            if (!object.hasChild(key)) return true;
         }
 
         return false;
@@ -815,8 +815,8 @@ public class ComponentBuilder {
         if (missesAny(object, keys)) return true;
 
         for (String key : keys) {
-            JsonElement element = object.get(key);
-            if (!element.isJsonPrimitive()) return true;
+            JsonInstance element = object.getChild(key);
+            if (!element.isNativeType()) return true;
         }
 
         return false;
@@ -826,8 +826,8 @@ public class ComponentBuilder {
         if (missesAny(object, keys)) return true;
 
         for (String key : keys) {
-            JsonElement element = object.get(key);
-            if (!element.isJsonArray()) return true;
+            JsonInstance element = object.getChild(key);
+            if (!element.isArrayType()) return true;
         }
 
         return false;
@@ -837,8 +837,8 @@ public class ComponentBuilder {
         if (missesAny(object, keys)) return true;
 
         for (String key : keys) {
-            JsonElement element = object.get(key);
-            if (!element.isJsonObject()) return true;
+            JsonInstance element = object.getChild(key);
+            if (!element.isObjectType()) return true;
         }
 
         return false;
@@ -848,7 +848,7 @@ public class ComponentBuilder {
         if (missesAny(object, keys) || someNotPrimitive(object, keys)) return true;
 
         for (String key : keys) {
-            JsonPrimitive element = object.getAsJsonPrimitive(key);
+            JsonNative element = object.getChild(key).asNative();
             if (!element.isString()) return true;
         }
 
@@ -859,7 +859,7 @@ public class ComponentBuilder {
         if (missesAny(object, keys) || someNotPrimitive(object, keys)) return true;
 
         for (String key : keys) {
-            JsonPrimitive element = object.getAsJsonPrimitive(key);
+            JsonNative element = object.getChild(key).asNative();
             if (!element.isNumber()) return true;
         }
 
@@ -867,10 +867,10 @@ public class ComponentBuilder {
     }
 
     private static HoverEvent getHoverEvent(JsonObject object) {
-        if (!object.has("trigger") || !object.has("content")) return null;
+        if (!object.hasChild("trigger") || !object.hasChild("content")) return null;
 
-        JsonPrimitive triggerPrimitive = object.get("trigger").getAsJsonPrimitive();
-        JsonPrimitive hoverContentPrimitive = object.get("content").getAsJsonPrimitive();
+        JsonNative triggerPrimitive = object.getChild("trigger").asNative();
+        JsonNative hoverContentPrimitive = object.getChild("content").asNative();
 
         if (!triggerPrimitive.isString() || !hoverContentPrimitive.isString()) return null;
         try {
@@ -880,22 +880,22 @@ public class ComponentBuilder {
                 case SHOW_TEXT:
                     return new HoverEvent(action, hoverContentPrimitive.getAsString());
                 case SHOW_ENTITY:
-                    if (!object.has("entity")) return null;
-                    JsonObject entityObject = object.get("entity").getAsJsonObject();
+                    if (!object.hasChild("entity")) return null;
+                    JsonObject entityObject = object.getChild("entity").asObject();
 
-                    if (!entityObject.has("id") || !entityObject.has("name")) return null;
+                    if (!entityObject.hasChild("id") || !entityObject.hasChild("name")) return null;
 
-                    JsonElement idElement = entityObject.get("id");
-                    JsonElement nameElement = entityObject.get("name");
+                    JsonInstance idElement = entityObject.getChild("id");
+                    JsonInstance nameElement = entityObject.getChild("name");
 
-                    if (!idElement.isJsonPrimitive() || !nameElement.isJsonPrimitive()) return null;
+                    if (!idElement.isNativeType() || !nameElement.isNativeType()) return null;
 
-                    JsonPrimitive idPrimitive = idElement.getAsJsonPrimitive();
-                    JsonPrimitive namePrimitive = nameElement.getAsJsonPrimitive();
+                    JsonNative idPrimitive = idElement.asNative();
+                    JsonNative namePrimitive = nameElement.asNative();
 
                     if (!idPrimitive.isNumber() || !namePrimitive.isString()) return null;
 
-                    return new HoverEvent(action, hoverContentPrimitive.getAsString(), idPrimitive.getAsInt(), namePrimitive.getAsString());
+                    return new HoverEvent(action, hoverContentPrimitive.getAsString(), idPrimitive.asInteger(), namePrimitive.getAsString());
                 default:
                     return null;
             }
@@ -905,10 +905,10 @@ public class ComponentBuilder {
     }
 
     private static ClickEvent getClickEvent(JsonObject object) {
-        if (!object.has("trigger") || !object.has("content")) return null;
+        if (!object.hasChild("trigger") || !object.hasChild("content")) return null;
 
-        JsonPrimitive triggerPrimitive = object.get("trigger").getAsJsonPrimitive();
-        JsonPrimitive clickContentPrimitive = object.get("content").getAsJsonPrimitive();
+        JsonNative triggerPrimitive = object.getChild("trigger").asNative();
+        JsonNative clickContentPrimitive = object.getChild("content").asNative();
 
         if (!triggerPrimitive.isString() || !clickContentPrimitive.isString()) return null;
 

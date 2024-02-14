@@ -14,11 +14,11 @@ import java.util.HashMap;
 @SuppressWarnings("unused")
 public class Version implements Comparable<Version> {
 
-    private final int mayor;
+    protected final int mayor;
 
-    private final int minor;
+    protected final int minor;
 
-    private final int patch;
+    protected final int patch;
 
     @Nullable
     private final String build;

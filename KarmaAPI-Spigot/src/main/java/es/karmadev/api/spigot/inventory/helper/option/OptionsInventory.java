@@ -78,6 +78,8 @@ public class OptionsInventory<T> implements InventoryHolder, Listener {
                         } catch (Throwable ignored) {}
                     }, 10);
                 }
+
+                if (canClose) open.remove(human.getUniqueId());
             }
         }, plugin, false);
     }

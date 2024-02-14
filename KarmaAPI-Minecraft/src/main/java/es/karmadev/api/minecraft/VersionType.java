@@ -1,4 +1,4 @@
-package es.karmadev.api.spigot.server;
+package es.karmadev.api.minecraft;
 
 /**
  * Minecraft version types
@@ -30,5 +30,7 @@ public enum VersionType {
     v1_19_R2,
     v1_19_R3,
     v1_20_R1,
+    v1_20_R2,
+    v1_20_R3,
     FUTURE
 }

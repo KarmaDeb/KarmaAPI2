@@ -1,9 +1,13 @@
 package es.karmadev.api.version;
 
-import com.google.gson.*;
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.file.util.PathUtilities;
+import es.karmadev.api.kson.JsonArray;
+import es.karmadev.api.kson.JsonInstance;
+import es.karmadev.api.kson.JsonObject;
+import es.karmadev.api.kson.KsonException;
+import es.karmadev.api.kson.io.JsonReader;
 import es.karmadev.api.version.checker.VersionChecker;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.ValidationException;
@@ -193,29 +197,29 @@ public class UpdateBuilder {
 
                 String raw = PathUtilities.read(destination);
 
-                Gson gson = new GsonBuilder().create();
                 JsonObject json = null;
                 boolean found = false;
 
                 try {
-                    json = gson.fromJson(raw, JsonObject.class);
-                } catch (JsonSyntaxException ignored) {}
-                if (json == null) json = new JsonObject();
+                    json = JsonReader.read(raw).asObject();
+                } catch (KsonException ignored) {}
+                if (json == null) json = JsonObject.newObject("", "");
 
                 Version sourceVersion = source.sourceVersion();
+                String rawSourceVersion = sourceVersion.getMayor() + "." + sourceVersion.getMinor() + "." + sourceVersion.getPatch();
 
-                JsonObject versionObject = new JsonObject();
-                JsonArray versions = new JsonArray();
-                if (json.has("versions")) {
-                    versions = json.getAsJsonArray("versions");
+                JsonObject versionObject = JsonObject.newObject("versions", rawSourceVersion);
+                JsonArray versions = JsonArray.newArray("", "versions");
+                if (json.hasChild("versions")) {
+                    versions = json.getChild("versions").asArray();
                     JsonObject parentObject = null;
-                    for (JsonElement element : versions) {
-                        parentObject = element.getAsJsonObject();
-                        String rawVersion = parentObject.keySet().toArray(new String[0])[0];
+                    for (JsonInstance element : versions) {
+                        parentObject = element.asObject();
+                        String rawVersion = parentObject.getKeys(false).toArray(new String[0])[0];
 
-                        JsonObject info = parentObject.get(rawVersion).getAsJsonObject();
+                        JsonObject info = parentObject.getChild(rawVersion).asObject();
 
-                        String build = info.get("build").getAsString();
+                        String build = info.getChild("build").asString();
 
                         Version instance = Version.parse(rawVersion, build);
                         if (sourceVersion.equals(instance)) {
@@ -230,39 +234,31 @@ public class UpdateBuilder {
                     }
                 }
 
-                versionObject.addProperty("date", Instant.now().toString());
-                versionObject.addProperty("build", String.valueOf(sourceVersion.getBuild()));
+                versionObject.put("date", Instant.now().toString());
+                versionObject.put("build", String.valueOf(sourceVersion.getBuild()));
                 if (updateURLs.isEmpty()) {
-                    versionObject.remove("update");
+                    versionObject.removeChild("update");
                 } else {
-                    JsonArray updateElement = new JsonArray();
+                    JsonArray updateElement = JsonArray.newArray("update", "update");
                     updateURLs.forEach((url) -> updateElement.add(url.toString()));
 
-                    versionObject.add("update", updateElement);
+                    versionObject.put("update", updateElement);
                 }
 
-                JsonArray changelogElement = new JsonArray();
+                JsonArray changelogElement = JsonArray.newArray("changelog", "changelog");
                 changelog.forEach((line) -> changelogElement.add(line.replace('&', '§')));
 
-                versionObject.add("changelog", changelogElement);
-                JsonObject parentObj = new JsonObject();
-                parentObj.add(sourceVersion.getMayor() + "." + sourceVersion.getMinor() + "." + sourceVersion.getPatch(), versionObject);
+                versionObject.put("changelog", changelogElement);
+                JsonObject parentObj = JsonObject.newObject("versions", rawSourceVersion);
+                parentObj.put(rawSourceVersion, versionObject);
 
-                JsonArray newVersions = new JsonArray();
+                JsonArray newVersions = JsonArray.newArray("versions", rawSourceVersion);
                 newVersions.add(parentObj);
-                for (JsonElement child : versions) newVersions.add(child);
+                for (JsonInstance child : versions) newVersions.add(child);
 
-                json.add("versions", newVersions);
+                json.put("versions", newVersions);
 
-                String jsonString;
-                try {
-                    Gson prettyGson = new GsonBuilder().setPrettyPrinting().create();
-                    jsonString = prettyGson.toJson(json);
-                } catch (Throwable ex) {
-                    Gson simpleGson = new GsonBuilder().create();
-                    jsonString = simpleGson.toJson(json);
-                }
-
+                String jsonString = json.toString();
                 JSONObject toWrite = new JSONObject(jsonString);
                 try {
                     schema.validate(toWrite);
@@ -308,45 +304,39 @@ public class UpdateBuilder {
                 JSONObject rawSchema = new JSONObject(stream);
                 Schema schema = SchemaLoader.load(rawSchema);
 
-                JsonObject json = new JsonObject();
+                JsonObject json = JsonObject.newObject("", "");
                 Version sourceVersion = source.sourceVersion();
 
-                JsonObject versionObject = new JsonObject();
-                JsonArray versions = new JsonArray();
+                String rawVersion = sourceVersion.getMayor() + "." + sourceVersion.getMinor() + "." + sourceVersion.getPatch();
 
-                versionObject.addProperty("date", Instant.now().toString());
-                versionObject.addProperty("build", String.valueOf(sourceVersion.getBuild()));
+                JsonObject versionObject = JsonObject.newObject("versions", rawVersion);
+                JsonArray versions = JsonArray.newArray("", "versions");
+
+                versionObject.put("date", Instant.now().toString());
+                versionObject.put("build", String.valueOf(sourceVersion.getBuild()));
                 if (updateURLs.isEmpty()) {
-                    versionObject.remove("update");
+                    versionObject.removeChild("update");
                 } else {
-                    JsonArray updateElement = new JsonArray();
+                    JsonArray updateElement = JsonArray.newArray("", "");
                     updateURLs.forEach((url) -> updateElement.add(url.toString()));
 
-                    versionObject.add("update", updateElement);
+                    versionObject.put("update", updateElement);
                 }
 
-                JsonArray changelogElement = new JsonArray();
+                JsonArray changelogElement = JsonArray.newArray("", "");
                 changelog.forEach((line) -> changelogElement.add(line.replace('&', '§')));
 
-                versionObject.add("changelog", changelogElement);
-                JsonObject parentObj = new JsonObject();
-                parentObj.add(sourceVersion.getMayor() + "." + sourceVersion.getMinor() + "." + sourceVersion.getPatch(), versionObject);
+                versionObject.put("changelog", changelogElement);
+                JsonObject parentObj = JsonObject.newObject("", "");
+                parentObj.put(rawVersion, versionObject);
 
-                JsonArray newVersions = new JsonArray();
+                JsonArray newVersions = JsonArray.newArray("", "versions");
                 newVersions.add(parentObj);
-                for (JsonElement child : versions) newVersions.add(child);
+                for (JsonInstance child : versions) newVersions.add(child);
 
-                json.add("versions", newVersions);
+                json.put("versions", newVersions);
 
-                String jsonString;
-                try {
-                    Gson prettyGson = new GsonBuilder().setPrettyPrinting().create();
-                    jsonString = prettyGson.toJson(json);
-                } catch (Throwable ex) {
-                    Gson simpleGson = new GsonBuilder().create();
-                    jsonString = simpleGson.toJson(json);
-                }
-
+                String jsonString = json.toString();
                 JSONObject toWrite = new JSONObject(jsonString);
                 try {
                     schema.validate(toWrite);

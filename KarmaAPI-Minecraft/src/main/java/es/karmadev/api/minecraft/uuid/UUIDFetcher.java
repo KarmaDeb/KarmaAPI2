@@ -1,12 +1,18 @@
 package es.karmadev.api.minecraft.uuid;
 
-import com.google.gson.*;
 import es.karmadev.api.core.source.APISource;
 import es.karmadev.api.core.source.SourceManager;
 import es.karmadev.api.file.util.PathUtilities;
+import es.karmadev.api.kson.JsonArray;
+import es.karmadev.api.kson.JsonInstance;
+import es.karmadev.api.kson.JsonObject;
+import es.karmadev.api.kson.KsonException;
+import es.karmadev.api.kson.io.JsonReader;
 import es.karmadev.api.object.ObjectUtils;
 import es.karmadev.api.web.request.HeadEntry;
 import es.karmadev.api.web.url.URLUtilities;
+import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -15,10 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -118,12 +121,11 @@ public final class UUIDFetcher {
         URL ashcon = URLUtilities.getOptional(String.format(ASHCON, name)).orElse(null);
         if (ashcon != null) {
             String response = URLUtilities.get(ashcon);
-            Gson gson = new GsonBuilder().create();
-            JsonElement element = gson.fromJson(response, JsonElement.class);
-            if (element != null && element.isJsonObject()) {
-                JsonObject object = element.getAsJsonObject();
-                if (object.has("uuid") && object.get("uuid").isJsonPrimitive() && object.getAsJsonPrimitive("uuid").isString()) {
-                    String rawUUID = object.get("uuid").getAsString();
+            JsonInstance element = JsonReader.read(response);
+            if (element.isObjectType()) {
+                JsonObject object = element.asObject();
+                if (object.hasChild("uuid") && object.getChild("uuid").isNativeType() && object.getChild("uuid").asNative().isString()) {
+                    String rawUUID = object.getChild("uuid").asString();
                     try {
                         UUID fetched = UUID.fromString(rawUUID);
                         doCache(offline, fetched);
@@ -143,12 +145,11 @@ public final class UUIDFetcher {
         URL fallback = URLUtilities.getOptional((intent == 0 ? String.format(MOJANG, name) : String.format(MINETOOLS, name))).orElse(null);
         if (fallback != null) {
             String response = URLUtilities.get(fallback, HeadEntry.valueOf("", ""));
-            Gson gson = new GsonBuilder().create();
-            JsonElement element = gson.fromJson(response, JsonElement.class);
-            if (element != null && element.isJsonObject()) {
-                JsonObject object = element.getAsJsonObject();
-                if (object.has("id") && object.get("id").isJsonPrimitive() && object.getAsJsonPrimitive("id").isString()) {
-                    String rawUUID = object.get("id").getAsString();
+            JsonInstance element = JsonReader.read(response);
+            if (element.isObjectType()) {
+                JsonObject object = element.asObject();
+                if (object.hasChild("id") && object.getChild("id").isNativeType() && object.getChild("id").asNative().isString()) {
+                    String rawUUID = object.getChild("id").asString();
                     try {
                         UUID fetched = fromSimple(rawUUID);
                         doCache(offline, fetched);
@@ -166,58 +167,55 @@ public final class UUIDFetcher {
         Path fetchCache = source.workingDirectory().resolve("cache").resolve("uuid").resolve("fetch.json");
         PathUtilities.createPath(fetchCache);
 
-        Gson gson = new GsonBuilder().create();
-        JsonElement element = null;
-        JsonElement cloneElement = null;
+        JsonInstance element = null;
         try {
-            element = gson.fromJson(PathUtilities.pathString(fetchCache), JsonElement.class);
-            cloneElement = gson.fromJson(PathUtilities.pathString(fetchCache), JsonElement.class);
-        } catch (JsonSyntaxException ignored) {}
+            element = JsonReader.read(PathUtilities.read(fetchCache));
+        } catch (KsonException ignored) {}
 
         if (!(element instanceof JsonObject)) {
-            element = new JsonObject();
-        }
-        if (!(cloneElement instanceof JsonObject)) {
-            cloneElement = new JsonObject();
+            element = JsonObject.newObject("", "");
         }
 
-        JsonObject object = element.getAsJsonObject();
-        JsonObject clone = cloneElement.getAsJsonObject();
+        JsonObject object = element.asObject();
+        JsonObject clone = object.clone("", "", '.')
+                .asObject();
 
-        List<String> keys = clone.entrySet().stream().map(Map.Entry::getKey).collect(Collectors.toList());
+        List<String> keys = new ArrayList<>(clone.getKeys(false));
 
         boolean write = false;
         for (String key : keys) {
-            JsonArray array = clone.getAsJsonArray(key);
-            Iterator<JsonElement> elements = array.iterator();
-
+            JsonArray array = clone.getChild(key).asArray();
             boolean modifications = false;
-            while (elements.hasNext()) {
-                JsonElement children = elements.next();
-                JsonObject cacheItem = children.getAsJsonObject();
-                String uuid = cacheItem.get("uuid").getAsString();
+
+            List<JsonInstance> toRemove = new ArrayList<>();
+            for (JsonInstance children : array) {
+                JsonObject cacheItem = children.asObject();
+                String uuid = cacheItem.getChild("uuid").asString();
 
                 if (uuid.equals(toSimple(offline))) {
-                    long expiration = cacheItem.get("expiration").getAsLong();
+                    long expiration = cacheItem.getChild("expiration").asLong();
                     long now = System.currentTimeMillis();
 
                     if (expiration >= now) {
                         return fromSimple(key);
                     } else {
-                        elements.remove();
+                        //elements.remove();
+                        toRemove.add(element);
                         modifications = true;
                     }
                 }
             }
 
+            toRemove.forEach(array::remove);
+
             if (modifications) {
-                object.add(key, array);
+                object.put(key, array);
                 write = true;
             }
         }
 
         if (write) {
-            String raw = gson.toJson(object);
+            String raw = object.toString();
             try {
                 Files.write(fetchCache, raw.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE);
             } catch (IOException ex) {
@@ -232,33 +230,32 @@ public final class UUIDFetcher {
         Path fetchCache = source.workingDirectory().resolve("cache").resolve("uuid").resolve("fetch.json");
         PathUtilities.createPath(fetchCache);
 
-        Gson gson = new GsonBuilder().create();
-        JsonElement element = null;
+        JsonInstance element = null;
         try {
-            element = gson.fromJson(PathUtilities.read(fetchCache), JsonElement.class);
-        } catch (JsonSyntaxException ignored) {}
+            element = JsonReader.read(PathUtilities.read(fetchCache));
+        } catch (KsonException ignored) {}
         if (!(element instanceof JsonObject)) {
-            element = new JsonObject();
+            element = JsonObject.newObject("", "");
         }
 
-        JsonObject object = element.getAsJsonObject();
-        JsonArray array = new JsonArray();
-        if (object.has(toSimple(online))) {
-            array = object.getAsJsonArray(toSimple(online));
+        JsonObject object = element.asObject();
+        JsonArray array = JsonArray.newArray("", toSimple(online));
+        if (object.hasChild(toSimple(online))) {
+            array = object.getChild(toSimple(online)).asArray();
         }
 
-        JsonObject cacheItem = new JsonObject();
-        cacheItem.addProperty("uuid", toSimple(offline));
-        cacheItem.addProperty("expiration", System.currentTimeMillis() + TimeUnit.DAYS.toMillis(72));
+        JsonObject cacheItem = JsonObject.newObject("", "");
+        cacheItem.put("uuid", toSimple(offline));
+        cacheItem.put("expiration", System.currentTimeMillis() + TimeUnit.DAYS.toMillis(72));
 
         boolean write = true;
-        JsonElement existingEntry = null;
-        for (JsonElement children : array) {
-            JsonObject childItem = children.getAsJsonObject();
-            String uuid = childItem.get("uuid").getAsString();
+        JsonInstance existingEntry = null;
+        for (JsonInstance children : array) {
+            JsonObject childItem = children.asObject();
+            String uuid = childItem.getChild("uuid").asString();
 
             if (uuid.equals(toSimple(offline))) {
-                long expiration = childItem.get("expiration").getAsLong();
+                long expiration = childItem.getChild("expiration").asLong();
                 long now = System.currentTimeMillis();
 
                 if (expiration < now) {
@@ -275,9 +272,9 @@ public final class UUIDFetcher {
             }
 
             array.add(cacheItem);
-            object.add(toSimple(online), array);
+            object.put(toSimple(online), array);
 
-            String raw = gson.toJson(object);
+            String raw = object.toString();
             try {
                 Files.write(fetchCache, raw.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE);
             } catch (IOException ex) {

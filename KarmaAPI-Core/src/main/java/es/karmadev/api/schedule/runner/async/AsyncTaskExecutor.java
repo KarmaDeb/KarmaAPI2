@@ -45,6 +45,7 @@ public class AsyncTaskExecutor implements TaskRunner<Long> {
     private final TimeUnit workingUnit;
 
     private TaskEvent currentContext = TaskEvent.START;
+    private boolean started = false;
 
     /**
      * Create a new asynchronous task scheduler
@@ -130,7 +131,8 @@ public class AsyncTaskExecutor implements TaskRunner<Long> {
      */
     @Override
     public void start() {
-        if (!status().equals(TaskStatus.STOPPED)) return;
+        if (started) return;
+        started = true;
         setStatus(TaskStatus.RUNNING, false);
 
         AtomicReference<ScheduledFuture<?>> future = new AtomicReference<>();
@@ -203,7 +205,7 @@ public class AsyncTaskExecutor implements TaskRunner<Long> {
      */
     @Override
     public void resume() {
-        if (taskStatus.get().equals(TaskStatus.PAUSED))
+        if (taskStatus.get().equals(TaskStatus.PAUSED) || taskStatus.get().equals(TaskStatus.STOPPED))
             setStatus(TaskStatus.RESUMING, true);
     }
 

@@ -1,0 +1,143 @@
+{
+  "dependencies": [
+    {
+      "id": "jvm_driver",
+      "name": "JVM Driver",
+      "platform": "*",
+      "download": [
+        "https://karmadev.es/karma-repository/${dependencies.version}/"
+      ],
+      "relocations": [],
+      "priority": 0
+    },
+    {
+      "id": "burning_wave",
+      "name": "BurningWave",
+      "platform": "*",
+      "download": [
+        "https://karmadev.es/karma-repository/${dependencies.version}/"
+      ],
+      "relocations": [],
+      "priority": 0
+    },
+    {
+      "id": "relocator_asm",
+      "name": "ASM Api",
+      "platform": "*",
+      "download": [
+        "https://karmadev.es/karma-repository/${dependencies.version}/"
+      ],
+      "relocations": [],
+      "priority": 1
+    },
+    {
+      "id": "asm_tree",
+      "name": "ASM Tree",
+      "platform": "*",
+      "download": [
+        "https://karmadev.es/karma-repository/${dependencies.version}/"
+      ],
+      "relocations": [],
+      "priority": 2
+    },
+    {
+      "id": "asm_analysis",
+      "name": "ASM Analysis",
+      "platform": "*",
+      "download": [
+        "https://karmadev.es/karma-repository/${dependencies.version}/"
+      ],
+      "relocations": [],
+      "priority": 3
+    },
+    {
+      "id": "asm_commons",
+      "name": "ASM Commons",
+      "platform": "*",
+      "download": [
+        "https://karmadev.es/karma-repository/${dependencies.version}/"
+      ],
+      "relocations": [],
+      "priority": 4
+    },
+
+    {
+      "id": "schema_json",
+      "name": "JSON Schemas",
+      "platform": "*",
+      "download": [
+        "https://karmadev.es/karma-repository/${dependencies.version}/"
+      ],
+      "relocations": [],
+      "priority": 5
+    },
+    {
+      "id": "schema_validator",
+      "name": "Schemas validator",
+      "platform": "*",
+      "download": [
+        "https://karmadev.es/karma-repository/${dependencies.version}/"
+      ],
+      "relocations": [],
+      "priority": 5
+    },
+    {
+      "id": "snake_yaml",
+      "name": "YAML language support",
+      "platform": "*",
+      "download": [
+        "https://karmadev.es/karma-repository/${dependencies.version}/"
+      ],
+      "relocations": [
+        {
+          "from": "org.yaml.snakeyaml",
+          "to": "es.karmadev.api.shaded.snakeyaml"
+        }
+      ],
+      "priority": 5
+    }
+  ,
+    {
+      "id": "compressor_lz4",
+      "name": "LZ4 Compression",
+      "platform": "*",
+      "download": [
+        "https://karmadev.es/karma-repository/${dependencies.version}/"
+      ],
+      "relocations": [],
+      "priority": 5
+    },
+    {
+      "id": "compressor_zstd",
+      "name": "ZSTD Compression",
+      "platform": "*",
+      "download": [
+        "https://karmadev.es/karma-repository/${dependencies.version}/"
+      ],
+      "relocations": [],
+      "priority": 5
+    },
+
+    {
+      "id": "mozilla_javascript",
+      "name": "JavaScript engine",
+      "platform": "*",
+      "download": [
+        "https://karmadev.es/karma-repository/${dependencies.version}/"
+      ],
+      "relocations": [],
+      "priority": 5
+    },
+
+    {
+      "id": "reflection_api",
+      "name": "Bukkit reflection API",
+      "platform": "org.bukkit.Server",
+      "download": [
+        "https://karmadev.es/karma-repository/${dependencies.version}/"
+      ],
+      "relocations": [],
+      "priority": 5
+    }
+  ]
+}

@@ -210,6 +210,24 @@ public class ArrayUtils {
     }
 
     /**
+     * Get if the array contains the provided element.
+     *
+     * @param array the array to check for
+     * @param element the element to check with
+     * @return if the array contains the element
+     */
+    public static boolean containsIgnoreCase(final String[] array, final String element) {
+        for (String str : array) {
+            if (str == null && element == null) return true;
+            if (str == null) continue;
+
+            if (str.equalsIgnoreCase(element)) return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Get if the array contains any of the
      * elements
      *
@@ -263,12 +281,12 @@ public class ArrayUtils {
             objectArray[i] = array[i];
         }
 
-        Byte[] elementsArray = new Byte[elements.length];
+        Byte[] elementArray = new Byte[elements.length];
         for (int i = 0; i < elements.length; i++) {
-            elementsArray[i] = elements[i];
+            elementArray[i] = elements[i];
         }
 
-        return containsAny(objectArray, elementsArray);
+        return containsAny(objectArray, elementArray);
     }
 
     /**
@@ -285,12 +303,12 @@ public class ArrayUtils {
             objectArray[i] = array[i];
         }
 
-        Short[] elementsArray = new Short[elements.length];
+        Short[] elementArray = new Short[elements.length];
         for (int i = 0; i < elements.length; i++) {
-            elementsArray[i] = elements[i];
+            elementArray[i] = elements[i];
         }
 
-        return containsAny(objectArray, elementsArray);
+        return containsAny(objectArray, elementArray);
     }
 
     /**
@@ -307,12 +325,12 @@ public class ArrayUtils {
             objectArray[i] = array[i];
         }
 
-        Integer[] elementsArray = new Integer[elements.length];
+        Integer[] elementArray = new Integer[elements.length];
         for (int i = 0; i < elements.length; i++) {
-            elementsArray[i] = elements[i];
+            elementArray[i] = elements[i];
         }
 
-        return containsAny(objectArray, elementsArray);
+        return containsAny(objectArray, elementArray);
     }
 
     /**
@@ -329,12 +347,12 @@ public class ArrayUtils {
             objectArray[i] = array[i];
         }
 
-        Long[] elementsArray = new Long[elements.length];
+        Long[] elementArray = new Long[elements.length];
         for (int i = 0; i < elements.length; i++) {
-            elementsArray[i] = elements[i];
+            elementArray[i] = elements[i];
         }
 
-        return containsAny(objectArray, elementsArray);
+        return containsAny(objectArray, elementArray);
     }
 
     /**
@@ -351,12 +369,12 @@ public class ArrayUtils {
             objectArray[i] = array[i];
         }
 
-        Float[] elementsArray = new Float[elements.length];
+        Float[] elementArray = new Float[elements.length];
         for (int i = 0; i < elements.length; i++) {
-            elementsArray[i] = elements[i];
+            elementArray[i] = elements[i];
         }
 
-        return containsAny(objectArray, elementsArray);
+        return containsAny(objectArray, elementArray);
     }
 
     /**
@@ -373,12 +391,12 @@ public class ArrayUtils {
             objectArray[i] = array[i];
         }
 
-        Double[] elementsArray = new Double[elements.length];
+        Double[] elementArray = new Double[elements.length];
         for (int i = 0; i < elements.length; i++) {
-            elementsArray[i] = elements[i];
+            elementArray[i] = elements[i];
         }
 
-        return containsAny(objectArray, elementsArray);
+        return containsAny(objectArray, elementArray);
     }
 
     /**
@@ -395,14 +413,35 @@ public class ArrayUtils {
             objectArray[i] = array[i];
         }
 
-        Character[] elementsArray = new Character[elements.length];
+        Character[] elementArray = new Character[elements.length];
         for (int i = 0; i < elements.length; i++) {
-            elementsArray[i] = elements[i];
+            elementArray[i] = elements[i];
         }
 
-        return containsAny(objectArray, elementsArray);
+        return containsAny(objectArray, elementArray);
     }
 
+    /**
+     * Get if the array contains any of
+     * the elements
+     * 
+     * @param array the array
+     * @param elements the elements
+     * @return if the array contains the element
+     */
+    public static boolean containsAny(final String[] array, final String... elements) {
+        for (String str : array) {
+            for (String sub : elements) {
+                if (str == null && sub == null) return true;
+                if (str == null) continue;
+
+                if (str.equals(sub)) return true;
+            }
+        }
+        
+        return false;
+    }
+    
     /**
      * Get if the array contains any of the
      * elements

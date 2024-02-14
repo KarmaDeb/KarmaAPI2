@@ -1,9 +1,13 @@
 package es.karmadev.api.core.config;
 
-import com.google.gson.*;
 import es.karmadev.api.core.KarmaAPI;
 import es.karmadev.api.file.util.PathUtilities;
-import es.karmadev.api.file.util.StreamUtils;
+import es.karmadev.api.kson.JsonArray;
+import es.karmadev.api.kson.JsonInstance;
+import es.karmadev.api.kson.JsonNative;
+import es.karmadev.api.kson.JsonObject;
+import es.karmadev.api.kson.io.JsonReader;
+import es.karmadev.api.kson.object.type.NativeString;
 import es.karmadev.api.logger.log.console.LogLevel;
 
 import java.io.IOException;
@@ -47,14 +51,11 @@ public final class APIConfiguration {
                     }
                 }
 
-                Gson gson = new GsonBuilder().create();
                 try (InputStream stream = PathUtilities.toStream(config)) {
-                    String raw = StreamUtils.streamToString(stream);
-                    JsonElement element = gson.fromJson(raw, JsonElement.class);
+                    JsonInstance element = JsonReader.read(stream);
+                    if (element == null || !element.isObjectType()) return;
 
-                    if (!element.isJsonObject()) return;
-
-                    settings = element.getAsJsonObject();
+                    settings = element.asObject();
                 } catch (IOException ex) {
                     throw new RuntimeException(ex);
                 }
@@ -69,45 +70,45 @@ public final class APIConfiguration {
      * @return the prefix
      */
     public String getPrefix(final LogLevel level) {
-        if (settings == null || !settings.has("logger") || !settings.get("logger").isJsonObject()) {
+        if (settings == null || !settings.hasChild("logger") || !settings.getChild("logger").isObjectType()) {
             return (level != null ? level.getPrefix() : "&7[{0}]: &f{1}");
         }
 
-        JsonObject loggerSettings = settings.get("logger").getAsJsonObject();
-        if (!loggerSettings.has("console") || !loggerSettings.get("console").isJsonObject()) {
+        JsonObject loggerSettings = settings.getChild("logger").asObject();
+        if (!loggerSettings.hasChild("console") || !loggerSettings.getChild("console").isObjectType()) {
             return (level != null ? level.getPrefix() : "&7[{0}]: &f{1}");
         }
 
-        JsonObject consoleSettings = loggerSettings.get("console").getAsJsonObject();
-        if (!consoleSettings.has("prefix") || !consoleSettings.get("prefix").isJsonArray()) {
+        JsonObject consoleSettings = loggerSettings.getChild("console").asObject();
+        if (!consoleSettings.hasChild("prefix") || !consoleSettings.getChild("prefix").isArrayType()) {
             return (level != null ? level.getPrefix() : "&7[{0}]: &f{1}");
         }
 
-        JsonArray prefixArray = consoleSettings.get("prefix").getAsJsonArray();
-        for (JsonElement prefixElement : prefixArray) {
-            if (!prefixElement.isJsonObject()) {
+        JsonArray prefixArray = consoleSettings.getChild("prefix").asArray();
+        for (JsonInstance prefixElement : prefixArray) {
+            if (!prefixElement.isObjectType()) {
                 continue;
             }
 
-            JsonObject prefixObject = prefixElement.getAsJsonObject();
-            if (!prefixObject.has("type") || !prefixObject.has("display")) {
+            JsonObject prefixObject = prefixElement.asObject();
+            if (!prefixObject.hasChild("type") || !prefixObject.hasChild("display")) {
                 continue;
             }
 
-            JsonElement typeElement = prefixObject.get("type");
-            JsonElement displayElement = prefixObject.get("display");
-            if (!typeElement.isJsonPrimitive() || !displayElement.isJsonPrimitive()) {
+            JsonInstance typeElement = prefixObject.getChild("type");
+            JsonInstance displayElement = prefixObject.getChild("display");
+            if (!typeElement.isNativeType() || !displayElement.isNativeType()) {
                 continue;
             }
 
-            JsonPrimitive typePrimitive = typeElement.getAsJsonPrimitive();
-            JsonPrimitive displayPrimitive = displayElement.getAsJsonPrimitive();
+            JsonNative typePrimitive = typeElement.asNative();
+            JsonNative displayPrimitive = displayElement.asNative();
             if (!typePrimitive.isString() || !displayPrimitive.isString()) {
                 continue;
             }
 
             if (level == null) {
-                if (typePrimitive.getAsString().equalsIgnoreCase("none"))  return displayPrimitive.getAsString();
+                if (typePrimitive.asString().equalsIgnoreCase("none"))  return displayPrimitive.getAsString();
             } else {
                 if (level.name().equalsIgnoreCase(typePrimitive.getAsString())) {
                     return displayPrimitive.getAsString();
@@ -126,22 +127,22 @@ public final class APIConfiguration {
      * @return if the level is enabled
      */
     public boolean isLevelEnabled(final LogLevel level) {
-        if (settings == null || !settings.has("logger") || !settings.get("logger").isJsonObject()) {
+        if (settings == null || !settings.hasChild("logger") || !settings.getChild("logger").isObjectType()) {
             return true;
         }
 
-        JsonObject loggerSettings = settings.get("logger").getAsJsonObject();
-        if (!loggerSettings.has("console") || !loggerSettings.get("console").isJsonObject()) {
+        JsonObject loggerSettings = settings.getChild("logger").asObject();
+        if (!loggerSettings.hasChild("console") || !loggerSettings.getChild("console").isObjectType()) {
             return true;
         }
 
-        JsonObject consoleSettings = loggerSettings.get("console").getAsJsonObject();
-        if (!consoleSettings.has("print") || !consoleSettings.get("print").isJsonArray()) {
+        JsonObject consoleSettings = loggerSettings.getChild("console").asObject();
+        if (!consoleSettings.hasChild("print") || !consoleSettings.getChild("print").isArrayType()) {
             return true;
         }
 
-        JsonArray printArray = consoleSettings.get("print").getAsJsonArray();
-        return printArray.contains(new JsonPrimitive(level.name()));
+        JsonArray printArray = consoleSettings.getChild("print").asArray();
+        return printArray.contains(new NativeString("print", level.name()));
     }
 
     /**
@@ -151,22 +152,22 @@ public final class APIConfiguration {
      * thread
      */
     public boolean asyncConsoleLogger() {
-        if (settings == null || !settings.has("logger") || !settings.get("logger").isJsonObject()) {
+        if (settings == null || !settings.hasChild("logger") || !settings.getChild("logger").isObjectType()) {
             return true;
         }
 
-        JsonObject loggerSettings = settings.get("logger").getAsJsonObject();
-        if (!loggerSettings.has("console") || !loggerSettings.get("console").isJsonPrimitive()) {
+        JsonObject loggerSettings = settings.getChild("logger").asObject();
+        if (!loggerSettings.hasChild("console") || !loggerSettings.getChild("console").isObjectType()) {
             return true;
         }
 
-        JsonObject consoleSettings = loggerSettings.get("console").getAsJsonObject();
-        if (!consoleSettings.has("async") || !consoleSettings.get("async").isJsonPrimitive()) {
+        JsonObject consoleSettings = loggerSettings.getChild("console").asObject();
+        if (!consoleSettings.hasChild("async") || !consoleSettings.getChild("async").isNativeType()) {
             return true;
         }
 
-        JsonPrimitive primitive = consoleSettings.get("async").getAsJsonPrimitive();
-        return (!primitive.isBoolean() || primitive.getAsBoolean());
+        JsonNative primitive = consoleSettings.getChild("async").asNative();
+        return (!primitive.isBoolean() || primitive.getBoolean());
     }
 
     /**
@@ -176,22 +177,22 @@ public final class APIConfiguration {
      * thread
      */
     public boolean asyncFileLogger() {
-        if (settings == null || !settings.has("logger") || !settings.get("logger").isJsonObject()) {
+        if (settings == null || !settings.hasChild("logger") || !settings.getChild("logger").isObjectType()) {
             return true;
         }
 
-        JsonObject loggerSettings = settings.get("logger").getAsJsonObject();
-        if (!loggerSettings.has("file") || !loggerSettings.get("file").isJsonPrimitive()) {
+        JsonObject loggerSettings = settings.getChild("logger").asObject();
+        if (!loggerSettings.hasChild("file") || !loggerSettings.getChild("file").isNativeType()) {
             return true;
         }
 
-        JsonObject fileSettings = loggerSettings.get("file").getAsJsonObject();
-        if (!fileSettings.has("async") || !fileSettings.get("async").isJsonPrimitive()) {
+        JsonObject fileSettings = loggerSettings.getChild("file").asObject();
+        if (!fileSettings.hasChild("async") || !fileSettings.getChild("async").isNativeType()) {
             return true;
         }
 
-        JsonPrimitive primitive = fileSettings.get("async").getAsJsonPrimitive();
-        return (!primitive.isBoolean() || primitive.getAsBoolean());
+        JsonNative primitive = fileSettings.getChild("async").asNative();
+        return (!primitive.isBoolean() || primitive.getBoolean());
     }
 
     /**
@@ -202,17 +203,17 @@ public final class APIConfiguration {
      * must be 200
      */
     public boolean strictURLCodes() {
-        if (settings == null || !settings.has("url") || !settings.get("url").isJsonObject()) {
+        if (settings == null || !settings.hasChild("url") || !settings.getChild("url").isObjectType()) {
             return false;
         }
 
-        JsonObject urlSettings = settings.get("url").getAsJsonObject();
-        if (!urlSettings.has("strict") || !urlSettings.get("strict").isJsonPrimitive()) {
+        JsonObject urlSettings = settings.getChild("url").asObject();
+        if (!urlSettings.hasChild("strict") || !urlSettings.getChild("strict").isNativeType()) {
             return false;
         }
 
-        JsonPrimitive primitive = urlSettings.get("strict").getAsJsonPrimitive();
-        return (primitive.isBoolean() && primitive.getAsBoolean());
+        JsonNative primitive = urlSettings.getChild("strict").asNative();
+        return (primitive.isBoolean() && primitive.getBoolean());
     }
 
     /**
@@ -221,17 +222,17 @@ public final class APIConfiguration {
      * @return the requests timeout
      */
     public int requestTimeout() {
-        if (settings == null || !settings.has("url") || !settings.get("url").isJsonObject()) {
+        if (settings == null || !settings.hasChild("url") || !settings.getChild("url").isObjectType()) {
             return 5000;
         }
 
-        JsonObject urlSettings = settings.get("url").getAsJsonObject();
-        if (!urlSettings.has("timeout") || !urlSettings.get("timeout").isJsonPrimitive()) {
+        JsonObject urlSettings = settings.getChild("url").asObject();
+        if (!urlSettings.hasChild("timeout") || !urlSettings.getChild("timeout").isNativeType()) {
             return 5000;
         }
 
-        JsonPrimitive primitive = urlSettings.get("timeout").getAsJsonPrimitive();
-        return (primitive.isNumber() ? primitive.getAsInt() : 5000);
+        JsonNative primitive = urlSettings.getChild("timeout").asNative();
+        return (primitive.isNumber() ? primitive.getInteger() : 5000);
     }
 
     /**
@@ -242,11 +243,11 @@ public final class APIConfiguration {
      * experimental features
      */
     public boolean enableExperimental() {
-        if (settings == null || !settings.has("experimental") || !settings.get("experimental").isJsonPrimitive()) {
+        if (settings == null || !settings.hasChild("experimental") || !settings.getChild("experimental").isNativeType()) {
             return false;
         }
 
-        JsonPrimitive primitive = settings.get("experimental").getAsJsonPrimitive();
-        return primitive.isBoolean() && primitive.getAsBoolean();
+        JsonNative primitive = settings.getChild("experimental").asNative();
+        return primitive.isBoolean() && primitive.getBoolean();
     }
 }

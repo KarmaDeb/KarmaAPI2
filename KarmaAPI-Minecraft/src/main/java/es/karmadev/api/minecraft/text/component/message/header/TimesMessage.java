@@ -1,6 +1,6 @@
 package es.karmadev.api.minecraft.text.component.message.header;
 
-import com.google.gson.*;
+import es.karmadev.api.kson.JsonObject;
 import es.karmadev.api.minecraft.text.TextMessageType;
 import es.karmadev.api.minecraft.text.component.Component;
 import es.karmadev.api.minecraft.text.component.title.Times;
@@ -122,24 +122,18 @@ public class TimesMessage implements TimesComponent {
      */
     @Override
     public String toJson(final boolean pretty) {
-        GsonBuilder builder = new GsonBuilder().serializeNulls().disableHtmlEscaping();
-        if (pretty) {
-            builder.setPrettyPrinting();
-        }
+        JsonObject main = JsonObject.newObject("", "");
+        JsonObject times = JsonObject.newObject("", "");
 
-        Gson gson = builder.create();
-        JsonObject main = new JsonObject();
-        JsonObject times = new JsonObject();
+        main.put("type", TextMessageType.TIMES.name());
 
-        main.addProperty("type", TextMessageType.TIMES.name());
+        times.put("fadeIn", fadeIn.getTicks());
+        times.put("stay", show.getTicks());
+        times.put("fadeOut", fadeOut.getTicks());
 
-        times.addProperty("fadeIn", fadeIn.getTicks());
-        times.addProperty("stay", show.getTicks());
-        times.addProperty("fadeOut", fadeOut.getTicks());
+        main.put("times", times);
 
-        main.add("times", times);
-
-        return gson.toJson(main);
+        return main.toString(pretty);
     }
 
     /**

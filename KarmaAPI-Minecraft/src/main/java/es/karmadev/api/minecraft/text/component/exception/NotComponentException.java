@@ -1,6 +1,6 @@
 package es.karmadev.api.minecraft.text.component.exception;
 
-import com.google.gson.JsonObject;
+import es.karmadev.api.kson.JsonObject;
 
 /**
  * This exception is thrown when a json

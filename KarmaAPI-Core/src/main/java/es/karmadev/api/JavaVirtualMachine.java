@@ -1,6 +1,5 @@
 package es.karmadev.api;
 
-import com.google.gson.JsonArray;
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.version.Version;
 

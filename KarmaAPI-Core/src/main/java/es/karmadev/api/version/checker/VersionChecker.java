@@ -1,8 +1,11 @@
 package es.karmadev.api.version.checker;
 
-import com.google.gson.*;
 import es.karmadev.api.core.source.APISource;
 import es.karmadev.api.file.util.StreamUtils;
+import es.karmadev.api.kson.JsonArray;
+import es.karmadev.api.kson.JsonInstance;
+import es.karmadev.api.kson.JsonObject;
+import es.karmadev.api.kson.io.JsonReader;
 import es.karmadev.api.logger.log.console.LogLevel;
 import es.karmadev.api.schedule.task.completable.TaskCompletor;
 import es.karmadev.api.schedule.task.completable.late.LateTask;
@@ -154,6 +157,7 @@ public class VersionChecker {
         try (InputStream updateContent = url.openStream()) {
             if (updateContent != null) {
                 String rawResponse = StreamUtils.streamToString(updateContent, false);
+
                 JSONObject node = new JSONObject(rawResponse);
                 if (versionSchema != null) {
                     /*
@@ -165,25 +169,24 @@ public class VersionChecker {
                     source.logger().send(LogLevel.WARNING, "Schema validator is not valid, version checker might not work as expected");
                 }
 
-                Gson gson = new GsonBuilder().setLenient().create();
-                JsonObject json = gson.fromJson(rawResponse, JsonObject.class);
+                JsonObject json = JsonReader.read(rawResponse).asObject();
+                JsonArray versions = json.getChild("versions").asArray();
 
-                JsonArray versions = json.getAsJsonArray("versions");
-                for (JsonElement element : versions) {
-                    JsonObject versionNode = element.getAsJsonObject();
-                    String raw = versionNode.keySet().toArray(new String[0])[0];
-                    JsonObject infoNode = versionNode.getAsJsonObject(raw);
+                for (JsonInstance element : versions) {
+                    JsonObject versionNode = element.asObject();
+                    String raw = versionNode.getKeys(false).toArray(new String[0])[0];
+                    JsonObject infoNode = versionNode.getChild(raw).asObject();
 
-                    String build = infoNode.get("build").getAsString();
+                    String build = infoNode.getChild("build").asString();
                     if (build.replaceAll("\\s", "").isEmpty()) build = null;
 
                     Version version = Version.parse(raw, build);
 
                     List<URL> urls = new ArrayList<>();
-                    if (infoNode.has("update")) {
-                        JsonArray rawUpdate = infoNode.getAsJsonArray("update");
-                        for (JsonElement updateUrlLineNode : rawUpdate) {
-                            String rawURL = updateUrlLineNode.getAsString()
+                    if (infoNode.hasChild("update")) {
+                        JsonArray rawUpdate = infoNode.getChild("update").asArray();
+                        for (JsonInstance updateUrlLineNode : rawUpdate) {
+                            String rawURL = updateUrlLineNode.asString()
                                     .replace("%version%", raw)
                                     .replace("%build%", String.valueOf(build));
                             URL realURL = URLUtilities.fromString(rawURL);
@@ -194,10 +197,10 @@ public class VersionChecker {
 
                     updateURL.put(version, urls.toArray(new URL[0]));
 
-                    JsonArray rawChangelog = infoNode.getAsJsonArray("changelog");
+                    JsonArray rawChangelog = infoNode.getChild("changelog").asArray();
                     List<String> changelog = new ArrayList<>();
 
-                    String when = infoNode.get("date").getAsString();
+                    String when = infoNode.getChild("date").asString();
 
                     if (!versionHistory.contains(version)) {
                         versionHistory.add(version);
@@ -205,14 +208,14 @@ public class VersionChecker {
 
                     Instant instant = Instant.parse(when);
                     ZonedDateTime zdt = instant.atZone(ZoneId.systemDefault());
-                        /*
-                        Whe don't care when the version was released from publisher
-                        time zone, we want to know when it was released in our timezone
-                         */
+                    /*
+                    Whe don't care when the version was released from publisher
+                    time zone, we want to know when it was released in our timezone
+                    */
 
                     releaseDates.put(version, zdt.toInstant());
-                    for (JsonElement changelogLineNode : rawChangelog)
-                        changelog.add(changelogLineNode.getAsString()
+                    for (JsonInstance changelogLineNode : rawChangelog)
+                        changelog.add(changelogLineNode.asString()
                                 .replace("%version%", raw)
                                 .replace("%build%", String.valueOf(build)));
 

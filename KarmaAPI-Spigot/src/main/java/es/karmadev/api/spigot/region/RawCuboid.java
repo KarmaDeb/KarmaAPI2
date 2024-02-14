@@ -1,8 +1,11 @@
 package es.karmadev.api.spigot.region;
 
-import com.google.gson.*;
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.file.util.PathUtilities;
+import es.karmadev.api.kson.JsonNative;
+import es.karmadev.api.kson.JsonObject;
+import es.karmadev.api.kson.KsonException;
+import es.karmadev.api.kson.io.JsonReader;
 import es.karmadev.api.logger.log.console.ConsoleColor;
 import es.karmadev.api.object.ObjectUtils;
 import es.karmadev.api.spigot.region.exception.DimensionException;
@@ -436,13 +439,11 @@ public class RawCuboid implements CuboidRegion {
         UUID regionId = UUID.nameUUIDFromBytes(("CuboidRegion:" + ConsoleColor.strip(name)).getBytes());
         Path file = plugin.getDataFolder().toPath().resolve("region").resolve(ConsoleColor.strip(name)).resolve(regionId + ".json");
 
-        JsonObject json = new JsonObject();
-        json.addProperty("world", world.getUID().toString());
-        json.addProperty("region", StringUtils.serialize(this));
+        JsonObject json = JsonObject.newObject("", "");
+        json.put("world", world.getUID().toString());
+        json.put("region", StringUtils.serialize(this));
 
-        Gson gson = new GsonBuilder().create();
-        String rawJson = gson.toJson(json);
-
+        String rawJson = json.toString();
         return PathUtilities.write(file, rawJson);
     }
 
@@ -460,12 +461,12 @@ public class RawCuboid implements CuboidRegion {
         RawCuboid region = null;
         if (Files.exists(file)) {
             try {
-                Gson gson = new GsonBuilder().create();
-                JsonObject object = gson.fromJson(PathUtilities.read(file), JsonObject.class);
+                JsonObject object = JsonReader.read(PathUtilities.read(file)).asObject();
 
-                if (object.has("world") && object.get("world").isJsonPrimitive() && object.has("region") && object.get("region").isJsonPrimitive()) {
-                    JsonPrimitive worldPrimitive = object.getAsJsonPrimitive("world");
-                    JsonPrimitive regionPrimitive = object.getAsJsonPrimitive("region");
+                if (object.hasChild("world") && object.getChild("world").isNativeType() &&
+                        object.hasChild("region") && object.getChild("region").isNativeType()) {
+                    JsonNative worldPrimitive = object.getChild("world").asNative();
+                    JsonNative regionPrimitive = object.getChild("region").asNative();
 
                     if (worldPrimitive.isString() && regionPrimitive.isString()) {
                         String uidString = worldPrimitive.getAsString();
@@ -485,7 +486,7 @@ public class RawCuboid implements CuboidRegion {
                         }
                     }
                 }
-            } catch (JsonSyntaxException ex) {
+            } catch (KsonException ex) {
                 ExceptionCollector.catchException(Region.class, ex);
             }
         }

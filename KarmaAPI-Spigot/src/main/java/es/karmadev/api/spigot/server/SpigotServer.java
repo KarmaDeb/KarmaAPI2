@@ -1,5 +1,6 @@
 package es.karmadev.api.spigot.server;
 
+import es.karmadev.api.minecraft.BukkitVersion;
 import es.karmadev.api.minecraft.MinecraftVersion;
 import es.karmadev.api.version.Version;
 import org.bukkit.Bukkit;
@@ -25,7 +26,7 @@ public class SpigotServer {
      * @return the server version
      */
     public static MinecraftVersion getVersion() {
-        String bukkitVersion = server.getBukkitVersion(); //For example: 1.19.4-R0.1-SNAPSHOT
+        String bukkitVersion = server.getBukkitVersion(); //For example, 1.19.4-R0.1-SNAPSHOT
         String[] data = bukkitVersion.split("-");
 
         String version = data[0];
@@ -52,7 +53,7 @@ public class SpigotServer {
      * @return the release version
      */
     public static String getRelease() {
-        String bukkitVersion = server.getBukkitVersion(); //For example: 1.19.4-R0.1-SNAPSHOT
+        String bukkitVersion = server.getBukkitVersion(); //For example, 1.19.4-R0.1-SNAPSHOT
         String[] data = bukkitVersion.split("-");
 
         return data[1];
@@ -64,7 +65,7 @@ public class SpigotServer {
      * @return the release type
      */
     public static ReleaseType getVersionType() {
-        String bukkitVersion = server.getBukkitVersion(); //For example: 1.19.4-R0.1-SNAPSHOT
+        String bukkitVersion = server.getBukkitVersion(); //For example, 1.19.4-R0.1-SNAPSHOT
         String[] data = bukkitVersion.split("-");
 
         String type = data[2];
@@ -162,7 +163,7 @@ public class SpigotServer {
      * the specified version
      */
     public static boolean isSameAs(final Version other) {
-        if (other.equals(MinecraftVersion.v1_8_R1)) {
+        /*if (BukkitVersion.v1_8_R1.contains(other)) {
             try {
                 Class.forName("org.bukkit.craftbukkit.v1_8_R1.entity.CraftPlayer");
                 return true;
@@ -170,7 +171,7 @@ public class SpigotServer {
                 return false;
             }
         }
-        if (other.equals(MinecraftVersion.v1_8_R2)) {
+        if (BukkitVersion.v1_8_R2.contains(other)) {
             try {
                 Class.forName("org.bukkit.craftbukkit.v1_8_R2.entity.CraftPlayer");
                 return true;
@@ -178,14 +179,14 @@ public class SpigotServer {
                 return false;
             }
         }
-        if (other.equals(MinecraftVersion.v1_8_R3)) {
+        if (BukkitVersion.v1_8_R3.contains(other)) {
             try {
                 Class.forName("org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer");
                 return true;
             } catch (NoClassDefFoundError | ClassNotFoundException ex) {
                 return false;
             }
-        }
+        }*/
 
         Version current = getVersion();
         int comparator = current.compareTo(other);
@@ -210,12 +211,12 @@ public class SpigotServer {
      *
      * @return the package version
      */
-    public static VersionType packageVersion() {
+    public static BukkitVersion packageVersion() {
         String version = server.getClass().getPackage().getName().replace(".", ",").split(",")[3];
-        if (isUnder(MinecraftVersion.v1_7_2)) return VersionType.LEGACY;
-        if (isOver(MinecraftVersion.LATEST)) return VersionType.FUTURE;
+        if (isUnder(MinecraftVersion.v1_7_2)) return BukkitVersion.LEGACY;
+        if (isOver(MinecraftVersion.LATEST)) return BukkitVersion.FUTURE;
 
-        return VersionType.valueOf(version);
+        return BukkitVersion.valueOf(version);
     }
 
     /**

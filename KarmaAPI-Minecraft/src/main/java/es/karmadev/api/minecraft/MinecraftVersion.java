@@ -1,7 +1,16 @@
 package es.karmadev.api.minecraft;
 
 import es.karmadev.api.version.Version;
+import org.jetbrains.annotations.ApiStatus;
 
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
+
+
+/**
+ * Represents a complete minecraft version
+ */
 @SuppressWarnings("unused")
 public class MinecraftVersion extends Version {
 
@@ -68,11 +77,40 @@ public class MinecraftVersion extends Version {
     public final static MinecraftVersion v1_20_X = new MinecraftVersion(1, 20, 0);
     public final static MinecraftVersion v1_20_1 = new MinecraftVersion(1, 20, 1);
     public final static MinecraftVersion v1_20_2 = new MinecraftVersion(1, 20, 2);
-    public final static MinecraftVersion LATEST = v1_20_2;
+    public final static MinecraftVersion v1_20_3 = new MinecraftVersion(1, 20, 3);
+    public final static MinecraftVersion v1_20_4 = new MinecraftVersion(1, 20, 4);
+    public final static MinecraftVersion v1_20_5 = new MinecraftVersion(1, 20, 5);
+    @ApiStatus.Internal
+    public final static MinecraftVersion LATEST = v1_20_5;
 
-    public final static MinecraftVersion v1_8_R1 = new MinecraftVersion(1, 8, 0, "r1");
-    public final static MinecraftVersion v1_8_R2 = new MinecraftVersion(1, 8, 0, "r2");
-    public final static MinecraftVersion v1_8_R3 = new MinecraftVersion(1, 8, 0, "r3");
+    private static MinecraftVersion[] values;
+
+    /**
+     * Get all the known minecraft
+     * versions
+     *
+     * @return the known minecraft versions
+     */
+    public static MinecraftVersion[] values() {
+        if (values == null) {
+            List<MinecraftVersion> collected = new ArrayList<>();
+
+            Field[] fields = MinecraftVersion.class.getDeclaredFields();
+            for (Field f : fields) {
+                Class<?> fType = f.getType();
+                if (!fType.equals(MinecraftVersion.class)) continue;
+                if (f.isAnnotationPresent(ApiStatus.Internal.class)) continue;
+
+                try {
+                    collected.add((MinecraftVersion) f.get(null));
+                } catch (Throwable ignored) {}
+            }
+
+            values = collected.toArray(new MinecraftVersion[0]);
+        }
+
+        return values.clone();
+    }
 
     /**
      * Initialize the version
@@ -81,7 +119,7 @@ public class MinecraftVersion extends Version {
      * @param minor the minor version
      * @param patch the version patch
      */
-    public MinecraftVersion(int mayor, int minor, int patch) {
+    MinecraftVersion(int mayor, int minor, int patch) {
         this(mayor, minor, patch, null);
     }
 
@@ -93,7 +131,7 @@ public class MinecraftVersion extends Version {
      * @param patch the version patch
      * @param build the version build
      */
-    public MinecraftVersion(int mayor, int minor, int patch, final String build) {
+    MinecraftVersion(int mayor, int minor, int patch, final String build) {
         super(mayor, minor, patch, build);
     }
 

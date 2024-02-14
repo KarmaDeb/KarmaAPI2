@@ -1,8 +1,5 @@
 package es.karmadev.api.web.url;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.core.KarmaAPI;
 import es.karmadev.api.core.config.APIConfiguration;
@@ -270,15 +267,7 @@ public class URLUtilities {
                         response.append(inputLine);
                     }
 
-                    String rawResponse = response.toString();
-                    try {
-                        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-                        JsonElement element = gson.fromJson(rawResponse, JsonElement.class);
-
-                        return gson.toJson(element);
-                    } catch (Exception ex) {
-                        return rawResponse;
-                    }
+                    return response.toString();
                 }
 
                 return "";

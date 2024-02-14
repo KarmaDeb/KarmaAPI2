@@ -3,6 +3,7 @@ package es.karmadev.api.file.yaml.handler;
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.file.RawType;
 import es.karmadev.api.file.yaml.YamlFileHandler;
+import es.karmadev.api.logger.log.console.LogLevel;
 import es.karmadev.api.strings.ListSpacer;
 import es.karmadev.api.strings.StringUtils;
 import org.jetbrains.annotations.Nullable;
@@ -27,11 +28,11 @@ class SimpleYamlHandler implements YamlFileHandler {
     /**
      * Yaml data
      */
-    private Map<String, Object> data;
+    private final Map<String, Object> data = new HashMap<>();
     /**
      * Yaml source
      */
-    private YamlReader source;
+    private final YamlReader source;
 
     /**
      * Initialize the yaml handler
@@ -61,7 +62,7 @@ class SimpleYamlHandler implements YamlFileHandler {
      */
     SimpleYamlHandler(final Path file, final Map<String, Object> data, final YamlReader source) {
         this.file = file;
-        this.data = data;
+        this.data.putAll(data);
         this.source = source;
     }
 
@@ -86,7 +87,7 @@ class SimpleYamlHandler implements YamlFileHandler {
     public void importFrom(final YamlFileHandler other, final boolean replaceExisting) {
         Map<String, Object> data = other.rawData();
         if (replaceExisting) {
-            this.data = data;
+            this.data.putAll(data);
         } else {
             for (String key : other.getKeys(true)) {
                 if (this.isSet(key)) {
@@ -101,7 +102,10 @@ class SimpleYamlHandler implements YamlFileHandler {
      */
     @Override
     public void validate() {
-        if (source == null) return;
+        if (source == null) {
+            return;
+        }
+
         try {
             boolean modifications = false;
             YamlFileHandler handler = source.toHandler();
@@ -133,9 +137,9 @@ class SimpleYamlHandler implements YamlFileHandler {
         if (file == null) return false; //We cannot reload a virtual yaml file
         try {
             SimpleYamlHandler sym = (SimpleYamlHandler) YamlHandler.load(file);
-            data = sym.data;
-            source = sym.source;
 
+            data.clear();
+            data.putAll(sym.data);
             return true;
         } catch (IOException ex) {
             ExceptionCollector.catchException(YamlHandler.class, ex);
@@ -536,12 +540,9 @@ class SimpleYamlHandler implements YamlFileHandler {
      * @param def  the instance default value
      * @return the value or default value if
      * not found
-     *
-     * @throws IOException if the serialization fails
-     * @throws ClassNotFoundException if the serialization loads a class which does not exist anymore
      */
     @Override
-    public Object getSerialized(final String path, final Object def) throws IOException, ClassNotFoundException {
+    public Object getSerialized(final String path, final Object def) {
         Object value = get(path, def);
         if (!(value instanceof String)) return def;
 
@@ -549,7 +550,7 @@ class SimpleYamlHandler implements YamlFileHandler {
         try(ByteArrayInputStream bi = new ByteArrayInputStream(data); ObjectInputStream si = new ObjectInputStream(bi)) {
             return si.readObject();
         } catch (IOException | ClassNotFoundException ex) {
-            ex.printStackTrace();
+            ExceptionCollector.catchException(YamlFileHandler.class, ex);
         }
 
         return null;
@@ -851,7 +852,7 @@ class SimpleYamlHandler implements YamlFileHandler {
 
             save(path, Base64.getEncoder().encodeToString(out.toByteArray()));
         } catch (IOException ex) {
-            ex.printStackTrace();
+            ExceptionCollector.catchException(YamlFileHandler.class, ex);
         }
     }
 
@@ -927,7 +928,6 @@ class SimpleYamlHandler implements YamlFileHandler {
         if (source != null) {
             String dump = source.dump(this);
             Files.write(file, dump.getBytes(StandardCharsets.UTF_8));
-
             return;
         }
 
@@ -941,5 +941,48 @@ class SimpleYamlHandler implements YamlFileHandler {
 
         Yaml yaml = new Yaml(options);
         yaml.dump(data, Files.newBufferedWriter(file));
+    }
+
+    /**
+     * Returns a string representation of the object. In general, the
+     * {@code toString} method returns a string that
+     * "textually represents" this object. The result should
+     * be a concise but informative representation that is easy for a
+     * person to read.
+     * It is recommended that all subclasses override this method.
+     * <p>
+     * The {@code toString} method for class {@code Object}
+     * returns a string consisting of the name of the class of which the
+     * object is an instance, the at-sign character `{@code @}', and
+     * the unsigned hexadecimal representation of the hash code of the
+     * object. In other words, this method returns a string equal to the
+     * value of:
+     * <blockquote>
+     * <pre>
+     * getClass().getName() + '@' + Integer.toHexString(hashCode())
+     * </pre></blockquote>
+     *
+     * @return a string representation of the object.
+     */
+    @Override
+    public String toString() {
+        try {
+            if (source != null) {
+                return source.dump(this);
+            }
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
+
+        DumperOptions options = new DumperOptions();
+        options.setLineBreak(DumperOptions.LineBreak.getPlatformLineBreak());
+        options.setPrettyFlow(true);
+        options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+        options.setAllowUnicode(true);
+        options.setProcessComments(true);
+        options.setIndent(2);
+
+        Yaml yaml = new Yaml(options);
+        return yaml.dump(data);
     }
 }

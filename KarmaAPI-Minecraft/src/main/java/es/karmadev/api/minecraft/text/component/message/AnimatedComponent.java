@@ -1,6 +1,10 @@
 package es.karmadev.api.minecraft.text.component.message;
 
-import com.google.gson.*;
+import es.karmadev.api.kson.JsonArray;
+import es.karmadev.api.kson.JsonInstance;
+import es.karmadev.api.kson.JsonObject;
+import es.karmadev.api.kson.KsonException;
+import es.karmadev.api.kson.io.JsonReader;
 import es.karmadev.api.minecraft.text.TextMessageType;
 import es.karmadev.api.minecraft.text.component.Component;
 import es.karmadev.api.minecraft.text.component.ComponentSequence;
@@ -345,37 +349,30 @@ public class AnimatedComponent implements ComponentSequence {
      */
     @Override
     public String toJson(final boolean pretty) {
-        GsonBuilder builder = new GsonBuilder().serializeNulls().disableHtmlEscaping();
-        if (pretty) {
-            builder.setPrettyPrinting();
-        }
+        JsonObject main = JsonObject.newObject("", "");
 
-        Gson gson = builder.create();
-        JsonObject main = new JsonObject();
+        main.put("type", "SEQ_" + type.name());
+        main.put("size", sequences.size());
+        main.put("interval", interval.getTicks());
+        main.put("repeats", repeats);
 
-        main.addProperty("type", "SEQ_" + type.name());
-        main.addProperty("size", sequences.size());
-        main.addProperty("interval", interval.getTicks());
-        main.addProperty("repeats", repeats);
-
-        JsonArray sequences = new JsonArray();
+        JsonArray sequences = JsonArray.newArray("", "");
         int index = 0;
         for (Component component : this.sequences) {
             String raw = component.toJson(pretty);
             try {
-                JsonElement element = gson.fromJson(raw, JsonElement.class);
-                if (element == null) continue;
+                JsonInstance element = JsonReader.read(raw);
 
-                JsonObject elementObject = new JsonObject();
-                elementObject.addProperty("index", index++);
-                elementObject.add("component", element);
+                JsonObject elementObject = JsonObject.newObject("", "");
+                elementObject.put("index", index++);
+                elementObject.put("component", element);
 
                 sequences.add(elementObject);
-            } catch (JsonSyntaxException ignored) {}
+            } catch (KsonException ignored) {}
         }
 
-        main.add("sequence", sequences);
-        return gson.toJson(main);
+        main.put("sequence", sequences);
+        return main.toString();
     }
 
     /**

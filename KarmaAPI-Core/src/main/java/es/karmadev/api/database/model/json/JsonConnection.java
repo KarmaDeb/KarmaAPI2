@@ -1,10 +1,13 @@
 package es.karmadev.api.database.model.json;
 
-import com.google.gson.*;
 import es.karmadev.api.database.DatabaseConnection;
 import es.karmadev.api.database.result.QueryResult;
-import es.karmadev.api.database.result.SimpleQueryResult;
 import es.karmadev.api.file.util.PathUtilities;
+import es.karmadev.api.kson.JsonArray;
+import es.karmadev.api.kson.JsonInstance;
+import es.karmadev.api.kson.JsonNative;
+import es.karmadev.api.kson.JsonObject;
+import es.karmadev.api.kson.io.JsonReader;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -45,17 +48,27 @@ public class JsonConnection implements DatabaseConnection {
         if (Files.exists(file)) {
             raw = PathUtilities.read(file);
         }
-        JsonObject tmpObject = new JsonObject();
+
+        String path = "";
+        if (parent != null) {
+            String parentPath = parent.database.getPath();
+            if (parentPath.isEmpty()) {
+                path = parent.database.getKey();
+            } else {
+                path = parentPath + parent.database.getPathSeparator() + parent.database.getKey();
+            }
+        }
+
+        JsonObject tmpObject = JsonObject.newObject(path, table);
         if (raw.startsWith("{") && raw.endsWith("}")) {
-            Gson gson = new GsonBuilder().create();
-            tmpObject = gson.fromJson(raw, JsonObject.class);
+            tmpObject = JsonReader.read(raw).asObject();
         }
 
         database = tmpObject;
-        if (!database.has("types") || !database.get("types").isJsonObject()) {
-            JsonObject typesObject = new JsonObject();
-            typesObject.addProperty("schemed", false);
-            database.add("types", typesObject);
+        if (!database.hasChild("types") || !database.getChild("types").isObjectType()) {
+            JsonObject typesObject = JsonObject.newObject((parent == null ? "" : parent.database.getPath()), "types");
+            typesObject.put("schemed", false);
+            database.put("types", typesObject);
             save();
         }
     }
@@ -95,39 +108,7 @@ public class JsonConnection implements DatabaseConnection {
      */
     @Override
     public QueryResult execute(final String query) throws UnsupportedOperationException {
-        if (query.equalsIgnoreCase("set pretty printing on;")) {
-            setPrettySave(true);
-            return SimpleQueryResult.builder().database(PathUtilities.getName(file)).table(table).build();
-        }
-        if (query.equalsIgnoreCase("set pretty printing off;")) {
-            setPrettySave(true);
-            return SimpleQueryResult.builder().database(PathUtilities.getName(file)).table(table).build();
-        }
-        if (query.equalsIgnoreCase("toggle pretty printing;")) {
-            setPrettySave(!pretty);
-            return SimpleQueryResult.builder().database(PathUtilities.getName(file)).table(table).build();
-        }
-
-        if (query.equalsIgnoreCase("set query auto save on;")) {
-            autoSave = true;
-            return SimpleQueryResult.builder().database(PathUtilities.getName(file)).table(table).build();
-        }
-        if (query.equalsIgnoreCase("set query auto save off;")) {
-            autoSave = false;
-            return SimpleQueryResult.builder().database(PathUtilities.getName(file)).table(table).build();
-        }
-        if (query.equalsIgnoreCase("toggle query auto save;")) {
-            autoSave = !autoSave;
-            return SimpleQueryResult.builder().database(PathUtilities.getName(file)).table(table).build();
-        }
-
-        if (query.equalsIgnoreCase("save database;")) {
-            save();
-            return SimpleQueryResult.builder().database(PathUtilities.getName(file)).table(table).build();
-        }
-
-        JsonConnectionExecutor executor = new JsonConnectionExecutor(this);
-        return executor.execute(query);
+        throw new UnsupportedOperationException("JSON does not support queries");
     }
 
     /**
@@ -137,7 +118,7 @@ public class JsonConnection implements DatabaseConnection {
      * @return if the database has the table
      */
     public boolean hasTable(final String name) {
-        return database.has(name);
+        return database.hasChild(name);
     }
 
     /**
@@ -146,12 +127,12 @@ public class JsonConnection implements DatabaseConnection {
      * @param name the table name
      */
     public void removeTable(final String name) {
-        if (database.has(table)) {
-            JsonElement element = database.get(name);
-            if (element.isJsonObject()) database.remove(name);
+        if (database.hasChild(table)) {
+            JsonInstance element = database.getChild(name);
+            if (element.isObjectType()) database.removeChild(name);
 
-            JsonObject typesObject = database.getAsJsonObject("types");
-            typesObject.remove(name);
+            JsonObject typesObject = database.getChild("types").asObject();
+            typesObject.removeChild(name);
         }
     }
 
@@ -163,34 +144,31 @@ public class JsonConnection implements DatabaseConnection {
      * @throws UnsupportedOperationException if the table name is already taken by a non-table object
      */
     public JsonConnection createTable(final String name) throws UnsupportedOperationException {
-        JsonObject typesObject = database.getAsJsonObject("types");
-        if (typesObject.get("schemed").getAsBoolean()) {
-            throw new UnsupportedOperationException("Cannot create table " + name + " on " + table + " because it is schemed");
-        }
+        JsonObject typesObject = database.getChild("types").asObject();
+        JsonObject child = JsonObject.newObject(database.getPath(), name);
+        if (database.hasChild(name)) {
+            JsonInstance element = database.getChild(name);
+            if (!element.isObjectType()) throw new UnsupportedOperationException("Cannot create a table " + name + " because another field with that name already exists");
 
-        JsonObject child = new JsonObject();
-        if (database.has(name)) {
-            JsonElement element = database.get(name);
-            if (!element.isJsonObject()) throw new UnsupportedOperationException("Cannot create a table " + name + " because another field with that name already exists");
-
-            if (typesObject.has(name)) {
-                String type = typesObject.get(name).getAsString();
+            if (typesObject.hasChild(name)) {
+                String type = typesObject.getChild(name).asString();
                 if (!type.equals("table")) throw new UnsupportedOperationException("Cannot create a table " + name + " because another field with that name already exists");
             }
 
-            child = element.getAsJsonObject();
+            child = element.asObject();
         }
 
-        if (!child.has("types")) {
-            JsonObject types = new JsonObject();
-            types.addProperty("schemed", false);
-            child.add("types", types);
+        if (!child.hasChild("types")) {
+            JsonObject types = JsonObject.newObject(database.getPath(), "types");
+            types.put("schemed", false);
+            child.put("types", types);
         }
-        database.add(name, child);
+
+        database.put(name, child);
         JsonConnection connection = new JsonConnection(file, this, name);
         connection.database = child;
 
-        typesObject.addProperty(name, "table");
+        typesObject.put(name, "table");
 
         return connection;
     }
@@ -204,52 +182,48 @@ public class JsonConnection implements DatabaseConnection {
      * @throws UnsupportedOperationException if the database name is already taken by another non-database object
      */
     public List<JsonConnection> createTables(final String database, final String... names) throws UnsupportedOperationException {
-        JsonObject typesObject = this.database.getAsJsonObject("types");
-        if (typesObject.get("schemed").getAsBoolean()) {
-            throw new UnsupportedOperationException("Cannot create tables for " + database + " on " + table + " because it is schemed");
-        }
+        JsonObject typesObject = this.database.getChild("types").asObject();
+        JsonArray array = JsonArray.newArray(this.database.getPath(), database);
 
-        JsonArray array = new JsonArray();
+        if (this.database.hasChild(database)) {
+            JsonInstance element = this.database.getChild(database);
+            if (!element.isArrayType()) throw new UnsupportedOperationException("Cannot redefine field " + database + " because existing type is not a database");
 
-        if (this.database.has(database)) {
-            JsonElement element = this.database.get(database);
-            if (!element.isJsonArray()) throw new UnsupportedOperationException("Cannot redefine field " + database + " because existing type is not a database");
-
-            array = element.getAsJsonArray();
+            array = element.asArray();
         }
 
         boolean check = !array.isEmpty();
         Map<String, JsonObject> map = new HashMap<>();
         if (check) {
-            for (JsonElement element : array) {
-                if (!element.isJsonObject()) throw new UnsupportedOperationException("Cannot add object to non-object list!");
+            for (JsonInstance element : array) {
+                if (!element.isObjectType()) throw new UnsupportedOperationException("Cannot add object to non-object list!");
 
-                JsonObject object = element.getAsJsonObject();
-                if (!object.has("name")) throw new UnsupportedOperationException("Cannot add table to non-table list!");
+                JsonObject object = element.asObject();
+                if (!object.hasChild("name")) throw new UnsupportedOperationException("Cannot add table to non-table list!");
 
-                map.put(object.get("name").getAsString(), element.getAsJsonObject());
+                map.put(object.getChild("name").asString(), element.asObject());
             }
         }
 
         List<JsonConnection> connections = new ArrayList<>();
         for (String name : names) {
-            JsonObject child = new JsonObject();
+            JsonObject child = JsonObject.newObject(this.database.getPath(), name);
             if (map.containsKey(name)) child = map.get(name);
 
-            if (!child.has("types")) {
-                JsonObject types = new JsonObject();
-                types.addProperty("schemed", false);
-                child.add("types", types);
+            if (!child.hasChild("types")) {
+                JsonObject types = JsonObject.newObject(this.database.getPath() + '.' + name, "types");
+                types.put("schemed", false);
+                child.put("types", types);
             }
             array.add(child);
 
             JsonConnection connection = new JsonConnection(file, this, name);
             connection.database = child;
 
-            typesObject.addProperty(name, "table");
+            typesObject.put(name, "table");
             connections.add(connection);
         }
-        this.database.add(database, array);
+        this.database.put(database, array);
 
         return connections;
     }
@@ -263,27 +237,19 @@ public class JsonConnection implements DatabaseConnection {
      * object
      */
     public void set(final String key, final Map<String, Object> value) throws UnsupportedOperationException {
-        JsonObject typesObject = database.getAsJsonObject("types");
-        if (typesObject.get("schemed").getAsBoolean()) {
-            throw new UnsupportedOperationException("Cannot set map " + key + " on " + table + " because it is schemed");
-        }
-
-        if (database.has(key)) {
-            JsonElement element = database.get(key);
-            if (!element.isJsonObject()) throw new UnsupportedOperationException("Cannot redefine field " + key + " because existing type doesn't match new type");
+        JsonObject typesObject = this.database.getChild("types").asObject();
+        if (database.hasChild(key)) {
+            JsonInstance element = database.getChild(key);
+            if (!element.isObjectType()) throw new UnsupportedOperationException("Cannot redefine field " + key + " because existing type doesn't match new type");
         }
 
         if (value != null) {
-            Gson gson = new GsonBuilder().create();
-            JsonElement element = gson.toJsonTree(value);
-
-            database.add(key, element);
-
-            typesObject.addProperty(key, "map");
+            JsonObject element = JsonReader.readTree(value);
+            database.put(key, element);
+            typesObject.put(key, "map");
         } else {
-            database.remove(key);
-
-            typesObject.remove(key);
+            database.removeChild(key);
+            typesObject.removeChild(key);
         }
     }
 
@@ -295,31 +261,21 @@ public class JsonConnection implements DatabaseConnection {
      * @throws UnsupportedOperationException if the field is already occupied by another non-primitive object
      */
     public void set(final String key, final String value) throws UnsupportedOperationException {
-        JsonObject typesObject = database.getAsJsonObject("types");
-        if (typesObject.get("schemed").getAsBoolean()) {
-            String currentType = getType(key);
-            if (!currentType.equalsIgnoreCase("null") && !currentType.equalsIgnoreCase("string")) {
-                throw new UnsupportedOperationException("Cannot assign string value to non string schemed key " + key);
-            }
+        JsonObject typesObject = this.database.getChild("types").asObject();
+        if (database.hasChild(key)) {
+            JsonInstance element = database.getChild(key);
+            if (!element.isNativeType()) throw new UnsupportedOperationException("Cannot redefine field " + key + " because existing type doesn't match new type");
 
-            throw new UnsupportedOperationException("Cannot create table " + key + " on " + table + " because it is schemed");
-        }
-
-        if (database.has(key)) {
-            JsonElement element = database.get(key);
-            if (!element.isJsonPrimitive()) throw new UnsupportedOperationException("Cannot redefine field " + key + " because existing type doesn't match new type");
-
-            JsonPrimitive primitive = element.getAsJsonPrimitive();
+            JsonNative primitive = element.asNative();
             if (!primitive.isString()) throw new UnsupportedOperationException("Cannot set string to non-string field!");
         }
 
         if (value != null) {
-            database.addProperty(key, value);
-
-            typesObject.addProperty(key, "string");
+            database.put(key, value);
+            typesObject.put(key, "string");
         } else {
-            database.remove(key);
-            typesObject.remove(key);
+            database.removeChild(key);
+            typesObject.removeChild(key);
         }
     }
 
@@ -331,26 +287,18 @@ public class JsonConnection implements DatabaseConnection {
      * @throws UnsupportedOperationException if the field is already occupied by another non-primitive object
      */
     public void set(final String key, final Number value) throws UnsupportedOperationException {
-        if (database.has(key)) {
-            JsonElement element = database.get(key);
-            if (!element.isJsonPrimitive()) throw new UnsupportedOperationException("Cannot redefine field " + key + " because existing type doesn't match new type");
+        if (database.hasChild(key)) {
+            JsonInstance element = database.getChild(key);
+            if (!element.isNativeType()) throw new UnsupportedOperationException("Cannot redefine field " + key + " because existing type doesn't match new type");
 
-            JsonPrimitive primitive = element.getAsJsonPrimitive();
+            JsonNative primitive = element.asNative();
             if (!primitive.isNumber()) throw new UnsupportedOperationException("Cannot set number to non-number field!");
 
             if (value != null) {
                 String currentType = getType(key);
                 String typeName = getTypeName(value);
 
-                JsonObject typesObject = database.getAsJsonObject("types");
-                if (typesObject.get("schemed").getAsBoolean()) {
-                    if (!currentType.equalsIgnoreCase("null") && !currentType.equalsIgnoreCase(typeName)) {
-                        throw new UnsupportedOperationException("Cannot assign " + typeName + " value to non " + typeName + " schemed key " + key);
-                    }
-
-                    throw new UnsupportedOperationException("Cannot create table " + key + " on " + table + " because it is schemed");
-                }
-
+                JsonObject typesObject = database.getChild("types").asObject();
                 if (!typeName.equalsIgnoreCase(currentType)) {
                     throw new UnsupportedOperationException("Cannot set number of " + key + " to non-" + typeName + " value!");
                 }
@@ -358,16 +306,16 @@ public class JsonConnection implements DatabaseConnection {
         }
 
         if (value != null) {
-            database.addProperty(key, value);
+            database.put(key, value);
 
-            JsonObject typesObject = database.getAsJsonObject("types");
+            JsonObject typesObject = database.getChild("types").asObject();
             String typeName = getTypeName(value);
-            typesObject.addProperty(key, typeName);
+            typesObject.put(key, typeName);
         } else {
-            database.remove(key);
+            database.removeChild(key);
 
-            JsonObject typesObject = database.getAsJsonObject("types");
-            typesObject.remove(key);
+            JsonObject typesObject = database.getChild("types").asObject();
+            typesObject.removeChild(key);
         }
     }
 
@@ -399,31 +347,22 @@ public class JsonConnection implements DatabaseConnection {
      * @throws UnsupportedOperationException if the field is already occupied by another non-primitive object
      */
     public void set(final String key, final Boolean value) throws UnsupportedOperationException {
-        JsonObject typesObject = database.getAsJsonObject("types");
-        if (typesObject.get("schemed").getAsBoolean()) {
-            String currentType = getType(key);
-            if (!currentType.equalsIgnoreCase("null") && !currentType.equalsIgnoreCase("boolean")) {
-                throw new UnsupportedOperationException("Cannot assign boolean value to non boolean schemed key " + key);
-            }
+        JsonObject typesObject = database.getChild("types").asObject();
+        if (database.hasChild(key)) {
+            JsonInstance element = database.getChild(key);
+            if (!element.isNativeType()) throw new UnsupportedOperationException("Cannot redefine field " + key + " because existing type doesn't match new type");
 
-            throw new UnsupportedOperationException("Cannot create table " + key + " on " + table + " because it is schemed");
-        }
-
-        if (database.has(key)) {
-            JsonElement element = database.get(key);
-            if (!element.isJsonPrimitive()) throw new UnsupportedOperationException("Cannot redefine field " + key + " because existing type doesn't match new type");
-
-            JsonPrimitive primitive = element.getAsJsonPrimitive();
+            JsonNative primitive = element.asNative();
             if (!primitive.isBoolean()) throw new UnsupportedOperationException("Cannot set boolean to non-boolean field!");
         }
 
         if (value != null) {
-            database.addProperty(key, value);
+            database.put(key, value);
 
-            typesObject.addProperty(key, "boolean");
+            typesObject.put(key, "boolean");
         } else {
-            database.remove(key);
-            typesObject.remove(key);
+            database.removeChild(key);
+            typesObject.removeChild(key);
         }
     }
 
@@ -435,36 +374,32 @@ public class JsonConnection implements DatabaseConnection {
      * @throws UnsupportedOperationException if the field is already occupied by another non-list object
      */
     public void setStringList(final String key, final List<String> value) throws UnsupportedOperationException {
-        JsonObject typesObject = database.getAsJsonObject("types");
-        if (typesObject.get("schemed").getAsBoolean()) {
-            throw new UnsupportedOperationException("Cannot set list " + key + " on " + table + " because it is schemed");
-        }
+        JsonObject typesObject = database.getChild("types").asObject();
+        JsonArray array = JsonArray.newArray(this.database.getPath(), key);
+        if (database.hasChild(key)) {
+            JsonInstance element = database.getChild(key);
+            if (!element.isArrayType()) throw new UnsupportedOperationException("Cannot redefine field " + key + " because existing type doesn't match new type");
 
-        JsonArray array = new JsonArray();
-        if (database.has(key)) {
-            JsonElement element = database.get(key);
-            if (!element.isJsonArray()) throw new UnsupportedOperationException("Cannot redefine field " + key + " because existing type doesn't match new type");
-
-            array = element.getAsJsonArray();
+            array = element.asArray();
         }
 
         boolean check = !array.isEmpty();
         if (check) {
-            JsonElement firstElement = array.get(0);
-            if (!firstElement.isJsonPrimitive()) throw new UnsupportedOperationException("Cannot add primitive to non-primitive list!");
+            JsonInstance firstElement = array.get(0);
+            if (!firstElement.isNativeType()) throw new UnsupportedOperationException("Cannot add primitive to non-primitive list!");
 
-            JsonPrimitive primitive = firstElement.getAsJsonPrimitive();
+            JsonNative primitive = firstElement.asNative();
             if (!primitive.isString()) throw new UnsupportedOperationException("Cannot add string to non-string list!");
         }
 
         if (value != null) {
             for (String s : value) array.add(s);
-            database.add(key, array);
+            database.put(key, array);
 
-            typesObject.addProperty(key, "stringList");
+            typesObject.put(key, "stringList");
         } else {
-            database.remove(key);
-            typesObject.remove(key);
+            database.removeChild(key);
+            typesObject.removeChild(key);
         }
     }
 
@@ -476,36 +411,32 @@ public class JsonConnection implements DatabaseConnection {
      * @throws UnsupportedOperationException if the field is already occupied by another non-list object
      */
     public void setNumberList(final String key, final List<Number> value) throws UnsupportedOperationException {
-        JsonObject typesObject = database.getAsJsonObject("types");
-        if (typesObject.get("schemed").getAsBoolean()) {
-            throw new UnsupportedOperationException("Cannot set list " + key + " on " + table + " because it is schemed");
-        }
+        JsonObject typesObject = database.getChild("types").asObject();
+        JsonArray array = JsonArray.newArray(this.database.getPath(), key);
+        if (database.hasChild(key)) {
+            JsonInstance element = database.getChild(key);
+            if (!element.isArrayType()) throw new UnsupportedOperationException("Cannot redefine field " + key + " because existing type doesn't match new type");
 
-        JsonArray array = new JsonArray();
-        if (database.has(key)) {
-            JsonElement element = database.get(key);
-            if (!element.isJsonArray()) throw new UnsupportedOperationException("Cannot redefine field " + key + " because existing type doesn't match new type");
-
-            array = element.getAsJsonArray();
+            array = element.asArray();
         }
 
         boolean check = !array.isEmpty();
         if (check) {
-            JsonElement firstElement = array.get(0);
-            if (!firstElement.isJsonPrimitive()) throw new UnsupportedOperationException("Cannot add primitive to non-primitive list!");
+            JsonInstance firstElement = array.get(0);
+            if (!firstElement.isNativeType()) throw new UnsupportedOperationException("Cannot add primitive to non-primitive list!");
 
-            JsonPrimitive primitive = firstElement.getAsJsonPrimitive();
+            JsonNative primitive = firstElement.asNative();
             if (!primitive.isNumber()) throw new UnsupportedOperationException("Cannot add number to non-number list!");
         }
 
         if (value != null) {
             for (Number n : value) array.add(n);
-            database.add(key, array);
+            database.put(key, array);
 
-            typesObject.addProperty(key, "numberList");
+            typesObject.put(key, "numberList");
         } else {
-            database.remove(key);
-            typesObject.remove(key);
+            database.removeChild(key);
+            typesObject.removeChild(key);
         }
     }
 
@@ -517,36 +448,32 @@ public class JsonConnection implements DatabaseConnection {
      * @throws UnsupportedOperationException if the field is already occupied by another non-list object
      */
     public void setBooleanList(final String key, final List<Boolean> value) throws UnsupportedOperationException {
-        JsonObject typesObject = database.getAsJsonObject("types");
-        if (typesObject.get("schemed").getAsBoolean()) {
-            throw new UnsupportedOperationException("Cannot set list " + key + " on " + table + " because it is schemed");
-        }
+        JsonObject typesObject = database.getChild("types").asObject();
+        JsonArray array = JsonArray.newArray(this.database.getPath(), key);
+        if (database.hasChild(key)) {
+            JsonInstance element = database.getChild(key);
+            if (!element.isArrayType()) throw new UnsupportedOperationException("Cannot redefine field " + key + " because existing type doesn't match new type");
 
-        JsonArray array = new JsonArray();
-        if (database.has(key)) {
-            JsonElement element = database.get(key);
-            if (!element.isJsonArray()) throw new UnsupportedOperationException("Cannot redefine field " + key + " because existing type doesn't match new type");
-
-            array = element.getAsJsonArray();
+            array = element.asArray();
         }
 
         boolean check = !array.isEmpty();
         if (check) {
-            JsonElement firstElement = array.get(0);
-            if (!firstElement.isJsonPrimitive()) throw new UnsupportedOperationException("Cannot add primitive to non-primitive list!");
+            JsonInstance firstElement = array.get(0);
+            if (!firstElement.isNativeType()) throw new UnsupportedOperationException("Cannot add primitive to non-primitive list!");
 
-            JsonPrimitive primitive = firstElement.getAsJsonPrimitive();
+            JsonNative primitive = firstElement.asNative();
             if (!primitive.isBoolean()) throw new UnsupportedOperationException("Cannot add boolean to non-boolean list!");
         }
 
         if (value != null) {
             for (boolean b : value) array.add(b);
-            database.add(key, array);
+            database.put(key, array);
 
-            typesObject.addProperty(key, "booleanList");
+            typesObject.put(key, "booleanList");
         } else {
-            database.remove(key);
-            typesObject.remove(key);
+            database.removeChild(key);
+            typesObject.removeChild(key);
         }
     }
 
@@ -556,15 +483,12 @@ public class JsonConnection implements DatabaseConnection {
      * @param key the map key
      * @return the map
      */
-    @SuppressWarnings("unchecked")
     public Map<String, Object> getMap(final String key) {
-        if (!database.has(key)) return null;
-        JsonElement element = database.get(key);
-        if (element == null) return null;
+        if (!database.hasChild(key)) return null;
+        JsonInstance element = database.getChild(key);
 
         if (getType(key).equals("map")) {
-            Gson gson = new GsonBuilder().create();
-            return (Map<String, Object>) gson.fromJson(element, Map.class);
+            return element.getTree();
         }
 
         return null;
@@ -577,7 +501,7 @@ public class JsonConnection implements DatabaseConnection {
      * @return the string
      */
     public String getString(final String key) {
-        JsonPrimitive primitive = getPrimitive(key);
+        JsonNative primitive = getPrimitive(key);
         if (primitive == null) return null;
 
         if (primitive.isString()) return primitive.getAsString();
@@ -591,7 +515,7 @@ public class JsonConnection implements DatabaseConnection {
      * @return the number
      */
     public Number getNumber(final String key) {
-        JsonPrimitive primitive = getPrimitive(key);
+        JsonNative primitive = getPrimitive(key);
         if (primitive == null) return null;
 
         if (primitive.isNumber()) return primitive.getAsNumber();
@@ -605,10 +529,10 @@ public class JsonConnection implements DatabaseConnection {
      * @return the boolean
      */
     public boolean getBoolean(final String key) {
-        JsonPrimitive primitive = getPrimitive(key);
+        JsonNative primitive = getPrimitive(key);
         if (primitive == null) return false;
 
-        if (primitive.isBoolean()) return primitive.getAsBoolean();
+        if (primitive.isBoolean()) return primitive.asBoolean();
         return false;
     }
 
@@ -619,16 +543,16 @@ public class JsonConnection implements DatabaseConnection {
      * @return the list
      */
     public List<String> getStringList(final String key) {
-        if (!database.has(key)) return null;
-        JsonElement element = database.get(key);
+        if (!database.hasChild(key)) return null;
+        JsonInstance element = database.getChild(key);
 
-        if (!element.isJsonArray()) return null;
-        JsonArray array = element.getAsJsonArray();
+        if (!element.isArrayType()) return null;
+        JsonArray array = element.asArray();
 
         List<String> strings = new ArrayList<>();
-        for (JsonElement child : array) {
-            if (!child.isJsonPrimitive()) continue;
-            JsonPrimitive primitive = child.getAsJsonPrimitive();
+        for (JsonInstance child : array) {
+            if (!child.isNativeType()) continue;
+            JsonNative primitive = child.asNative();
 
             if (!primitive.isString()) continue;
             strings.add(primitive.getAsString());
@@ -644,16 +568,16 @@ public class JsonConnection implements DatabaseConnection {
      * @return the list
      */
     public List<Number> getNumberList(final String key) {
-        if (!database.has(key)) return null;
-        JsonElement element = database.get(key);
+        if (!database.hasChild(key)) return null;
+        JsonInstance element = database.getChild(key);
 
-        if (!element.isJsonArray()) return null;
-        JsonArray array = element.getAsJsonArray();
+        if (!element.isArrayType()) return null;
+        JsonArray array = element.asArray();
 
         List<Number> numbers = new ArrayList<>();
-        for (JsonElement child : array) {
-            if (!child.isJsonPrimitive()) continue;
-            JsonPrimitive primitive = child.getAsJsonPrimitive();
+        for (JsonInstance child : array) {
+            if (!child.isNativeType()) continue;
+            JsonNative primitive = child.asNative();
 
             if (!primitive.isNumber()) continue;
             numbers.add(primitive.getAsNumber());
@@ -669,16 +593,16 @@ public class JsonConnection implements DatabaseConnection {
      * @return the list
      */
     public List<Boolean> getBooleanList(final String key) {
-        if (!database.has(key)) return null;
-        JsonElement element = database.get(key);
+        if (!database.hasChild(key)) return null;
+        JsonInstance element = database.getChild(key);
 
-        if (!element.isJsonArray()) return null;
-        JsonArray array = element.getAsJsonArray();
+        if (!element.isArrayType()) return null;
+        JsonArray array = element.asArray();
 
         List<Boolean> booleans = new ArrayList<>();
-        for (JsonElement child : array) {
-            if (!child.isJsonPrimitive()) continue;
-            JsonPrimitive primitive = child.getAsJsonPrimitive();
+        for (JsonInstance child : array) {
+            if (!child.isNativeType()) continue;
+            JsonNative primitive = child.asNative();
 
             if (!primitive.isBoolean()) continue;
             booleans.add(primitive.getAsBoolean());
@@ -694,19 +618,19 @@ public class JsonConnection implements DatabaseConnection {
      * @return the list
      */
     public List<JsonConnection> getTableList(final String key) {
-        if (!database.has(key)) return null;
-        JsonElement element = database.get(key);
+        if (!database.hasChild(key)) return null;
+        JsonInstance element = database.getChild(key);
 
-        if (!element.isJsonArray()) return null;
-        JsonArray array = element.getAsJsonArray();
+        if (!element.isArrayType()) return null;
+        JsonArray array = element.asArray();
 
         List<JsonConnection> tables = new ArrayList<>();
-        for (JsonElement child : array) {
-            if (!child.isJsonObject()) continue;
-            JsonObject object = child.getAsJsonObject();
+        for (JsonInstance child : array) {
+            if (!child.isObjectType()) continue;
+            JsonObject object = child.asObject();
 
-            if (!object.has("name")) continue;
-            String tableName = object.get("name").getAsString();
+            if (!object.hasChild("name")) continue;
+            String tableName = object.getChild("name").asString();
 
             JsonConnection connection = new JsonConnection(file, this, tableName);
             connection.database = object;
@@ -724,9 +648,9 @@ public class JsonConnection implements DatabaseConnection {
      * @return the key type
      */
     public String getType(final String key) {
-        JsonObject typesObject = database.getAsJsonObject("types");
-        if (typesObject.has(key) && typesObject.get(key).isJsonPrimitive()) {
-            return typesObject.get(key).getAsString();
+        JsonObject typesObject = database.getChild("types").asObject();
+        if (typesObject.hasChild(key) && typesObject.getChild(key).isNativeType()) {
+            return typesObject.getChild(key).asString();
         }
 
         return "null";
@@ -739,7 +663,7 @@ public class JsonConnection implements DatabaseConnection {
      * @return if the key is set
      */
     public boolean isSet(final String key) {
-        return database.has(key);
+        return database.hasChild(key);
     }
 
     /**
@@ -747,14 +671,9 @@ public class JsonConnection implements DatabaseConnection {
      *
      * @return the database keys
      */
-    public Set<String> getKeys() {
-        JsonObject typesObject = database.getAsJsonObject("types");
-        Set<String> keys = typesObject.keySet();
-        keys.remove("schemed");
-        keys.remove("modifiers");
-        keys.remove("attributes");
-
-        return keys;
+    public Collection<String> getKeys() {
+        JsonObject typesObject = database.getChild("types").asObject();
+        return typesObject.getKeys(true);
     }
 
     /**
@@ -762,23 +681,18 @@ public class JsonConnection implements DatabaseConnection {
      */
     public boolean save() {
         if (parent == null) {
-            GsonBuilder builder = new GsonBuilder().serializeNulls();
-
-            if (pretty) builder.setPrettyPrinting();
-            Gson gson = builder.create();
-            String raw = gson.toJson(database);
-
+            String raw = database.toString(pretty);
             return PathUtilities.write(file, raw);
         }
 
         return parent.save();
     }
 
-    private JsonPrimitive getPrimitive(final String key) {
-        if (!database.has(key)) return null;
-        JsonElement element = database.get(key);
+    private JsonNative getPrimitive(final String key) {
+        if (!database.hasChild(key)) return null;
+        JsonInstance element = database.getChild(key);
 
-        if (!element.isJsonPrimitive()) return null;
-        return element.getAsJsonPrimitive();
+        if (!element.isNativeType()) return null;
+        return element.asNative();
     }
 }

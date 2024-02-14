@@ -25,7 +25,6 @@ public class BoundedLogger extends Logger implements SourceLogger {
 
     private final APISource source;
     private final LogFile log;
-    private boolean logToConsole;
     private Function<String, Void> logFunction;
 
     /**
@@ -55,25 +54,6 @@ public class BoundedLogger extends Logger implements SourceLogger {
     }
 
     /**
-     * Set the logger log to console
-     *
-     * @param status the log console out status
-     */
-    public void setLogToConsole(final boolean status) {
-        logToConsole = status;
-    }
-
-    /**
-     * get if the logger log prints to
-     * console
-     *
-     * @return if the logger logs to console
-     */
-    public boolean logToConsole() {
-        return logToConsole;
-    }
-
-    /**
      * Send a message to the console
      *
      * @param level    the message level
@@ -83,6 +63,8 @@ public class BoundedLogger extends Logger implements SourceLogger {
     @Override
     public void send(final LogLevel level, final String message, final Object... replaces) {
         if (config.isLevelEnabled(level)) {
+            log(level, message, replaces);
+
             String finalMessage = buildMessage(level, source.sourceName(), message, replaces);
             if (logFunction != null) {
                 logFunction.apply(finalMessage);
@@ -117,6 +99,8 @@ public class BoundedLogger extends Logger implements SourceLogger {
                 doLog(finalMessage);
             }
 
+            log(error, message, replaces);
+
             for (StackTraceElement element : elements) {
                 String clazz = element.getClassName();
                 String method = element.getMethodName();
@@ -140,13 +124,6 @@ public class BoundedLogger extends Logger implements SourceLogger {
                     }
                 }
             }
-
-            /*
-            We should log instead of displaying the whole error
-            thing
-            for (Throwable sup : error.getSuppressed()) {
-                send(sup, message, replaces);
-            }*/
         }
     }
 
@@ -165,9 +142,12 @@ public class BoundedLogger extends Logger implements SourceLogger {
                 Object[] finalReplaces = Arrays.copyOfRange(replaces, 1, replaces.length);
 
                 send(level, message, finalReplaces);
+                log(level, message, finalReplaces);
                 return;
             }
         }
+
+        log(message, replaces);
 
         String finalMessage = buildMessage(null, source.sourceName(), message, replaces);
         if (logFunction != null) {
@@ -187,9 +167,6 @@ public class BoundedLogger extends Logger implements SourceLogger {
      */
     @Override
     public void log(final LogLevel level, final String message, final Object... replaces) {
-        if (logToConsole)
-            send(level, message, replaces);
-
         log.append(level, parseReplaces(message, replaces));
     }
 
@@ -202,9 +179,6 @@ public class BoundedLogger extends Logger implements SourceLogger {
      */
     @Override
     public void log(final Throwable error, final String message, final Object... replaces) {
-        if (logToConsole)
-            send(error, message, replaces);
-
         log.append(LogLevel.ERROR, error, parseReplaces(message, replaces));
         for (Throwable sup : error.getSuppressed()) {
             log(sup, message, replaces);
@@ -229,9 +203,6 @@ public class BoundedLogger extends Logger implements SourceLogger {
                 return;
             }
         }
-        
-        if (logToConsole)
-            send(message, replaces);
 
         log.append(LogLevel.INFO, parseReplaces(message, replaces));
     }
@@ -281,8 +252,6 @@ public class BoundedLogger extends Logger implements SourceLogger {
      */
     private String buildMessage(final LogLevel level, final String name, final String message, final Object... replaces) {
         String finalMessage = parseReplaces(message, replaces);
-
-        APIConfiguration config = new APIConfiguration();
         String prefix = config.getPrefix(level).replace("{0}", name);
 
         return prefix.replace("{1}", finalMessage);
@@ -295,16 +264,21 @@ public class BoundedLogger extends Logger implements SourceLogger {
      * @param replaces the message replaces
      * @return the message
      */
-    private String parseReplaces(final String message, final Object... replaces) {
-        String finalMessage = message;
-        for (int i = 0; i < replaces.length; i++) {
-            String prefix = "{" + i + "}";
-            Object value = replaces[i];
+    private static String parseReplaces(final String message, final Object... replaces) {
+        StringBuilder builder = new StringBuilder(message);
 
-            finalMessage = finalMessage.replace(prefix, String.valueOf(value));
+        for (int i = 0; i < replaces.length; i++) {
+            String placeholder = String.format("{%d}", i);
+            int indexOf = builder.indexOf(placeholder);
+
+            int length = placeholder.length();
+            while (indexOf != -1) {
+                builder.replace(indexOf, indexOf + length, String.valueOf(replaces[i]));
+                indexOf = builder.indexOf(placeholder);
+            }
         }
 
-        return finalMessage;
+        return builder.toString();
     }
 
     protected void doLog(final String message) {

@@ -3,7 +3,15 @@ package es.karmadev.api.core;
 import es.karmadev.api.core.source.APISource;
 import es.karmadev.api.core.source.SourceManager;
 import es.karmadev.api.core.source.exception.UnknownProviderException;
+import es.karmadev.api.dependency.Dependency;
+import es.karmadev.api.dependency.DependencyCollection;
 import es.karmadev.api.file.util.PathUtilities;
+import es.karmadev.api.kson.JsonArray;
+import es.karmadev.api.kson.JsonInstance;
+import es.karmadev.api.kson.JsonObject;
+import es.karmadev.api.kson.io.JsonReader;
+import es.karmadev.api.logger.log.UnboundedLogger;
+import es.karmadev.api.logger.log.console.LogLevel;
 import es.karmadev.api.security.LockedProperties;
 import es.karmadev.api.web.WebDownloader;
 import es.karmadev.api.web.url.URLUtilities;
@@ -20,6 +28,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.*;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 /**
@@ -31,6 +41,7 @@ public class KarmaAPI {
     public final static Properties properties = new LockedProperties();
 
     private static boolean negateSetup = false;
+    private static boolean installing = false;
 
     static {
         try(InputStream stream = KarmaAPI.class.getResourceAsStream("/api.properties")) {
@@ -85,215 +96,142 @@ public class KarmaAPI {
     }
 
     /**
-     * Set up the API
-     * @throws URISyntaxException if the application fails to find the install location
+     * Setup the API
+     * @throws URISyntaxException if the application fails to find install location
      */
     public static void setup() throws URISyntaxException {
-        if (negateSetup) return;
+        if (installing || negateSetup) return;
 
-        Class<?> clazz = KarmaAPI.class;
-        ProtectionDomain domain = clazz.getProtectionDomain();
-        if (domain == null) return;
+        installing = true;
+        UnboundedLogger unbounded = new UnboundedLogger();
+        try (InputStream stream = KarmaAPI.class.getResourceAsStream("/dependencies.json")) {
+            if (stream == null) return;
 
-        CodeSource code = domain.getCodeSource();
-        if (code == null) return;
+            JsonInstance instance = JsonReader.read(stream);
+            if (instance == null || !instance.isObjectType()) return;
 
-        URL location = code.getLocation();
-        if (location == null) return;
+            JsonObject object = instance.asObject();
+            JsonInstance dependencies = object.getChild("dependencies");
 
-        URI uri = location.toURI();
-        Path source = Paths.get(uri);
+            if (!dependencies.isArrayType()) return;
+            JsonArray array = dependencies.asArray();
 
-        Path workingDirectory = source.getParent().resolve("KarmaAPI");
-        Path thirdparty = workingDirectory.resolve("thirdparty");
-        Path runtime = thirdparty.resolve("runtime");
-        Path library = thirdparty.resolve("library");
-        Path relocated = library.resolve("relocation");
+            Set<Dependency> dependencySet = new HashSet<>();
+            for (JsonInstance element : array) {
+                if (!element.isObjectType()) continue;
+                JsonObject elementObj = element.asObject();
 
-        Path burningWave = runtime.resolve("BurningWave.jar");
-        Path jvmDriver = runtime.resolve("JVMDriver.jar");
-
-        Path relocatorASM = library.resolve("ASM.jar");
-        Path asmTree = library.resolve("ASMTree.jar");
-        Path asmAnalysis = library.resolve("ASMAnalysis.jar");
-        Path asmCommons = library.resolve("ASMCommons.jar");
-
-        Path lz4 = library.resolve("LZ4.jar");
-        Path zstd = library.resolve("ZSTD.jar");
-
-        Path schemaValidator = library.resolve("SchemaValidator.jar");
-        Path schemaJson = library.resolve("JSON.jar");
-
-        Path snakeYaml = library.resolve("SnakeYaml.jar");
-        Path relocatedSnakeYaml = relocated.resolve("snake_yaml.jar");
-
-        Path javaScript = library.resolve("MozillaScript.jar");
-
-        Path reflectionAPI = library.resolve("ReflectionAPI.jar");
-
-        Path googleGson = library.resolve("GSON.jar");
-        Path relocatedGson = relocated.resolve("google_gson.jar");
-
-        String downloadURL = properties.getProperty("download_server", "https://karmadev.es/karma-repository/v2/");
-        URL downloadRoot = URLUtilities.fromString(downloadURL);
-        assert downloadRoot != null;
-
-        if (!Files.exists(jvmDriver)) {
-            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "jvm_driver.jar"));
-            try {
-                downloader.download(jvmDriver);
-            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
-                throw new RuntimeException(e);
+                Dependency dependency = new Dependency(elementObj);
+                dependencySet.add(dependency);
             }
-        }
-        if (!Files.exists(burningWave)) {
-            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "burning_wave.jar"));
-            try {
-                downloader.download(burningWave);
-            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        if (!Files.exists(relocatorASM)) {
-            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "relocator_asm.jar"));
-            try {
-                downloader.download(relocatorASM);
-            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        if (!Files.exists(asmTree)) {
-            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "asm_tree.jar"));
-            try {
-                downloader.download(asmTree);
-            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        if (!Files.exists(asmAnalysis)) {
-            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "asm_analysis.jar"));
-            try {
-                downloader.download(asmAnalysis);
-            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        if (!Files.exists(asmCommons)) {
-            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "asm_commons.jar"));
-            try {
-                downloader.download(asmCommons);
-            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        if (!Files.exists(lz4)) {
-            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "compressor_lz4.jar"));
-            try {
-                downloader.download(lz4);
-            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        if (!Files.exists(zstd)) {
-            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "compressor_zstd.jar"));
-            try {
-                downloader.download(zstd);
-            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        if (!Files.exists(schemaValidator)) {
-            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "schema_validator.jar"));
-            try {
-                downloader.download(schemaValidator);
-            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        if (!Files.exists(schemaJson)) {
-            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "schema_json.jar"));
-            try {
-                downloader.download(schemaJson);
-            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        if (!Files.exists(snakeYaml)) {
-            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "snake_yaml.jar"));
-            try {
-                downloader.download(snakeYaml);
-            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        if (!Files.exists(javaScript)) {
-            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "mozilla_javascript.jar"));
-            try {
-                downloader.download(javaScript);
-            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        if (!Files.exists(reflectionAPI)) {
-            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "reflection_api.jar"));
-            try {
-                downloader.download(reflectionAPI);
-            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        if (!Files.exists(googleGson)) {
-            WebDownloader downloader = new WebDownloader(URLUtilities.append(downloadRoot, "google_gson.jar"));
-            try {
-                downloader.download(googleGson);
-            } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
-                throw new RuntimeException(e);
-            }
-        }
 
-        ClassLoader tmp = detectClassLoader(burningWave, jvmDriver);
+            Class<?> clazz = KarmaAPI.class;
+            ProtectionDomain domain = clazz.getProtectionDomain();
+            if (domain == null) return;
 
-        inject(relocatorASM, tmp);
-        inject(asmTree, tmp);
-        inject(asmAnalysis, tmp);
-        inject(asmCommons, tmp);
+            CodeSource code = domain.getCodeSource();
+            if (code == null) return;
 
-        //logger.send(LogLevel.INFO, "Preparing to relocate");
+            URL location = code.getLocation();
+            if (location == null) return;
 
-        Set<Relocation> relocations = new HashSet<>();
-        relocations.add(new Relocation(buildPackage("org", "yaml", "snakeyaml"), "es.karmadev.api.shaded.snakeyaml"));
-        relocations.add(new Relocation(buildPackage("com", "google", "gson"), "es.karmadev.api.shaded.google.gson"));
+            URI uri = location.toURI();
+            Path source = Paths.get(uri);
 
-        PathUtilities.createPath(relocatedSnakeYaml);
-        PathUtilities.createPath(relocatedGson);
+            Path workingDirectory = source.getParent().resolve("KarmaAPI");
+            Path thirdParty = workingDirectory.resolve("third-party");
+            Path runtime = thirdParty.resolve("runtime");
+            Path library = thirdParty.resolve("library");
+            Path relocated = library.resolve("relocation");
 
-        File snakeSource = snakeYaml.toFile();
-        File snakeRelocated = relocatedSnakeYaml.toFile();
-        JarRelocator snakeRelocator = new JarRelocator(snakeSource, snakeRelocated, relocations);
+            DependencyCollection collection = DependencyCollection.wrap(dependencySet);
+            AtomicReference<ClassLoader> loaderAtom = new AtomicReference<>();
 
-        File gsonSource = googleGson.toFile();
-        File gsonRelocated = relocatedGson.toFile();
-        JarRelocator gsonRelocator = new JarRelocator(gsonSource, gsonRelocated, relocations);
+            AtomicBoolean jvm = new AtomicBoolean(false);
+            AtomicBoolean bw = new AtomicBoolean(false);
 
-        try {
-            snakeRelocator.run();
-            gsonRelocator.run();
+            unbounded.send(LogLevel.INFO, "Preparing to download {0} KarmaAPI dependencies, please wait...", dependencySet.size());
+            collection.process((dependency) -> {
+                if (!dependency.platformSupported()) return;
 
-            //logger.send(LogLevel.INFO, "Successfully relocated 3 libraries [snake_yaml, reflection_api, google_gson]");
+                String id = dependency.getId();
+                String name = dependency.getName();
+
+                Path target;
+                if (id.equals("burning_wave") || id.equals("jvm_driver")) {
+                    target = thirdParty.resolve(String.format("%s.jar", id));
+                    if (id.equals("jvm_driver")) {
+                        jvm.set(true);
+                    }
+                    if (id.equals("burning_wave")) {
+                        bw.set(true);
+                    }
+                } else {
+                    target = library.resolve(String.format("%s.jar", id));
+                }
+
+                URL download = dependency.getDownloadURL();
+                if (download == null) {
+                    if (!Files.exists(target))
+                        unbounded.send(LogLevel.ERROR, "Failed to download dependency {0} because download URL is not valid", name);
+
+                    return;
+                }
+
+                if (!Files.exists(target)) {
+                    WebDownloader downloader = new WebDownloader(URLUtilities.append(download, String.format("%s.jar", id)));
+                    try {
+                        downloader.download(target);
+                    } catch (IOException | NoSuchAlgorithmException | KeyManagementException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+
+                if (bw.get() && jvm.get()) {
+                    bw.set(false);
+                    jvm.set(false);
+
+                    loaderAtom.set(detectClassLoader(thirdParty.resolve("burning_wave.jar"), thirdParty.resolve("jvm_driver.jar")));
+                    return;
+                }
+
+                ClassLoader loader = loaderAtom.get();
+                if (loader == null) return;
+
+                Map<String, String> relocationMap = dependency.getRelocations();
+                if (!relocationMap.isEmpty()) {
+                    Set<Relocation> relocations = new HashSet<>();
+                    for (String rK : relocationMap.keySet()) {
+                        String rV = relocationMap.get(rK);
+
+                        Relocation relocation = new Relocation(rK, rV);
+                        relocations.add(relocation);
+                    }
+
+                    Path targetRelocation = relocated.resolve(String.format("%s.jar", id));
+                    if (Files.exists(targetRelocation)) {
+                        inject(targetRelocation, loader);
+                        return;
+                    }
+
+                    PathUtilities.createPath(targetRelocation);
+
+                    JarRelocator relocator = new JarRelocator(target.toFile(), targetRelocation.toFile(), relocations);
+                    try {
+                        relocator.run();
+                        inject(targetRelocation, loader);
+                    } catch (IOException ex) {
+                        unbounded.send(ex, "Failed to relocate dependency {0}", name);
+                    }
+
+                    return;
+                }
+
+                inject(target, loader);
+            });
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
-
-        inject(schemaJson, tmp);
-        inject(schemaValidator, tmp);
-        inject(relocatedGson, tmp);
-        inject(relocatedSnakeYaml, tmp);
-        inject(javaScript, tmp);
-
-        inject(lz4, tmp);
-        inject(zstd, tmp);
-
-        inject(reflectionAPI, tmp);
     }
 
     private static ClassLoader detectClassLoader(Path burningWave, Path jvmDriver) {

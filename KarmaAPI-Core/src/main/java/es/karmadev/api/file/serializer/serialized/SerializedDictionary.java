@@ -2,15 +2,13 @@ package es.karmadev.api.file.serializer.serialized;
 
 import com.github.luben.zstd.Zstd;
 import com.github.luben.zstd.ZstdException;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
 import es.karmadev.api.core.ExceptionCollector;
 import es.karmadev.api.core.KarmaKore;
 import es.karmadev.api.core.source.APISource;
-import es.karmadev.api.core.source.KarmaSource;
 import es.karmadev.api.file.serializer.SerializeCompressor;
 import es.karmadev.api.file.util.PathUtilities;
+import es.karmadev.api.kson.JsonObject;
+import es.karmadev.api.kson.io.JsonReader;
 import es.karmadev.api.object.ObjectUtils;
 import es.karmadev.api.strings.StringUtils;
 import net.jpountz.lz4.LZ4Factory;
@@ -82,17 +80,16 @@ public class SerializedDictionary implements Serializable, Iterable<SerializedFi
 
         if (kore != null) {
             Path sizesPath = kore.workingDirectory().resolve("serializer").resolve("dictionary").resolve("data.json");
-            Gson gson = new GsonBuilder().create();
 
-            JsonObject sizes = new JsonObject();
+            JsonObject sizes = JsonObject.newObject("", "");
             if (Files.exists(sizesPath)) {
-                sizes = gson.fromJson(PathUtilities.read(sizesPath), JsonObject.class);
+                sizes = JsonReader.read(PathUtilities.read(sizesPath)).asObject();
             }
 
-            if (sizes.has(name)) {
-                JsonObject thisData = sizes.getAsJsonObject(name);
-                int length = thisData.get("size").getAsInt();
-                SerializeCompressor method = SerializeCompressor.valueOf(thisData.get("method").getAsString());
+            if (sizes.hasChild(name)) {
+                JsonObject thisData = sizes.getChild(name).asObject();
+                int length = thisData.getChild("size").asInteger();
+                SerializeCompressor method = SerializeCompressor.valueOf(thisData.getChild("method").asString());
 
                 Path destination = kore.workingDirectory().resolve("serializer").resolve("dictionary").resolve(name + ".sdc");
                 if (Files.exists(destination)) {

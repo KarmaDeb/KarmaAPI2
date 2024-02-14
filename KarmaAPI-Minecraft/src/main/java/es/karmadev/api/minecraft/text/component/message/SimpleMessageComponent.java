@@ -1,6 +1,10 @@
 package es.karmadev.api.minecraft.text.component.message;
 
-import com.google.gson.*;
+import es.karmadev.api.kson.JsonArray;
+import es.karmadev.api.kson.JsonInstance;
+import es.karmadev.api.kson.JsonObject;
+import es.karmadev.api.kson.KsonException;
+import es.karmadev.api.kson.io.JsonReader;
 import es.karmadev.api.minecraft.text.TextMessageType;
 import es.karmadev.api.minecraft.text.component.Component;
 import es.karmadev.api.minecraft.text.component.text.MessageComponent;
@@ -114,47 +118,41 @@ public class SimpleMessageComponent implements MessageComponent {
      */
     @Override
     public String toJson(final boolean pretty) {
-        GsonBuilder builder = new GsonBuilder().serializeNulls().disableHtmlEscaping();
-        if (pretty) {
-            builder.setPrettyPrinting();
-        }
+        JsonObject main = JsonObject.newObject("", "");
 
-        Gson gson = builder.create();
-        JsonObject main = new JsonObject();
+        JsonObject click = JsonObject.newObject("", "click");
+        JsonObject hover = JsonObject.newObject("", "hover");
 
-        JsonObject click = new JsonObject();
-        JsonObject hover = new JsonObject();
+        JsonObject extra = JsonObject.newObject("", "extra");
+        JsonArray extraElements = JsonArray.newArray("extra", "extraElements");
 
-        JsonObject extra = new JsonObject();
-        JsonArray extraElements = new JsonArray();
-
-        main.addProperty("type", type.name());
-        main.addProperty("content", content);
+        main.put("type", type.name());
+        main.put("content", content);
         if (this.type.equals(TextMessageType.CHAT)) {
-            main.add("click", click);
-            main.add("hover", hover);
+            main.put("click", click);
+            main.put("hover", hover);
 
-            extra.addProperty("size", this.extra.size());
+            extra.put("size", this.extra.size());
             int index = 0;
             for (Component component : this.extra) {
                 String rawJson = component.toJson(pretty);
                 try {
-                    JsonElement element = gson.fromJson(rawJson, JsonElement.class);
-                    if (element == null) continue;
+                    JsonInstance element = JsonReader.read(rawJson);
 
-                    JsonObject extraElement = new JsonObject();
-                    extraElement.addProperty("index", ++index);
-                    extraElement.add("component", element);
+                    JsonObject extraElement = JsonObject.newObject("extra", "elements");
+                    extraElement.put("index", ++index);
+                    extraElement.put("component", element);
 
                     extraElements.add(extraElement);
-                } catch (JsonSyntaxException ignored) {
+                } catch (KsonException ignored) {
                 }
             }
+            extra.put("elements", extraElements);
 
-            main.add("extra", extra);
+            main.put("extra", extra);
         }
 
-        return gson.toJson(main);
+        return main.toString();
     }
 
     /**
